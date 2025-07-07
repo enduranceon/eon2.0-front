@@ -1,0 +1,360 @@
+'use client';
+
+import React, { useState } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  LinearProgress,
+  useTheme,
+  IconButton,
+  Fade,
+  Zoom,
+} from '@mui/material';
+import {
+  ArrowBack as ArrowBackIcon,
+  ArrowForward as ArrowForwardIcon,
+  RestartAlt as RestartIcon,
+} from '@mui/icons-material';
+
+export interface QuizQuestion {
+  id: string;
+  title: string;
+  description?: string;
+  options: QuizOption[];
+  type?: 'single' | 'multiple';
+}
+
+export interface QuizOption {
+  id: string;
+  label: string;
+  description?: string;
+  value: any;
+  icon?: React.ReactNode;
+}
+
+export interface QuizResult {
+  id: string;
+  title: string;
+  description: string;
+  icon?: React.ReactNode;
+  data?: any;
+}
+
+interface QuizBaseProps {
+  title: string;
+  subtitle: string;
+  questions: QuizQuestion[];
+  onComplete: (answers: Record<string, any>) => QuizResult;
+  onRestart?: () => void;
+  showProgress?: boolean;
+  icon?: React.ReactNode;
+  autoAdvance?: boolean;
+}
+
+export default function QuizBase({
+  title,
+  subtitle,
+  questions,
+  onComplete,
+  onRestart,
+  showProgress = true,
+  icon,
+  autoAdvance = false,
+}: QuizBaseProps) {
+  const theme = useTheme();
+  const [currentStep, setCurrentStep] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [result, setResult] = useState<QuizResult | null>(null);
+  const [isStarted, setIsStarted] = useState(false);
+
+  const currentQuestion = questions[currentStep];
+  const progress = ((currentStep + 1) / questions.length) * 100;
+  const isLastQuestion = currentStep === questions.length - 1;
+  const canGoNext = answers[currentQuestion?.id] !== undefined;
+
+  const handleStart = () => {
+    setIsStarted(true);
+    setCurrentStep(0);
+    setAnswers({});
+    setResult(null);
+  };
+
+  const handleAnswer = (questionId: string, value: any) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value,
+    }));
+
+    // Auto-advance to next question if enabled
+    if (autoAdvance) {
+      setTimeout(() => {
+        if (isLastQuestion) {
+          const quizResult = onComplete({
+            ...answers,
+            [questionId]: value,
+          });
+          setResult(quizResult);
+        } else {
+          setCurrentStep(prev => prev + 1);
+        }
+      }, 600); // Delay para mostrar a seleção
+    }
+  };
+
+  const handleNext = () => {
+    if (isLastQuestion) {
+      const quizResult = onComplete(answers);
+      setResult(quizResult);
+    } else {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
+
+  const handleRestart = () => {
+    setIsStarted(false);
+    setCurrentStep(0);
+    setAnswers({});
+    setResult(null);
+    onRestart?.();
+  };
+
+  // Tela inicial
+  if (!isStarted && !result) {
+    return (
+      <Card
+        sx={{
+          maxWidth: 600,
+          mx: 'auto',
+          p: 4,
+          textAlign: 'center',
+          background: theme.colors.gradient.primary,
+          color: 'white',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+            zIndex: 0,
+          },
+        }}
+      >
+        <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+          {icon && (
+            <Box sx={{ fontSize: 80, mb: 2 }}>
+              {icon}
+            </Box>
+          )}
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            {title}
+          </Typography>
+          <Typography variant="h6" sx={{ mb: 3, opacity: 0.9 }}>
+            {subtitle}
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 4, opacity: 0.8 }}>
+            Leva apenas {Math.ceil(questions.length / 2)} minuto{questions.length > 2 ? 's' : ''}
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleStart}
+            sx={{
+              px: 4,
+              py: 1.5,
+              fontSize: '1.1rem',
+              fontWeight: 'bold',
+              background: 'rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(10px)',
+              border: '2px solid rgba(255, 255, 255, 0.3)',
+              color: 'white',
+              '&:hover': {
+                background: 'rgba(255, 255, 255, 0.3)',
+                transform: 'translateY(-2px)',
+              },
+            }}
+          >
+            Começar
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Tela de resultado
+  if (result) {
+    return (
+      <Zoom in timeout={600}>
+        <Card sx={{ maxWidth: 800, mx: 'auto', p: 4 }}>
+          <CardContent sx={{ textAlign: 'center' }}>
+            {result.icon && (
+              <Box sx={{ fontSize: 80, mb: 2, color: theme.palette.primary.main }}>
+                {result.icon}
+              </Box>
+            )}
+            <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
+              {result.title}
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 4, fontSize: '1.1rem' }}>
+              {result.description}
+            </Typography>
+            
+            {result.data && (
+              <Box sx={{ mb: 4 }}>
+                {result.data}
+              </Box>
+            )}
+
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="outlined"
+                startIcon={<RestartIcon />}
+                onClick={handleRestart}
+              >
+                Refazer o teste
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      </Zoom>
+    );
+  }
+
+  // Tela de pergunta
+  return (
+    <Card sx={{ maxWidth: 700, mx: 'auto' }}>
+      {showProgress && (
+        <Box sx={{ p: 2, pb: 0 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Pergunta {currentStep + 1} de {questions.length}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {Math.round(progress)}%
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            sx={{
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: theme.colors.surface.tertiary,
+              '& .MuiLinearProgress-bar': {
+                background: theme.colors.gradient.primary,
+                borderRadius: 4,
+              },
+            }}
+          />
+        </Box>
+      )}
+
+      <CardContent sx={{ p: 4 }}>
+        <Fade in key={currentStep} timeout={300}>
+          <Box>
+            <Typography variant="h5" fontWeight="bold" gutterBottom>
+              {currentQuestion.title}
+            </Typography>
+            {currentQuestion.description && (
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                {currentQuestion.description}
+              </Typography>
+            )}
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
+              {currentQuestion.options.map((option) => (
+                <Card
+                  key={option.id}
+                  sx={{
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    border: 2,
+                    borderColor: answers[currentQuestion.id] === option.value
+                      ? theme.palette.primary.main
+                      : 'transparent',
+                    backgroundColor: answers[currentQuestion.id] === option.value
+                      ? `${theme.palette.primary.main}15`
+                      : theme.colors.background.paper,
+                    '&:hover': {
+                      borderColor: theme.palette.primary.light,
+                      transform: 'translateY(-2px)',
+                      boxShadow: theme.colors.shadow.primary,
+                    },
+                  }}
+                  onClick={() => handleAnswer(currentQuestion.id, option.value)}
+                >
+                  <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      {option.icon && (
+                        <Box sx={{ color: theme.palette.primary.main, fontSize: 24 }}>
+                          {option.icon}
+                        </Box>
+                      )}
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" fontWeight="medium">
+                          {option.label}
+                        </Typography>
+                        {option.description && (
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                            {option.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: autoAdvance ? 'flex-start' : 'space-between', alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                startIcon={<ArrowBackIcon />}
+                onClick={handlePrevious}
+                disabled={currentStep === 0}
+              >
+                Anterior
+              </Button>
+
+              {!autoAdvance && (
+                <Button
+                  variant="contained"
+                  endIcon={<ArrowForwardIcon />}
+                  onClick={handleNext}
+                  disabled={!canGoNext}
+                  sx={{
+                    px: 4,
+                    background: theme.colors.gradient.primary,
+                    '&:hover': {
+                      background: theme.colors.gradient.secondary,
+                    },
+                  }}
+                >
+                  {isLastQuestion ? 'Finalizar' : 'Próximo'}
+                </Button>
+              )}
+              
+              {autoAdvance && canGoNext && (
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                  Avançando automaticamente...
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </Fade>
+      </CardContent>
+    </Card>
+  );
+} 
