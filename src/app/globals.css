@@ -17,6 +17,7 @@ body {
 }
 
 body {
+  font-family: var(--font-montserrat);
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
       to bottom,
@@ -30,6 +31,8 @@ body {
   --foreground-rgb: 30, 41, 59;
   --background-start-rgb: 248, 250, 252;
   --background-end-rgb: 241, 245, 249;
+  --font-montserrat: 'Montserrat', sans-serif;
+  --font-gotham: 'Gotham Ultra Italic', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {

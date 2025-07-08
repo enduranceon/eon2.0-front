@@ -54,7 +54,6 @@ import { useAuth } from '../../../contexts/AuthContext';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import DashboardLayout from '../../../components/Dashboard/DashboardLayout';
 import StatsCard from '../../../components/Dashboard/StatsCard';
-import { colors } from '../../../theme/enduranceTheme';
 import { analyticsService } from '../../../services/analyticsService';
 import {
   KPICard,
@@ -235,7 +234,6 @@ export default function AdminDashboard() {
                 value={dashboardStats?.totalUsers.toLocaleString() || '0'}
                 subtitle="+12% este mês"
                 icon={<StudentsIcon />}
-                gradient
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -244,7 +242,6 @@ export default function AdminDashboard() {
                 value={formatCurrency(dashboardStats?.monthlyRevenue || 0)}
                 subtitle="+8.5% vs mês anterior"
                 icon={<FinanceIcon />}
-                gradient
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -253,7 +250,6 @@ export default function AdminDashboard() {
                 value={dashboardStats?.activeCoaches?.toString() || '0'}
                 subtitle={`${coaches.length} total`}
                 icon={<CoachIcon />}
-                gradient
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -262,7 +258,6 @@ export default function AdminDashboard() {
                 value={dashboardStats?.activeSubscriptions?.toString() || '0'}
                 subtitle={`${plans.length} planos disponíveis`}
                 icon={<PlansIcon />}
-                gradient
               />
             </Grid>
           </Grid>

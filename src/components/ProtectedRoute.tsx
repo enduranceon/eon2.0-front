@@ -63,19 +63,14 @@ export default function ProtectedRoute({ children, allowedUserTypes }: Protected
     return (
       <Box
         sx={{
-          minHeight: '100vh',
           display: 'flex',
-          flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          background: theme.colors.gradient.primary,
-          color: 'white',
+          height: '100vh',
+          width: '100vw',
         }}
       >
-        <CircularProgress color="inherit" size={64} />
-        <Typography variant="h6" sx={{ mt: 2 }}>
-          Carregando...
-        </Typography>
+        <CircularProgress />
       </Box>
     );
   }

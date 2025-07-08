@@ -1,58 +1,71 @@
 'use client';
 
 import React from 'react';
+import { Box, Button, Container, Typography } from '@mui/material';
+import Image from 'next/image';
+import NextLink from 'next/link';
+import Logo from '@/assets/images/logo/logo_simbolo_preto.png';
 
 export default function HomePage() {
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #1976d2 0%, #2e7d32 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: 'white',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <div style={{ textAlign: 'center', maxWidth: '600px', padding: '20px' }}>
-        <h1 style={{ fontSize: '3rem', marginBottom: '20px' }}>
-          Endurance On
-        </h1>
-        <p style={{ fontSize: '1.2rem', marginBottom: '30px', opacity: 0.9 }}>
-          Sua plataforma completa para assessoria esportiva em corrida e triathlon
-        </p>
-        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button 
-            onClick={() => window.location.href = '/login'}
-            style={{
-              backgroundColor: 'white',
-              color: '#1976d2',
-              padding: '12px 24px',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-            }}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: (theme) => theme.palette.background.default,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        color: 'text.primary',
+        p: 3,
+      }}
+    >
+      <Container maxWidth="md">
+        <Image 
+          src={Logo} 
+          alt="EnduranceOn Logo Symbol" 
+          width={240} 
+          style={{ marginBottom: '32px' }}
+        />
+        
+        <Typography 
+          variant="h3" 
+          component="h1" 
+          sx={{ mb: 2, color: 'text.primary' }}
+        >
+          Sua plataforma completa para assessoria esportiva
+        </Typography>
+        
+        <Typography 
+          variant="h6" 
+          component="p"
+          color="text.secondary" 
+          sx={{ mb: 4, maxWidth: '600px', mx: 'auto' }}
+        >
+          Conectamos atletas e treinadores de corrida e triathlon para levar seu desempenho ao próximo nível.
+        </Typography>
+
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Button 
+            variant="contained" 
+            color="primary"
+            component={NextLink}
+            href="/login"
+            size="large"
           >
             Acessar Plataforma
-          </button>
-          <button 
-            onClick={() => window.location.href = '/register'}
-            style={{
-              backgroundColor: 'transparent',
-              color: 'white',
-              padding: '12px 24px',
-              border: '2px solid white',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-            }}
+          </Button>
+          <Button 
+            variant="outlined" 
+            color="primary"
+            component={NextLink}
+            href="/register"
+            size="large"
           >
             Começar Agora
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Box>
+      </Container>
+    </Box>
   );
 } 

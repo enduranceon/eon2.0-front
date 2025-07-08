@@ -95,9 +95,9 @@ export default function StudentCoinsPage() {
               <Grid item xs={12}>
                 <Paper
                   elevation={4}
-                  sx={{ p: 2, borderRadius: 4, background: (theme) => theme.colors.gradient.primary }}
+                  sx={{ p: 2 }}
                 >
-                  <Card sx={{ borderRadius: 3, background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)' }}>
+                  <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)' }}>
                     <CardContent sx={{ textAlign: 'center', p: {xs: 2, md: 4} }}>
                       <Typography variant="overline" color="text.secondary">Saldo Disponível</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 1 }}>
@@ -119,7 +119,7 @@ export default function StudentCoinsPage() {
                 <Typography variant="h5" fontWeight="bold" gutterBottom>
                   Histórico de Transações
                 </Typography>
-                <Paper elevation={2} sx={{ borderRadius: 4, overflow: 'hidden' }}>
+                <Paper elevation={2} sx={{ overflow: 'hidden' }}>
                   <List disablePadding>
                     {transactions.length > 0 ? transactions.map((tx, idx) => (
                       <React.Fragment key={tx.id}>

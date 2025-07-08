@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
+import { useTheme, Box, CircularProgress, Typography } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import DashboardLayout from '../../components/Dashboard/DashboardLayout';
 import DashboardOverview from '../../components/Dashboard/DashboardOverview';
-import { enduranceTheme } from '../../theme/enduranceTheme';
 import { User, UserType } from '../../types/api';
 import { enduranceApi } from '../../services/enduranceApi';
+import PageHeader from '@/components/Dashboard/PageHeader';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const theme = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -78,26 +78,21 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <ThemeProvider theme={enduranceTheme}>
-        <CssBaseline />
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
           height: '100vh',
-          background: enduranceTheme.colors.gradient.primary 
-        }}>
-          <div style={{ 
-            color: 'white', 
-            fontSize: '1.5rem', 
-            fontWeight: 'bold',
-            textAlign: 'center'
-          }}>
-            <div style={{ marginBottom: '20px' }}>🏃‍♂️</div>
-            Carregando Endurance On...
-          </div>
-        </div>
-      </ThemeProvider>
+          background: theme.palette.background.default,
+        }}
+      >
+        <CircularProgress color="primary" size={60} />
+        <Typography variant="h6" sx={{ mt: 3, color: 'text.primary' }}>
+          Carregando Endurance On...
+        </Typography>
+      </Box>
     );
   }
 
@@ -106,9 +101,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <ThemeProvider theme={enduranceTheme}>
-      <CssBaseline />
+    <>
       <DashboardLayout user={user} onLogout={handleLogout}>
+        <PageHeader 
+          title="Visão Geral" 
+          description={`Bem-vindo de volta, ${user.name}! Aqui está um resumo da sua atividade.`} 
+        />
         <DashboardOverview user={user} />
       </DashboardLayout>
       <Toaster
@@ -116,26 +114,26 @@ export default function DashboardPage() {
         toastOptions={{
           duration: 4000,
           style: {
-            background: enduranceTheme.colors.background.paper,
-            color: enduranceTheme.colors.text.primary,
-            border: `1px solid ${enduranceTheme.colors.surface.tertiary}`,
-            borderRadius: '12px',
-            boxShadow: enduranceTheme.colors.shadow.primary,
+            background: theme.palette.background.paper,
+            color: theme.palette.text.primary,
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: 8,
+            boxShadow: theme.shadows[4],
           },
           success: {
             iconTheme: {
-              primary: enduranceTheme.palette.success.main,
-              secondary: 'white',
+              primary: theme.palette.success.main,
+              secondary: theme.palette.success.contrastText,
             },
           },
           error: {
             iconTheme: {
-              primary: enduranceTheme.palette.error.main,
-              secondary: 'white',
+              primary: theme.palette.error.main,
+              secondary: theme.palette.error.contrastText,
             },
           },
         }}
       />
-    </ThemeProvider>
+    </>
   );
 } 

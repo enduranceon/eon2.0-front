@@ -16,6 +16,8 @@ import {
   useTheme,
   Backdrop,
   Fade,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   Visibility,
@@ -28,6 +30,9 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import Image from 'next/image';
+import LogoSymbol from '@/assets/images/logo/logo_simbolo_preto.png';
+import NextLink from 'next/link';
 
 export default function LoginPage() {
   const theme = useTheme();
@@ -139,31 +144,17 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: theme.palette.mode === 'dark' ? theme.palette.background.default : theme.colors.gradient.primary,
+        background: (theme) =>
+          theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
         padding: 2,
-        position: 'relative',
-        overflow: 'hidden',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
-          zIndex: 0,
-        },
       }}
     >
       <Card
         sx={{
           maxWidth: 420,
           width: '100%',
-          position: 'relative',
-          zIndex: 1,
-          backdropFilter: 'blur(20px)',
           background: theme.palette.background.paper,
-          boxShadow: theme.colors.shadow.elevated,
+          boxShadow: theme.shadows[6],
           filter: showGlobalLoading ? 'blur(2px)' : 'none',
           transition: 'filter 0.3s ease',
         }}
@@ -171,26 +162,14 @@ export default function LoginPage() {
         <CardContent sx={{ p: 4 }}>
           {/* Logo e Título */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 80,
-                height: 80,
-                borderRadius: '50%',
-                background: theme.colors.gradient.primary,
-                color: 'white',
-                mb: 2,
-              }}
-            >
-              <RunIcon sx={{ fontSize: 40 }} />
-            </Box>
-            <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom>
-              Endurance On
+            <NextLink href="/" passHref>
+                <Image src={LogoSymbol} alt="EnduranceOn Symbol" width={82} style={{ marginBottom: '16px' }} />
+            </NextLink>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Bem-vindo de volta!
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Entre em sua conta
+              Entre para continuar na plataforma.
             </Typography>
           </Box>
 
@@ -258,22 +237,13 @@ export default function LoginPage() {
               autoComplete="current-password"
             />
 
-            <Box sx={{ textAlign: 'right', mb: 3 }}>
-              <Link
-                component="button"
-                type="button"
-                variant="body2"
-                onClick={handleForgotPassword}
-                disabled={showGlobalLoading}
-                sx={{
-                  textDecoration: 'none',
-                  opacity: showGlobalLoading ? 0.5 : 1,
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
-                }}
-              >
-                Esqueceu sua senha?
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 3 }}>
+              <FormControlLabel
+                control={<Checkbox name="remember" color="primary" />}
+                label="Lembrar-me"
+              />
+              <Link component={NextLink} href="/forgot-password" variant="body2">
+                Esqueceu a senha?
               </Link>
             </Box>
 
@@ -283,64 +253,23 @@ export default function LoginPage() {
               variant="contained"
               size="large"
               disabled={showGlobalLoading}
+              startIcon={showGlobalLoading ? <CircularProgress size={24} color="inherit" /> : null}
               sx={{
                 py: 1.5,
-                mb: 3,
-                background: showGlobalLoading ? theme.colors.surface.tertiary : theme.colors.gradient.primary,
+                textTransform: 'none',
                 fontWeight: 'bold',
-                fontSize: '1.1rem',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  background: showGlobalLoading ? theme.colors.surface.tertiary : theme.colors.gradient.secondary,
-                  transform: showGlobalLoading ? 'none' : 'translateY(-2px)',
-                },
-                '&:disabled': {
-                  background: theme.colors.surface.tertiary,
-                  color: theme.palette.text.secondary,
-                },
+                letterSpacing: '0.5px',
               }}
             >
-              {showGlobalLoading ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <CircularProgress 
-                    size={20} 
-                    sx={{ 
-                      color: theme.palette.primary.main,
-                      mr: 1 
-                    }} 
-                  />
-                  <Typography component="span" sx={{ fontWeight: 'bold' }}>
-                    Entrando...
-                  </Typography>
-                </Box>
-              ) : (
-                'Entrar'
-              )}
+              {showGlobalLoading ? loginStep : 'Entrar'}
             </Button>
 
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Não tem uma conta?{' '}
-                <Link
-                  component="button"
-                  type="button"
-                  variant="body2"
-                  onClick={handleRegister}
-                  disabled={showGlobalLoading}
-                  sx={{
-                    fontWeight: 'bold',
-                    color: theme.palette.primary.main,
-                    textDecoration: 'none',
-                    opacity: showGlobalLoading ? 0.5 : 1,
-                    '&:hover': {
-                      textDecoration: 'underline',
-                    },
-                  }}
-                >
-                  Criar conta
-                </Link>
-              </Typography>
-            </Box>
+            <Typography variant="body2" sx={{ textAlign: 'center', mt: 4 }}>
+              Não tem uma conta?{' '}
+              <Link component={NextLink} href="/register" fontWeight="bold">
+                Cadastre-se
+              </Link>
+            </Typography>
           </Box>
         </CardContent>
       </Card>

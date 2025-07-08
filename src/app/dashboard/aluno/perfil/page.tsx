@@ -285,15 +285,13 @@ export default function StudentProfilePage() {
               elevation={3} 
               sx={{ 
                 p: { xs: 2, md: 3 },
-                borderRadius: 4,
-                background: (theme) => theme.palette.mode === 'dark' ? 'none' : theme.colors.gradient.primary,
                 border: (theme) => (theme.palette.mode === 'dark' ? `1px solid ${theme.palette.divider}` : 'none'),
               }}
             >
-              <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ color: 'white', mb: 2, textAlign: 'center' }}>
+              <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ color: 'text.primary', mb: 2, textAlign: 'center' }}>
                 Meu Perfil
               </Typography>
-              <Card sx={{ borderRadius: 3, background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)' }}>
+              <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)' }}>
                 <CardContent sx={{ textAlign: 'center', p: { xs: 2, md: 3 } }}>
                   <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
                     <Avatar

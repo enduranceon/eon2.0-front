@@ -1,4 +1,4 @@
-// File: C:\Users\DjAlexDee\OneDrive\Documentos\Projects\front-endurance\src\app\forgot-password\page.tsx
+// File: C:\Users\DjAlexDee\OneDrive\Documentos\Projects\eon2.0-front\src\app\forgot-password\page.tsx
 import * as entry from '../../../../src/app/forgot-password/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

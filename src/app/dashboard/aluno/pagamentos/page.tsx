@@ -97,11 +97,9 @@ export default function StudentPaymentsPage() {
               elevation={4}
               sx={{
                 p: 2,
-                borderRadius: 4,
-                background: (theme) => theme.colors.gradient.primary,
               }}
             >
-              <Card sx={{ borderRadius: 3, background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)' }}>
+              <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)' }}>
                 <CardContent sx={{ p: { xs: 2, md: 4 } }}>
                     <Grid container spacing={3} alignItems="flex-start">
                       {/* Payment Methods */}

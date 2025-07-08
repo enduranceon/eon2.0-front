@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import {
   AppBar,
   Box,
@@ -49,6 +50,9 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import NavigationLoader from '../NavigationLoader';
 import { useLoading } from '@/contexts/LoadingContext';
+import LogoHorizontal from '@/assets/images/logo/logo-new-white.png';
+import LogoSymbol from '@/assets/images/logo/logo-symbol.svg';
+import LogoSimboloPreto from '@/assets/images/logo/logo_simbolo_preto.png';
 
 const drawerWidth = 280;
 
@@ -244,38 +248,22 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box
+      <Toolbar
         sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           p: 3,
-          background: theme.palette.mode === 'dark' ? theme.colors.gradient.primary : theme.colors.gradient.primary,
-          color: 'white',
-          textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
-            zIndex: 0,
-          },
+          background: (theme) =>
+            theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.primary.main,
         }}
       >
-        <Box sx={{ position: 'relative', zIndex: 1, color: theme.palette.common.white }}>
-          <RunIcon sx={{ fontSize: 48, mb: 1 }} />
-          <Typography variant="h5" fontWeight="bold">
-            Endurance On
-          </Typography>
-          <Typography variant="caption" sx={{ opacity: 0.8 }}>
-            Dashboard
-          </Typography>
-        </Box>
-      </Box>
-
-      <List sx={{ flex: 1, p: 1, mt: 1 }}>
+        <Link href="/dashboard" passHref>
+          <Image src={LogoHorizontal} alt="EnduranceOn Logo" width={180} />
+        </Link>
+      </Toolbar>
+      <Divider />
+      <List sx={{ flexGrow: 1, p: 2 }}>
         {filteredMenuItems.map((item) => (
           <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
             <ListItemButton
@@ -284,18 +272,16 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
               onClick={() => handleNavigationClick(item.path)}
               selected={bestMatch?.id === item.id}
               sx={{
-                borderRadius: 2,
-                mx: 1,
+                borderRadius: 1,
                 transition: 'all 0.2s ease-in-out',
                 '&.Mui-selected': {
-                  background: (theme) => theme.palette.mode === 'dark' ? theme.colors.gradient.primary : theme.colors.gradient.primary,
-                  color: 'white',
-                  boxShadow: (theme) => theme.colors.shadow.primary,
+                  background: (theme) => theme.palette.primary.main,
+                  color: (theme) => theme.palette.primary.contrastText,
                   '&:hover': {
-                    background: (theme) => theme.colors.gradient.secondary,
+                    background: (theme) => theme.palette.primary.dark,
                   },
                   '& .MuiListItemIcon-root': {
-                    color: 'white',
+                    color: (theme) => theme.palette.primary.contrastText,
                   },
                 },
                 '&:hover': {
@@ -304,7 +290,7 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
                 },
               }}
             >
-              <ListItemIcon sx={{ color: 'inherit', minWidth: 40, }}>
+              <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
                 {item.badge ? <Badge badgeContent={item.badge} color="error">{item.icon}</Badge> : item.icon}
               </ListItemIcon>
               <ListItemText
@@ -345,16 +331,20 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
       >
         <Toolbar>
           <IconButton
-            color="inherit"
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { lg: 'none' } }}
-            ref={menuButtonRef}
+            sx={{ 
+              mr: 2, 
+              display: { lg: 'none' },
+              color: 'text.primary' 
+            }}
           >
             <MenuIcon />
           </IconButton>
-          
+          <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
+            <Image src={LogoSimboloPreto} alt="EnduranceOn Symbol" width={40} />
+          </Box>
           <Box sx={{ flexGrow: 1 }} />
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -448,7 +438,8 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
           flexGrow: 1,
           width: { lg: `calc(100% - ${drawerWidth}px)` },
           minHeight: '100vh',
-          backgroundColor: (theme) => theme.colors.background.default,
+          backgroundColor: (theme) =>
+            theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[50],
         }}
       >
         <Toolbar />

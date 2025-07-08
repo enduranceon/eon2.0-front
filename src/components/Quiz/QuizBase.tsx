@@ -136,7 +136,6 @@ export default function QuizBase({
           mx: 'auto',
           p: 4,
           textAlign: 'center',
-          background: theme.colors.gradient.primary,
           color: 'white',
           position: 'relative',
           overflow: 'hidden',
@@ -251,9 +250,8 @@ export default function QuizBase({
             sx={{
               height: 8,
               borderRadius: 4,
-              backgroundColor: theme.colors.surface.tertiary,
+              backgroundColor: (theme) => theme.palette.grey[300],
               '& .MuiLinearProgress-bar': {
-                background: theme.colors.gradient.primary,
                 borderRadius: 4,
               },
             }}
@@ -277,28 +275,27 @@ export default function QuizBase({
               {currentQuestion.options.map((option) => (
                 <Card
                   key={option.id}
+                  onClick={() => handleAnswer(currentQuestion.id, option.value)}
                   sx={{
                     cursor: 'pointer',
                     transition: 'all 0.3s ease',
                     border: 2,
                     borderColor: answers[currentQuestion.id] === option.value
-                      ? theme.palette.primary.main
+                      ? 'primary.main'
                       : 'transparent',
                     backgroundColor: answers[currentQuestion.id] === option.value
-                      ? `${theme.palette.primary.main}15`
-                      : theme.colors.background.paper,
+                      ? (theme) => `${theme.palette.primary.main}20` // 20 for ~12% opacity
+                      : 'background.paper',
                     '&:hover': {
-                      borderColor: theme.palette.primary.light,
+                      borderColor: 'primary.light',
                       transform: 'translateY(-2px)',
-                      boxShadow: theme.colors.shadow.primary,
                     },
                   }}
-                  onClick={() => handleAnswer(currentQuestion.id, option.value)}
                 >
                   <CardContent sx={{ p: 3 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       {option.icon && (
-                        <Box sx={{ color: theme.palette.primary.main, fontSize: 24 }}>
+                        <Box sx={{ color: 'primary.main', fontSize: 24 }}>
                           {option.icon}
                         </Box>
                       )}
@@ -336,10 +333,6 @@ export default function QuizBase({
                   disabled={!canGoNext}
                   sx={{
                     px: 4,
-                    background: theme.colors.gradient.primary,
-                    '&:hover': {
-                      background: theme.colors.gradient.secondary,
-                    },
                   }}
                 >
                   {isLastQuestion ? 'Finalizar' : 'Próximo'}

@@ -326,7 +326,6 @@ export default function CheckoutPage() {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          background: theme.colors.gradient.primary,
         }}
       >
         <CircularProgress size={60} sx={{ color: 'white' }} />
@@ -339,7 +338,6 @@ export default function CheckoutPage() {
       <Box
         sx={{
           minHeight: '100vh',
-          background: theme.colors.gradient.primary,
           py: 4,
         }}
       >
@@ -363,7 +361,6 @@ export default function CheckoutPage() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: theme.colors.gradient.primary,
         py: 4,
       }}
     >

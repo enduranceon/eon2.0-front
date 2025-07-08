@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Montserrat } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ColorModeProvider } from '@/contexts/ThemeContext';
@@ -8,7 +9,17 @@ import { LoadingProvider } from '@/contexts/LoadingContext';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
 
-const inter = Inter({ subsets: ['latin'] });
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'], // Regular, Medium, Bold
+  variable: '--font-montserrat',
+});
+
+const gotham = localFont({
+  src: '../assets/fonts/Gotham Ultra Italic.ttf',
+  display: 'swap',
+  variable: '--font-gotham',
+});
 
 export const metadata: Metadata = {
   title: 'Endurance On - Dashboard',
@@ -39,13 +50,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
-      <body className={inter.className}>
+    <html lang="pt-BR" className={`${montserrat.variable} ${gotham.variable}`}>
+      <body>
         <AuthProvider>
           <ColorModeProvider>
             <LoadingProvider>
               <NextTopLoader
-                color="#7A5CFA"
+                color="#FF8012"
                 initialPosition={0.08}
                 crawlSpeed={200}
                 height={3}
@@ -53,7 +64,7 @@ export default function RootLayout({
                 showSpinner={false}
                 easing="ease"
                 speed={200}
-                shadow="0 0 10px #7A5CFA,0 0 5px #7A5CFA"
+                shadow="0 0 10px #FF8012,0 0 5px #FF8012"
               />
               {children}
               <Toaster richColors position="top-right" />

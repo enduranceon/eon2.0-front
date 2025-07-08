@@ -49,7 +49,6 @@ export default function OnboardingPage() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: theme.colors.gradient.primary,
         padding: 2,
       }}
     >

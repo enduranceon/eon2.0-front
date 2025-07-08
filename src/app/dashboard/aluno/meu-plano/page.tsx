@@ -69,16 +69,16 @@ const MeuPlanoContent = () => {
         <Grid container spacing={4}>
             {/* Subscription Card */}
             <Grid item xs={12}>
-                <Paper elevation={3} sx={{ p: 2, borderRadius: 4, height: '100%', background: (theme) => theme.colors.gradient.primary }}>
-                    <Card sx={{ borderRadius: 3, background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
+                    <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
                         <SubscriptionCard subscription={subscription} />
                     </Card>
                 </Paper>
             </Grid>
             {/* Payment History */}
             <Grid item xs={12}>
-                <Paper elevation={3} sx={{ p: 2, borderRadius: 4, height: '100%', background: (theme) => theme.colors.gradient.primary }}>
-                    <Card sx={{ borderRadius: 3, background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
+                    <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
                         <PaymentHistory payments={payments} />
                     </Card>
                 </Paper>

@@ -22,66 +22,61 @@ declare module '@mui/material/styles' {
 
 const baseColors = {
   primary: {
-    main: '#1976d2',
-    light: '#42a5f5',
-    dark: '#1565c0',
-    contrastText: '#ffffff',
+    main: '#FF8012', // Laranja
+    light: '#FF9933',
+    dark: '#E67300',
+    contrastText: '#FFFFFF',
   },
   secondary: {
-    main: '#2e7d32',
-    light: '#4caf50',
-    dark: '#1b5e20',
-    contrastText: '#ffffff',
+    main: '#38B6FF', // Azul
+    light: '#6ACDFF',
+    dark: '#1F9CE6',
+    contrastText: '#FFFFFF',
   },
   tertiary: {
-    main: '#f57c00',
-    light: '#ff9800',
-    dark: '#e65100',
-    contrastText: '#ffffff',
-  },
-  gradient: {
-    primary: 'linear-gradient(135deg, #1976d2 0%, #2e7d32 100%)',
-    secondary: 'linear-gradient(135deg, #2e7d32 0%, #f57c00 100%)',
-    accent: 'linear-gradient(135deg, #f57c00 0%, #1976d2 100%)',
+    main: '#BFBFBF', // Cinza
+    light: '#D9D9D9',
+    dark: '#A6A6A6',
+    contrastText: '#000000', // Preto para melhor contraste
   },
 };
 
 const lightPalette = {
   background: {
-    default: '#f8fafc',
-    paper: '#ffffff',
+    default: '#FFFFFF', // Branco
+    paper: '#FFFFFF',
   },
   text: {
-    primary: '#1e293b',
-    secondary: '#64748b',
-    disabled: '#94a3b8',
+    primary: '#000000', // Preto
+    secondary: '#757575', // Cinza mais escuro para acessibilidade (WCAG AA)
+    disabled: '#BFBFBF',
   },
   surface: {
-    primary: '#e2e8f0',
-    secondary: '#cbd5e1',
-    tertiary: '#94a3b8',
+    primary: '#F5F5F5', // Um cinza bem claro
+    secondary: '#E0E0E0',
+    tertiary: '#BFBFBF',
   },
   shadow: {
-    primary: '0 4px 20px rgba(25, 118, 210, 0.15)',
-    secondary: '0 8px 32px rgba(46, 125, 50, 0.12)',
-    elevated: '0 12px 48px rgba(0, 0, 0, 0.1)',
+    primary: '0 4px 20px rgba(0, 0, 0, 0.05)',
+    secondary: '0 8px 32px rgba(0, 0, 0, 0.04)',
+    elevated: '0 12px 48px rgba(0, 0, 0, 0.08)',
   },
 };
 
 const darkPalette = {
   background: {
-    default: '#0f172a',
-    paper: '#1e293b',
+    default: '#000000', // Preto
+    paper: '#1E1E1E', // Um cinza bem escuro para superfícies
   },
   text: {
-    primary: '#f8fafc',
-    secondary: '#94a3b8',
-    disabled: '#475569',
+    primary: '#FFFFFF', // Branco
+    secondary: '#BFBFBF', // Cinza do guia
+    disabled: '#757575',
   },
   surface: {
-    primary: '#334155',
-    secondary: '#475569',
-    tertiary: '#64748b',
+    primary: '#333333',
+    secondary: '#424242',
+    tertiary: '#616161',
   },
   shadow: {
     primary: '0 4px 20px rgba(0, 0, 0, 0.3)',
@@ -118,19 +113,19 @@ export const createEnduranceTheme = (mode: PaletteMode): Theme => {
   return createTheme({
     ...designTokens,
     typography: {
-      fontFamily: '"Inter", "Roboto", "Arial", sans-serif',
-      h1: { fontSize: '2.5rem', fontWeight: 700, lineHeight: 1.2 },
-      h2: { fontSize: '2rem', fontWeight: 600, lineHeight: 1.3 },
-      h3: { fontSize: '1.5rem', fontWeight: 600, lineHeight: 1.4 },
-      h4: { fontSize: '1.25rem', fontWeight: 600, lineHeight: 1.4 },
-      h5: { fontSize: '1.125rem', fontWeight: 600, lineHeight: 1.4 },
-      h6: { fontSize: '1rem', fontWeight: 600, lineHeight: 1.4 },
-      body1: { fontSize: '1rem', lineHeight: 1.5 },
-      body2: { fontSize: '0.875rem', lineHeight: 1.5 },
-      caption: { fontSize: '0.75rem', lineHeight: 1.4 },
+      fontFamily: 'var(--font-montserrat), "Roboto", "Arial", sans-serif',
+      h1: { fontFamily: 'var(--font-gotham), sans-serif', fontSize: '2.5rem', fontWeight: 'normal', fontStyle: 'italic', lineHeight: 1.2 },
+      h2: { fontFamily: 'var(--font-gotham), sans-serif', fontSize: '2rem', fontWeight: 'normal', fontStyle: 'italic', lineHeight: 1.3 },
+      h3: { fontFamily: 'var(--font-gotham), sans-serif', fontSize: '1.5rem', fontWeight: 'normal', fontStyle: 'italic', lineHeight: 1.4 },
+      h4: { fontFamily: 'var(--font-gotham), sans-serif', fontSize: '1.25rem', fontWeight: 'normal', fontStyle: 'italic', lineHeight: 1.4 },
+      h5: { fontFamily: 'var(--font-gotham), sans-serif', fontSize: '1.125rem', fontWeight: 'normal', fontStyle: 'italic', lineHeight: 1.4 },
+      h6: { fontFamily: 'var(--font-gotham), sans-serif', fontSize: '1rem', fontWeight: 'normal', fontStyle: 'italic', lineHeight: 1.4 },
+      body1: { fontFamily: 'var(--font-montserrat), sans-serif', fontSize: '1rem', lineHeight: 1.5 },
+      body2: { fontFamily: 'var(--font-montserrat), sans-serif', fontSize: '0.875rem', lineHeight: 1.5 },
+      caption: { fontFamily: 'var(--font-montserrat), sans-serif', fontSize: '0.75rem', lineHeight: 1.4 },
     },
     shape: {
-      borderRadius: 12,
+      borderRadius: 8,
     },
     components: {
       MuiCard: {
@@ -138,7 +133,7 @@ export const createEnduranceTheme = (mode: PaletteMode): Theme => {
           root: ({ theme }) => ({
             backgroundImage: 'none', // Reset for dark mode
             boxShadow: theme.colors.shadow.primary,
-            borderRadius: 16,
+            borderRadius: 8,
             border: `1px solid ${
               theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.1)'
             }`,
@@ -155,7 +150,7 @@ export const createEnduranceTheme = (mode: PaletteMode): Theme => {
           root: ({ theme }) => ({
             textTransform: 'none',
             fontWeight: 600,
-            borderRadius: 12,
+            borderRadius: 8,
             padding: '12px 24px',
             boxShadow: 'none',
             transition: 'all 0.3s ease-in-out',
@@ -164,24 +159,52 @@ export const createEnduranceTheme = (mode: PaletteMode): Theme => {
               transform: 'translateY(-1px)',
             },
           }),
-          contained: {
-            background: baseColors.gradient.primary,
-            color: '#ffffff',
+          contained: ({ theme }) => ({
+            background: theme.palette.primary.main,
+            color: theme.palette.primary.contrastText,
             '&:hover': {
-              background: baseColors.gradient.secondary,
+              background: theme.palette.primary.dark,
             },
-          },
+          }),
         },
       },
       MuiPaper: {
         styleOverrides: {
           root: ({ theme }) => ({
             backgroundImage: 'none',
-            borderRadius: 16,
+            borderRadius: 8,
             boxShadow: theme.colors.shadow.primary,
           }),
           elevation1: ({ theme }) => ({ boxShadow: theme.colors.shadow.primary }),
           elevation2: ({ theme }) => ({ boxShadow: theme.colors.shadow.secondary }),
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
+        },
+      },
+      MuiAlert: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            borderRadius: 8,
+          },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
         },
       },
       MuiAppBar: {
@@ -189,7 +212,7 @@ export const createEnduranceTheme = (mode: PaletteMode): Theme => {
           root: ({ theme }) => ({
             background:
               theme.palette.mode === 'light'
-                ? baseColors.gradient.primary
+                ? theme.palette.primary.main
                 : theme.palette.background.default,
             borderBottom: `1px solid ${
               theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.1)'

@@ -76,7 +76,6 @@ export default function QuizTreinadorPage() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: theme.colors.gradient.primary,
         py: 4,
       }}
     >

@@ -9,7 +9,7 @@ interface PageHeaderProps {
 const PageHeader: React.FC<PageHeaderProps> = ({ title, description }) => {
   return (
     <Box mb={4}>
-      <Typography variant="h4" component="h1" fontWeight="bold">
+      <Typography variant="h4" component="h1">
         {title}
       </Typography>
       <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>

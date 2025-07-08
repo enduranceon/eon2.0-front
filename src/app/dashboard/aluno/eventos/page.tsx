@@ -107,13 +107,12 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
               elevation={isInactive ? 1 : 3} 
               sx={{ 
                 p: 2, 
-                borderRadius: 4, 
                 height: '100%', 
-                background: (theme) => isInactive ? theme.palette.action.disabledBackground : theme.colors.gradient.primary,
+                background: (theme) => isInactive ? theme.palette.action.disabledBackground : undefined,
                 opacity: isInactive ? 0.7 : 1,
               }}
             >
-              <Card sx={{ borderRadius: 3, background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}><EventIcon /></Avatar>

@@ -10,6 +10,9 @@ import {
   Alert,
   CircularProgress,
   useTheme,
+  Paper,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -17,6 +20,7 @@ import {
   Error as ErrorIcon,
   Refresh as RefreshIcon,
   DirectionsRun as RunIcon,
+  ErrorOutline,
 } from '@mui/icons-material';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
@@ -114,20 +118,29 @@ export default function VerifyEmailPage() {
     switch (status) {
       case 'loading':
         return (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <CircularProgress size={48} sx={{ mb: 3 }} />
-            <Typography variant="h6" gutterBottom>
-              Verificando seu email...
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Aguarde enquanto validamos seu token de verificação.
-            </Typography>
+          <Box
+            sx={{
+              minHeight: '100vh',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <CircularProgress size={64} />
           </Box>
         );
 
       case 'success':
         return (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Paper
+            elevation={6}
+            sx={{
+              p: 4,
+              width: '100%',
+              maxWidth: 500,
+              textAlign: 'center',
+            }}
+          >
             <CheckIcon sx={{ fontSize: 64, color: 'success.main', mb: 3 }} />
             <Typography variant="h5" fontWeight="bold" gutterBottom>
               Email Verificado!
@@ -142,14 +155,22 @@ export default function VerifyEmailPage() {
               Redirecionando para o dashboard...
             </Typography>
             <CircularProgress size={24} sx={{ mt: 2 }} />
-          </Box>
+          </Paper>
         );
 
       case 'error':
         return (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <ErrorIcon sx={{ fontSize: 64, color: 'error.main', mb: 3 }} />
-            <Typography variant="h5" fontWeight="bold" gutterBottom>
+          <Paper
+            elevation={6}
+            sx={{
+              p: 4,
+              width: '100%',
+              maxWidth: 500,
+              textAlign: 'center',
+            }}
+          >
+            <ErrorOutline sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+            <Typography variant="h5" sx={{ mb: 2 }}>
               Erro na Verificação
             </Typography>
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -178,14 +199,22 @@ export default function VerifyEmailPage() {
                 {resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : 'Reenviar Email'}
               </Button>
             )}
-          </Box>
+          </Paper>
         );
 
       case 'expired':
         return (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <ErrorIcon sx={{ fontSize: 64, color: 'warning.main', mb: 3 }} />
-            <Typography variant="h5" fontWeight="bold" gutterBottom>
+          <Paper
+            elevation={6}
+            sx={{
+              p: 4,
+              width: '100%',
+              maxWidth: 500,
+              textAlign: 'center',
+            }}
+          >
+            <ErrorOutline sx={{ fontSize: 64, color: 'warning.main', mb: 2 }} />
+            <Typography variant="h5" sx={{ mb: 2 }}>
               Token Expirado
             </Typography>
             <Alert severity="warning" sx={{ mb: 3 }}>
@@ -212,12 +241,20 @@ export default function VerifyEmailPage() {
             >
               Ir para Login
             </Button>
-          </Box>
+          </Paper>
         );
 
       case 'pending':
         return (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Paper
+            elevation={6}
+            sx={{
+              p: 4,
+              width: '100%',
+              maxWidth: 500,
+              textAlign: 'center',
+            }}
+          >
             <EmailIcon sx={{ fontSize: 64, color: 'primary.main', mb: 3 }} />
             <Typography variant="h5" fontWeight="bold" gutterBottom>
               Verifique seu Email
@@ -249,7 +286,7 @@ export default function VerifyEmailPage() {
             >
               Ir para Login
             </Button>
-          </Box>
+          </Paper>
         );
 
       default:
@@ -262,15 +299,11 @@ export default function VerifyEmailPage() {
       sx={{
         minHeight: '100vh',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: theme.colors.gradient.primary,
-        padding: 2,
+        flexDirection: 'column',
       }}
     >
-      <Card sx={{ maxWidth: 500, width: '100%' }}>
-        <CardContent sx={{ p: 4 }}>
-          {/* Logo */}
+      <AppBar position="static" sx={{ background: 'transparent', boxShadow: 'none' }}>
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Box
               sx={{
@@ -291,8 +324,10 @@ export default function VerifyEmailPage() {
               Endurance On
             </Typography>
           </Box>
-
-          {/* Content */}
+        </Toolbar>
+      </AppBar>
+      <Card sx={{ flexGrow: 1 }}>
+        <CardContent sx={{ p: 4 }}>
           {renderContent()}
 
           {/* Additional Message */}

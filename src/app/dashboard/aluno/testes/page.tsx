@@ -53,8 +53,8 @@ const AvailableTests = ({ availableTests, userTestIds, onOpenModal, loading, err
         const isRequested = userTestIds.has(test.id);
         return (
           <Grid item xs={12} md={6} lg={4} key={test.id}>
-            <Paper elevation={3} sx={{ p: 2, borderRadius: 4, height: '100%', background: (theme) => theme.colors.gradient.primary }}>
-              <Card sx={{ borderRadius: 3, background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
+              <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                      <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>{getTestIcon(test.type)}</Avatar>

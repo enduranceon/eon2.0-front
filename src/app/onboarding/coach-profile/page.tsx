@@ -120,7 +120,6 @@ export default function CoachProfilePage() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: theme.colors.gradient.primary,
         py: 4,
       }}
     >
@@ -298,16 +297,11 @@ export default function CoachProfilePage() {
                 disabled={loading || !isFormValid}
                 endIcon={<ArrowIcon />}
                 sx={{
-                  background: theme.colors.gradient.primary,
                   px: 4,
                   py: 1.5,
                   fontSize: '1.1rem',
                   fontWeight: 'bold',
                   minWidth: 200,
-                  '&:hover': {
-                    background: theme.colors.gradient.secondary,
-                    transform: 'translateY(-2px)',
-                  },
                 }}
               >
                 {loading ? 'Salvando...' : 'Finalizar Cadastro'}

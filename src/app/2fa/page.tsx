@@ -156,7 +156,6 @@ export default function TwoFactorPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: theme.colors.gradient.primary,
         padding: 2,
       }}
     >
@@ -172,7 +171,6 @@ export default function TwoFactorPage() {
                 width: 80,
                 height: 80,
                 borderRadius: '50%',
-                background: theme.colors.gradient.primary,
                 color: 'white',
                 mb: 2,
               }}
@@ -258,16 +256,8 @@ export default function TwoFactorPage() {
               sx={{
                 py: 1.5,
                 mb: 3,
-                background: theme.colors.gradient.primary,
                 fontWeight: 'bold',
                 fontSize: '1.1rem',
-                '&:hover': {
-                  background: theme.colors.gradient.secondary,
-                  transform: 'translateY(-2px)',
-                },
-                '&:disabled': {
-                  background: theme.colors.surface.tertiary,
-                },
               }}
             >
               {loading ? (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useState, useMemo, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useMemo, useEffect, ReactNode, useContext } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, PaletteMode } from '@mui/material';
 import { createEnduranceTheme } from '../theme/enduranceTheme';
@@ -61,4 +61,6 @@ export function ColorModeProvider({ children }: ColorModeProviderProps) {
       </ThemeProvider>
     </ColorModeContext.Provider>
   );
-} 
+}
+
+export const useColorMode = () => useContext(ColorModeContext); 

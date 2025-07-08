@@ -108,7 +108,8 @@ export default function ForgotPasswordPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: theme.colors.gradient.primary,
+          background: (theme) =>
+            theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
           padding: 2,
         }}
       >
@@ -124,7 +125,7 @@ export default function ForgotPasswordPage() {
                   width: 64,
                   height: 64,
                   borderRadius: '50%',
-                  background: theme.colors.gradient.primary,
+                  background: (theme) => theme.palette.primary.main,
                   color: 'white',
                   mb: 2,
                 }}
@@ -160,9 +161,6 @@ export default function ForgotPasswordPage() {
               <Button
                 variant="contained"
                 onClick={handleBackToLogin}
-                sx={{
-                  background: theme.colors.gradient.primary,
-                }}
               >
                 Voltar ao Login
               </Button>
@@ -186,7 +184,8 @@ export default function ForgotPasswordPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: theme.colors.gradient.primary,
+        background: (theme) =>
+          theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
         padding: 2,
       }}
     >
@@ -202,7 +201,7 @@ export default function ForgotPasswordPage() {
                 width: 64,
                 height: 64,
                 borderRadius: '50%',
-                background: theme.colors.gradient.primary,
+                background: (theme) => theme.palette.primary.main,
                 color: 'white',
                 mb: 2,
               }}
@@ -258,13 +257,8 @@ export default function ForgotPasswordPage() {
               sx={{
                 py: 1.5,
                 mb: 3,
-                background: theme.colors.gradient.primary,
                 fontWeight: 'bold',
                 fontSize: '1.1rem',
-                '&:hover': {
-                  background: theme.colors.gradient.secondary,
-                  transform: 'translateY(-2px)',
-                },
                 '&:disabled': {
                   background: theme.colors.surface.tertiary,
                 },

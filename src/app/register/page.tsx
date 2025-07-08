@@ -665,7 +665,7 @@ export default function RegisterPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: theme.colors.gradient.primary,
+        background: (theme) => theme.palette.background.default,
         padding: 2,
       }}
     >
@@ -681,7 +681,7 @@ export default function RegisterPage() {
                 width: 64,
                 height: 64,
                 borderRadius: '50%',
-                background: theme.colors.gradient.primary,
+                background: (theme) => theme.palette.primary.main,
                 color: 'white',
                 mb: 2,
               }}
@@ -730,7 +730,6 @@ export default function RegisterPage() {
               disabled={loading || !validateStep(activeStep)}
               variant="contained"
               sx={{
-                background: theme.colors.gradient.primary,
                 minWidth: 120,
               }}
             >
