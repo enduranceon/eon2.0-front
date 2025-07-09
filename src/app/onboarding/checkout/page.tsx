@@ -26,6 +26,7 @@ import {
   ListItemIcon,
   ListItemText,
   CircularProgress,
+  IconButton,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -36,11 +37,13 @@ import {
   Plan, 
   Modalidade, 
   User, 
-  CheckoutRequest, 
-  CheckoutResponse 
+  CheckoutResponse,
 } from '../../../types/api';
 import OnboardingStepper from '../../../components/Onboarding/OnboardingStepper';
 import { enduranceApi } from '../../../services/enduranceApi';
+import CheckoutCreditCardForm, { checkoutCardSchema, CheckoutCardFormData } from '../../../components/Forms/CheckoutCreditCardForm';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   DirectionsRun as RunIcon,
   ArrowForward as ArrowIcon,
@@ -49,13 +52,16 @@ import {
   CreditCard as CardIcon,
   Pix as PixIcon,
   Receipt as BoletoIcon,
+  ContentCopy as ContentCopyIcon,
   Security as SecurityIcon,
 } from '@mui/icons-material';
+import { useSnackbar } from 'notistack';
 
 export default function CheckoutPage() {
   const theme = useTheme();
   const router = useRouter();
   const auth = useAuth();
+  const { enqueueSnackbar } = useSnackbar();
   
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -66,136 +72,65 @@ export default function CheckoutPage() {
   const [selectedModalidade, setSelectedModalidade] = useState<Modalidade | null>(null);
   const [selectedCoach, setSelectedCoach] = useState<User | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
-  const [period, setPeriod] = useState<PlanPeriod>(PlanPeriod.SEMIANNUAL);
-  const [creditCardData, setCreditCardData] = useState({
-    holderName: '',
-    number: '',
-    expiryMonth: '',
-    expiryYear: '',
-    ccv: '',
-    document: '',
-    phone: '',
-    postalCode: '',
-    addressNumber: '',
-  });
+  const [period, setPeriod] = useState<PlanPeriod>(PlanPeriod.MONTHLY);
+  const [remoteIp, setRemoteIp] = useState<string | null>(null);
+  
   const [paymentResult, setPaymentResult] = useState<CheckoutResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Carrega dados iniciais
+  const { control, handleSubmit, formState: { errors } } = useForm<CheckoutCardFormData>({
+    resolver: zodResolver(checkoutCardSchema),
+    defaultValues: {
+      creditCard: { holderName: '', number: '', expiryMonth: '', expiryYear: '', ccv: '' },
+      creditCardHolderInfo: { name: '', email: '', cpfCnpj: '', postalCode: '', addressNumber: '', phone: '' }
+    }
+  });
+
   useEffect(() => {
-    loadInitialData();
+    // Buscar IP do cliente
+    const fetchIp = async () => {
+      try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        setRemoteIp(data.ip);
+      } catch (err) {
+        console.error("Falha ao obter IP do cliente:", err);
+        setError("Não foi possível obter o seu endereço de IP, necessário para pagamentos com cartão.");
+      }
+    };
+    fetchIp();
   }, []);
 
-  // Verificar se usuário está autenticado e é aluno
-  useEffect(() => {
-    if (!auth.isAuthenticated || !auth.user) {
-      router.push('/login');
-      return;
-    }
-
-    if (auth.user.userType !== UserType.FITNESS_STUDENT) {
-      router.push('/dashboard');
-      return;
-    }
-
-    // Se já completou onboarding, redirecionar
-    if (auth.user.onboardingCompleted) {
-      router.push('/dashboard');
-      return;
-    }
-
-    // Verificar se completou etapas anteriores
-    const step1Completed = localStorage.getItem('onboarding_step_1_completed');
-    const step2Completed = localStorage.getItem('onboarding_step_2_completed');
-    
-    if (!step1Completed) {
-      router.push('/onboarding/quiz-plano');
-      return;
-    }
-    
-    if (!step2Completed) {
-      router.push('/onboarding/quiz-treinador');
-      return;
-    }
-  }, [auth.isAuthenticated, auth.user, router]);
-
+  // Outros useEffects...
   const loadInitialData = async () => {
     try {
       setDataLoading(true);
       setError(null);
-
-      // Carrega dados em paralelo
       const [plansData, modalidadesData, coachesData] = await Promise.all([
         enduranceApi.getPlans(),
         enduranceApi.getModalidades(),
-        enduranceApi.getCoaches({ userType: UserType.COACH })
+        enduranceApi.getUsers({ userType: UserType.COACH })
       ]);
+      setPlans(plansData.data);
+      setModalidades(modalidadesData.data);
+      setCoaches(coachesData.data);
 
-      // Extrair dados dos arrays
-      const plansArrayRaw = Array.isArray(plansData) ? plansData : plansData?.data || [];
-      const normalizePrices = (plan: any) => {
-        if (Array.isArray(plan.prices)) {
-          const priceObj = {
-            monthly: 0,
-            quarterly: 0,
-            semiannual: 0,
-            annual: 0,
-          } as any;
-          plan.prices.forEach((p: any) => {
-            const key = p.period?.toLowerCase();
-            if (key) priceObj[key] = Number(p.price || p.amount || 0);
-          });
-          return { ...plan, prices: priceObj };
-        }
-        return plan;
-      };
-      const plansArray = plansArrayRaw.map(normalizePrices);
-      const modalidadesArray = Array.isArray(modalidadesData) ? modalidadesData : modalidadesData?.data || [];
-      const coachesArray = Array.isArray((coachesData as any)?.data) ? (coachesData as any).data : Array.isArray(coachesData) ? coachesData as any : [];
-      
-      setPlans(plansArray);
-      setModalidades(modalidadesArray);
-      setCoaches(coachesArray);
-
-      // Recuperar seleções do localStorage
-      const savedPlanRaw = localStorage.getItem('onboarding_selected_plan');
-      let savedPlanId: string | null = null;
-      try {
-        if (savedPlanRaw) {
-          const parsed = JSON.parse(savedPlanRaw);
-          savedPlanId = typeof parsed === 'string' ? parsed : parsed.id;
-        }
-      } catch {
-        savedPlanId = savedPlanRaw;
-      }
-
+      const savedPlanId = localStorage.getItem('onboarding_selected_plan');
       const savedModalidadeId = localStorage.getItem('onboarding_selected_modalidade');
       const savedCoachId = localStorage.getItem('onboarding_selected_coach_id');
 
       if (savedPlanId) {
-        const plan = plansArray.find(p => p.id === savedPlanId);
+        const plan = plansData.data.find(p => p.id === savedPlanId);
         if (plan) setSelectedPlan(plan);
       }
-
       if (savedModalidadeId) {
-        const modalidade = modalidadesArray.find(m => m.id === savedModalidadeId);
+        const modalidade = modalidadesData.data.find(m => m.id === savedModalidadeId);
         if (modalidade) setSelectedModalidade(modalidade);
       }
-
       if (savedCoachId) {
-        const coach = coachesArray.find((c: any) => c.id === savedCoachId);
+        const coach = coachesData.data.find(c => c.id === savedCoachId);
         if (coach) setSelectedCoach(coach);
       }
-
-      // Se não tiver seleções, usar padrões
-      if (!selectedPlan && plansArray.length > 0) {
-        setSelectedPlan(plansArray[0]);
-      }
-
-      if (!selectedModalidade && modalidadesArray.length > 0) {
-        setSelectedModalidade(modalidadesArray[0]);
-      }
-
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar dados. Tente novamente.');
@@ -204,567 +139,208 @@ export default function CheckoutPage() {
     }
   };
 
-  const getCurrentPrice = () => {
-    if (!selectedPlan || !selectedPlan.prices) return 0;
-    const periodKey = period.toLowerCase();
-    const price = (selectedPlan.prices as any)?.[periodKey] || 0;
-    return Number(price);
-  };
+  useEffect(() => {
+    loadInitialData();
+  }, []);
 
-  const getDiscount = () => {
-    if (period === 'SEMIANNUALLY') return 15;
-    if (period === 'YEARLY') return 25;
-    return 0;
-  };
-
-  const getTotalAmount = () => {
-    const basePrice = getCurrentPrice();
-    const discount = getDiscount();
-    const discountAmount = (basePrice * discount) / 100;
-    return basePrice - discountAmount;
-  };
-
-  const handlePayment = async () => {
+  const handlePayment = async (formData: CheckoutCardFormData) => {
     if (!auth.user || !selectedPlan || !selectedModalidade) {
-      setError('Dados incompletos para processar pagamento');
+      setError('Dados da assinatura incompletos. Por favor, volte e selecione um plano.');
       return;
     }
-
+    if (paymentMethod === PaymentMethod.CREDIT_CARD && !remoteIp) {
+      setError("Seu endereço de IP não pôde ser verificado. Tente recarregar a página ou usar outro método de pagamento.");
+      return;
+    }
     setLoading(true);
     setPaymentResult(null);
     setError(null);
     
     try {
-      // Validações de dados
-      if (paymentMethod === PaymentMethod.CREDIT_CARD) {
-        if (!creditCardData.holderName || !creditCardData.number || 
-            !creditCardData.expiryMonth || !creditCardData.expiryYear || 
-            !creditCardData.ccv || !creditCardData.document || 
-            !creditCardData.phone || !creditCardData.postalCode || !creditCardData.addressNumber) {
-          setError('Por favor, preencha todos os dados do cartão, incluindo CPF, telefone e endereço do titular.');
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Preparar dados do checkout
-      const checkoutData: CheckoutRequest = {
+      const checkoutData: any = {
         userId: auth.user.id,
         planId: selectedPlan.id,
         modalidadeId: selectedModalidade.id,
-        coachId: localStorage.getItem('onboarding_selected_coach_id') || undefined,
-        paymentMethod,
-        period,
-        creditCard: paymentMethod === PaymentMethod.CREDIT_CARD ? {
-          holderName: creditCardData.holderName,
-          number: creditCardData.number.replace(/\s/g, ''),
-          expiryMonth: creditCardData.expiryMonth,
-          expiryYear: creditCardData.expiryYear,
-          ccv: creditCardData.ccv,
-          holderEmail: auth.user.email,
-          holderCpfCnpj: creditCardData.document,
-          holderPostalCode: creditCardData.postalCode.replace(/\D/g, ''),
-          holderAddressNumber: creditCardData.addressNumber,
-          holderPhone: creditCardData.phone.replace(/\D/g, ''),
-        } : undefined,
+        coachId: selectedCoach?.id,
+        billingType: paymentMethod,
+        period: period,
       };
 
-      // Processar pagamento
+      if (paymentMethod === PaymentMethod.CREDIT_CARD) {
+        checkoutData.creditCard = formData.creditCard;
+        checkoutData.creditCardHolderInfo = formData.creditCardHolderInfo;
+        checkoutData.remoteIp = remoteIp;
+      }
+
       const result = await enduranceApi.checkout(checkoutData);
-      
       setPaymentResult(result);
 
-      // Se pagamento foi confirmado, completar onboarding
-      if (result.status === 'CONFIRMED') {
-        localStorage.setItem('onboarding_completed', 'true');
-        localStorage.removeItem('onboarding_step_1_completed');
-        localStorage.removeItem('onboarding_step_2_completed');
-        localStorage.removeItem('onboarding_selected_plan');
-        localStorage.removeItem('onboarding_selected_modalidade');
-        localStorage.removeItem('onboarding_selected_coach_id');
-        
-        // Desloga e redireciona para login após 2s
-        setTimeout(() => {
-          router.push('/login');
-        }, 2000);
+      if (result.paymentStatus === 'CONFIRMED') {
+        enqueueSnackbar('Pagamento aprovado com sucesso!', { variant: 'success' });
+        localStorage.setItem('onboarding_step_3_completed', 'true');
+        setTimeout(() => router.push('/dashboard'), 2000);
+      } else {
+         enqueueSnackbar('Pagamento pendente. Siga as instruções.', { variant: 'info' });
       }
-      
-    } catch (error: any) {
-      console.error('Erro no pagamento:', error);
-      setError(error?.message || 'Erro ao processar pagamento. Tente novamente.');
+
+    } catch (err: any) {
+      console.error('Erro no checkout:', err);
+      const message = err.response?.data?.message || 'Ocorreu um erro ao processar seu pagamento.';
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    router.push('/onboarding/quiz-treinador');
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    enqueueSnackbar('Código PIX copiado!', { variant: 'success' });
   };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(price);
+  
+  const getCurrentPrice = () => {
+    const priceInfo = selectedPlan?.prices.find(p => p.period === period);
+    return priceInfo?.price || 0;
   };
-
+  
   const getPeriodLabel = (p: PlanPeriod) => {
     switch (p) {
-      case 'MONTHLY': return 'Mensal';
-      case 'QUARTERLY': return 'Trimestral';
-      case 'SEMIANNUALLY': return 'Semestral';
-      case 'YEARLY': return 'Anual';
+      case PlanPeriod.MONTHLY: return 'Mensal';
+      case PlanPeriod.QUARTERLY: return 'Trimestral';
+      case PlanPeriod.SEMIANNUALLY: return 'Semestral';
+      case PlanPeriod.YEARLY: return 'Anual';
       default: return p;
     }
   };
 
   if (dataLoading) {
-    return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <CircularProgress size={60} sx={{ color: 'white' }} />
-      </Box>
-    );
+    return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
   }
 
-  if (error && !selectedPlan) {
+  if (paymentResult) {
     return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          py: 4,
-        }}
-      >
-        <Container maxWidth="lg">
-          <Alert severity="error" sx={{ mb: 4 }}>
-            {error}
-          </Alert>
-          <Button
-            variant="contained"
-            onClick={() => router.push('/onboarding/quiz-plano')}
-            startIcon={<BackIcon />}
-          >
-            Voltar ao Quiz
-          </Button>
-        </Container>
-      </Box>
+      <Container maxWidth="sm" sx={{ textAlign: 'center', py: 5 }}>
+        {paymentResult.paymentMethod === PaymentMethod.PIX && (
+          <Card>
+            <CardContent>
+              <PixIcon sx={{ fontSize: 60, color: 'success.main' }} />
+              <Typography variant="h5" gutterBottom>Pague com PIX para ativar sua assinatura</Typography>
+              <img src={`data:image/png;base64,${paymentResult.pixQrCode}`} alt="PIX QR Code" style={{ maxWidth: 300, margin: '20px auto' }} />
+              <Typography variant="body1" sx={{ mt: 2, wordBreak: 'break-all' }}>{paymentResult.pixCopyPaste}</Typography>
+              <Button
+                startIcon={<ContentCopyIcon />}
+                onClick={() => copyToClipboard(paymentResult.pixCopyPaste || '')}
+                sx={{ mt: 2 }}
+              >
+                Copiar Código
+              </Button>
+               <Typography color="text.secondary" sx={{ mt: 2 }}>Vencimento em: {new Date(paymentResult.dueDate).toLocaleDateString()}</Typography>
+            </CardContent>
+          </Card>
+        )}
+        {paymentResult.paymentMethod === PaymentMethod.BOLETO && (
+          <Card>
+            <CardContent>
+               <BoletoIcon sx={{ fontSize: 60, color: 'info.main' }} />
+              <Typography variant="h5" gutterBottom>Boleto Gerado</Typography>
+              <Typography sx={{ mt: 2 }}>Clique no botão abaixo para visualizar e imprimir seu boleto. A confirmação pode levar até 2 dias úteis.</Typography>
+              <Button
+                variant="contained"
+                href={paymentResult.bankSlipUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ mt: 3 }}
+              >
+                Visualizar Boleto
+              </Button>
+               <Typography color="text.secondary" sx={{ mt: 2 }}>Vencimento em: {new Date(paymentResult.dueDate).toLocaleDateString()}</Typography>
+            </CardContent>
+          </Card>
+        )}
+        {paymentResult.paymentStatus === 'CONFIRMED' && paymentResult.paymentMethod === 'CREDIT_CARD' && (
+             <Card>
+                <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                    <CheckIcon sx={{ fontSize: 80, color: theme.palette.success.main, mb: 2 }} />
+                    <Typography variant="h4" gutterBottom>Pagamento Confirmado!</Typography>
+                    <Typography variant="body1" color="text.secondary" paragraph>Sua assinatura está ativa! Você será redirecionado em instantes.</Typography>
+                </CardContent>
+             </Card>
+        )}
+         <Button onClick={() => router.push('/dashboard')} sx={{ mt: 4 }}>Ir para o Dashboard</Button>
+      </Container>
     );
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        py: 4,
-      }}
-    >
-      <Container maxWidth="lg">
-        {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Box
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              mb: 2,
-            }}
-          >
-            <RunIcon sx={{ fontSize: 32 }} />
-          </Box>
-          <Typography variant="h3" fontWeight="bold" color="white" gutterBottom>
-            Finalize sua Assinatura
-          </Typography>
-          <Typography variant="h6" color="rgba(255, 255, 255, 0.9)" sx={{ mb: 3 }}>
-            Último passo para começar sua jornada!
-          </Typography>
-        </Box>
+    <Container maxWidth="lg" sx={{ py: 5 }}>
+      <OnboardingStepper activeStep={2} />
+      <Typography variant="h4" align="center" gutterBottom sx={{ mt: 4 }}>
+        Finalize sua Assinatura
+      </Typography>
 
-        {/* Stepper */}
-        <Card sx={{ mb: 4 }}>
-          <CardContent>
-            <OnboardingStepper
-              activeStep={2}
-              userType="FITNESS_STUDENT"
-            />
-          </CardContent>
-        </Card>
+      <Grid container spacing={4} mt={2}>
+        <Grid item xs={12} md={7}>
+            <Typography variant="h6">Forma de Pagamento</Typography>
+            <RadioGroup row value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}>
+                <FormControlLabel value={PaymentMethod.PIX} control={<Radio />} label={<Chip icon={<PixIcon/>} label="PIX" variant="outlined" sx={{ p: 2 }} />} />
+                <FormControlLabel value={PaymentMethod.CREDIT_CARD} control={<Radio />} label={<Chip icon={<CardIcon/>} label="Cartão de Crédito" variant="outlined" sx={{ p: 2 }} />} />
+                <FormControlLabel value={PaymentMethod.BOLETO} control={<Radio />} label={<Chip icon={<BoletoIcon/>} label="Boleto" variant="outlined" sx={{ p: 2 }} />} />
+            </RadioGroup>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 4 }}>
-            {error}
-          </Alert>
-        )}
+            {paymentMethod === PaymentMethod.CREDIT_CARD && (
+                <form id="checkout-form" onSubmit={handleSubmit(handlePayment)}>
+                    <CheckoutCreditCardForm control={control} />
+                </form>
+            )}
+            
+            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        </Grid>
 
-        {paymentResult ? (
-          // Resultado do pagamento
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 6 }}>
-              {paymentResult.success ? (
-                <>
-                  <CheckIcon
-                    sx={{
-                      fontSize: 80,
-                      color: 'success.main',
-                      mb: 2,
-                    }}
-                  />
-                  <Typography variant="h4" gutterBottom>
-                    {paymentResult.status === 'CONFIRMED' ? 'Pagamento Confirmado!' : 'Pagamento Processado!'}
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary" paragraph>
-                    {paymentResult.status === 'CONFIRMED' 
-                      ? 'Seu pagamento foi confirmado e você será redirecionado em instantes.'
-                      : 'Seu pagamento está sendo processado. Você receberá uma confirmação em breve.'
-                    }
-                  </Typography>
-                  
-                  {/* PIX QR Code */}
-                  {paymentResult.pixQrCode && (
-                    <Box sx={{ mt: 4 }}>
-                      <Typography variant="h6" gutterBottom>
-                        Pague com PIX
-                      </Typography>
-                      <Box sx={{ mb: 2 }}>
-                        <img 
-                          src={`data:image/png;base64,${paymentResult.pixQrCode}`}
-                          alt="QR Code PIX"
-                          style={{ maxWidth: 200, height: 'auto' }}
-                        />
-                      </Box>
-                      {paymentResult.pixCopyPaste && (
-                        <TextField
-                          fullWidth
-                          value={paymentResult.pixCopyPaste}
-                          label="Código PIX para copiar"
-                          InputProps={{
-                            readOnly: true,
-                          }}
-                          sx={{ maxWidth: 400, mb: 2 }}
-                        />
-                      )}
-                    </Box>
-                  )}
-
-                  {/* Boleto URL */}
-                  {paymentResult.bankSlipUrl && (
-                    <Box sx={{ mt: 4 }}>
-                      <Button
-                        variant="outlined"
-                        href={paymentResult.bankSlipUrl}
-                        target="_blank"
-                        startIcon={<BoletoIcon />}
-                      >
-                        Visualizar Boleto
-                      </Button>
-                    </Box>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Alert severity="error" sx={{ mb: 4 }}>
-                    Falha no processamento do pagamento
-                  </Alert>
-                  <Button
-                    variant="contained"
-                    onClick={() => setPaymentResult(null)}
-                  >
-                    Tentar Novamente
-                  </Button>
-                </>
-              )}
+        <Grid item xs={12} md={5}>
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Resumo do Pedido</Typography>
+              <List>
+                <ListItem>
+                  <ListItemIcon><RunIcon /></ListItemIcon>
+                  <ListItemText primary="Plano" secondary={selectedPlan?.name || 'N/A'} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><RunIcon /></ListItemIcon>
+                  <ListItemText primary="Modalidade" secondary={selectedModalidade?.name || 'N/A'} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon><SecurityIcon /></ListItemIcon>
+                  <ListItemText primary="Treinador" secondary={selectedCoach?.name || 'Qualquer treinador da modalidade'} />
+                </ListItem>
+                <Divider sx={{ my: 1 }} />
+                <ListItem>
+                    <FormControl fullWidth>
+                        <InputLabel>Periodicidade</InputLabel>
+                        <Select value={period} label="Periodicidade" onChange={e => setPeriod(e.target.value as PlanPeriod)}>
+                            {selectedPlan?.prices.map(p => (
+                                <MenuItem key={p.period} value={p.period}>{getPeriodLabel(p.period)} - R$ {p.price.toFixed(2)}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </ListItem>
+              </List>
+              <Box sx={{ p: 2, textAlign: 'right' }}>
+                <Typography variant="h5">Total: R$ {getCurrentPrice().toFixed(2)}</Typography>
+              </Box>
             </CardContent>
           </Card>
-        ) : (
-          <Grid container spacing={4}>
-            {/* Resumo do Pedido */}
-            <Grid item xs={12} md={8}>
-              <Card sx={{ mb: 3 }}>
-                <CardContent>
-                  <Typography variant="h5" gutterBottom>
-                    Resumo do Pedido
-                  </Typography>
-                  
-                  {selectedPlan && (
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="h6" gutterBottom>
-                        {selectedPlan.name}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        {selectedPlan.description}
-                      </Typography>
-                      
-                      {selectedModalidade && (
-                        <Chip 
-                          label={selectedModalidade.name}
-                          color="primary"
-                          sx={{ mr: 1, mb: 2 }}
-                        />
-                      )}
-                      
-                      {selectedCoach && (
-                        <Chip 
-                          label={`Treinador: ${selectedCoach.name}`}
-                          color="secondary"
-                          sx={{ mb: 2 }}
-                        />
-                      )}
-
-                      <List dense>
-                        {(selectedPlan?.features || []).map((feature, index) => (
-                          <ListItem key={index}>
-                            <ListItemIcon>
-                              <CheckIcon color="success" />
-                            </ListItemIcon>
-                            <ListItemText primary={feature} />
-                          </ListItem>
-                        ))}
-                      </List>
-                    </Box>
-                  )}
-
-                  <Divider sx={{ mb: 3 }} />
-
-                  {/* Seleção de Período */}
-                  <FormControl fullWidth sx={{ mb: 3 }}>
-                    <InputLabel>Periodicidade</InputLabel>
-                    <Select
-                      value={period}
-                      onChange={(e) => setPeriod(e.target.value as PlanPeriod)}
-                      label="Periodicidade"
-                    >
-                      <MenuItem value={PlanPeriod.MONTHLY}>Mensal</MenuItem>
-                      <MenuItem value={PlanPeriod.QUARTERLY}>Trimestral</MenuItem>
-                      <MenuItem value={PlanPeriod.SEMIANNUAL}>Semestral</MenuItem>
-                      <MenuItem value={PlanPeriod.YEARLY}>Anual</MenuItem>
-                    </Select>
-                  </FormControl>
-
-                  {/* Método de Pagamento */}
-                  <Typography variant="h6" gutterBottom>
-                    Método de Pagamento
-                  </Typography>
-                  <RadioGroup
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  >
-                    <FormControlLabel
-                      value={PaymentMethod.PIX}
-                      control={<Radio />}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <PixIcon sx={{ mr: 1 }} />
-                          PIX - Aprovação Instantânea
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      value={PaymentMethod.CREDIT_CARD}
-                      control={<Radio />}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <CardIcon sx={{ mr: 1 }} />
-                          Cartão de Crédito
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      value={PaymentMethod.BOLETO}
-                      control={<Radio />}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <BoletoIcon sx={{ mr: 1 }} />
-                          Boleto Bancário
-                        </Box>
-                      }
-                    />
-                  </RadioGroup>
-
-                  {/* Campos do Cartão de Crédito */}
-                  {paymentMethod === PaymentMethod.CREDIT_CARD && (
-                    <Box sx={{ mt: 3, p: 3, bgcolor: 'grey.50', borderRadius: 2 }}>
-                      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                        <SecurityIcon sx={{ mr: 1 }} />
-                        Dados do Cartão
-                      </Typography>
-                      <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                          <TextField
-                            fullWidth
-                            label="Nome no Cartão"
-                            value={creditCardData.holderName}
-                            onChange={(e) => setCreditCardData(prev => ({ ...prev, holderName: e.target.value }))}
-                            required
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <TextField
-                            fullWidth
-                            label="CPF do Titular"
-                            value={creditCardData.document}
-                            onChange={(e) => setCreditCardData(prev => ({ ...prev, document: e.target.value }))}
-                            required
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <TextField
-                            fullWidth
-                            label="Telefone com DDD"
-                            value={creditCardData.phone}
-                            onChange={(e) => setCreditCardData(prev => ({ ...prev, phone: e.target.value }))}
-                            required
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                          <TextField
-                            fullWidth
-                            label="CEP"
-                            value={creditCardData.postalCode}
-                            onChange={(e) => setCreditCardData(prev => ({ ...prev, postalCode: e.target.value }))}
-                            required
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={2}>
-                          <TextField
-                            fullWidth
-                            label="Número"
-                            value={creditCardData.addressNumber}
-                            onChange={(e) => setCreditCardData(prev => ({ ...prev, addressNumber: e.target.value }))}
-                            required
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <TextField
-                            fullWidth
-                            label="Número do Cartão"
-                            value={creditCardData.number}
-                            onChange={(e) => setCreditCardData(prev => ({ ...prev, number: e.target.value }))}
-                            placeholder="0000 0000 0000 0000"
-                            required
-                          />
-                        </Grid>
-                        <Grid item xs={6} md={2}>
-                          <TextField
-                            fullWidth
-                            label="Mês (MM)"
-                            value={creditCardData.expiryMonth}
-                            onChange={(e) => setCreditCardData(prev => ({ ...prev, expiryMonth: e.target.value }))}
-                            placeholder="MM"
-                            required
-                          />
-                        </Grid>
-                        <Grid item xs={6} md={2}>
-                          <TextField
-                            fullWidth
-                            label="Ano (AAAA)"
-                            value={creditCardData.expiryYear}
-                            onChange={(e) => setCreditCardData(prev => ({ ...prev, expiryYear: e.target.value }))}
-                            placeholder="YYYY"
-                            required
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={2}>
-                          <TextField
-                            fullWidth
-                            label="CVV"
-                            value={creditCardData.ccv}
-                            onChange={(e) => setCreditCardData(prev => ({ ...prev, ccv: e.target.value }))}
-                            placeholder="000"
-                            required
-                          />
-                        </Grid>
-                      </Grid>
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* Resumo Financeiro */}
-            <Grid item xs={12} md={4}>
-              <Card sx={{ position: 'sticky', top: 20 }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Resumo Financeiro
-                  </Typography>
-                  
-                  <Box sx={{ mb: 2 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2">
-                        {selectedPlan?.name} ({getPeriodLabel(period)})
-                      </Typography>
-                      <Typography variant="body2">
-                        {formatPrice(getCurrentPrice())}
-                      </Typography>
-                    </Box>
-                    
-                    {getDiscount() > 0 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" color="success.main">
-                          Desconto ({getDiscount()}%)
-                        </Typography>
-                        <Typography variant="body2" color="success.main">
-                          -{formatPrice((getCurrentPrice() * getDiscount()) / 100)}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {selectedCoach && (
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          ✅ Split com treinador ativado
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-
-                  <Divider sx={{ mb: 2 }} />
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                    <Typography variant="h6">
-                      Total
-                    </Typography>
-                    <Typography variant="h6" color="primary">
-                      {formatPrice(getTotalAmount())}
-                    </Typography>
-                  </Box>
-
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    size="large"
-                    onClick={handlePayment}
-                    disabled={loading}
-                    startIcon={loading ? <CircularProgress size={20} /> : null}
-                    sx={{ mb: 2 }}
-                  >
-                    {loading ? 'Processando...' : 'Finalizar Pagamento'}
-                  </Button>
-
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={handleBack}
-                    startIcon={<BackIcon />}
-                  >
-                    Voltar
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        )}
-      </Container>
-    </Box>
+           <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              sx={{ mt: 3, py: 2 }}
+              onClick={paymentMethod === 'CREDIT_CARD' ? handleSubmit(handlePayment) : () => handlePayment({} as any)}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress color="inherit" size={28} /> : `Pagar com ${paymentMethod}`}
+            </Button>
+        </Grid>
+      </Grid>
+    </Container>
   );
 } 

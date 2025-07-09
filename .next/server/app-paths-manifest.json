@@ -1,6 +1,4 @@
 {
-  "/forgot-password/page": "app/forgot-password/page.js",
-  "/register/page": "app/register/page.js",
-  "/page": "app/page.js",
-  "/login/page": "app/login/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/dashboard/admin/finance/page": "app/dashboard/admin/finance/page.js"
 }

@@ -5,6 +5,10 @@ import {
   User,
   Plan,
   Modalidade,
+  Exam,
+  Margin,
+  SplitResult,
+  FinancialRecord,
   CheckoutRequest,
   CheckoutResponse,
   CheckoutStatusResponse,
@@ -33,6 +37,7 @@ import {
   WalletTransaction,
   WalletBalance,
   Payment,
+  CoachLevel,
 } from '../types/api';
 
 export class EnduranceApiClient {
@@ -129,6 +134,14 @@ export class EnduranceApiClient {
     return response.data as unknown as T;
   }
 
+  async patch<T>(url: string, data?: any): Promise<T> {
+    const response: AxiosResponse<ApiResponse<T>> = await this.api.patch(url, data);
+    if (response.data && typeof response.data === 'object' && 'success' in response.data && 'data' in response.data) {
+      return response.data.data;
+    }
+    return response.data as unknown as T;
+  }
+
   async delete<T>(url: string): Promise<T> {
     const response: AxiosResponse<ApiResponse<T>> = await this.api.delete(url);
     // Se a resposta tem a estrutura ApiResponse, extrair os dados
@@ -193,12 +206,12 @@ export class EnduranceApiClient {
   }
 
   // PLANOS E MODALIDADES
-  async getPlans(): Promise<PaginatedResponse<Plan> | Plan[]> {
-    return this.get<PaginatedResponse<Plan> | Plan[]>('/plans');
+  async getPlans(filters?: any): Promise<PaginatedResponse<Plan>> {
+    return this.get<PaginatedResponse<Plan>>('/plans', filters);
   }
 
-  async getModalidades(): Promise<PaginatedResponse<Modalidade> | Modalidade[]> {
-    return this.get<PaginatedResponse<Modalidade> | Modalidade[]>('/modalidades');
+  async getModalidades(filters?: any): Promise<PaginatedResponse<Modalidade>> {
+    return this.get<PaginatedResponse<Modalidade>>('/modalidades', filters);
   }
 
   async getPlan(id: string): Promise<Plan> {
@@ -210,8 +223,24 @@ export class EnduranceApiClient {
   }
 
   // PROVAS / EVENTOS
-  async getExams(page: number = 1, limit: number = 10): Promise<PaginatedResponse<any> | any[]> {
-    return this.get<PaginatedResponse<any> | any[]>('/exams', { page, limit });
+  async getExams(filters?: any): Promise<PaginatedResponse<Exam>> {
+    return this.get<PaginatedResponse<Exam>>('/exams', filters);
+  }
+  
+  async getExam(id: string): Promise<Exam> {
+    return this.get<Exam>(`/exams/${id}`);
+  }
+
+  async createExam(data: Partial<Exam>): Promise<Exam> {
+    return this.post<Exam>('/exams', data);
+  }
+
+  async updateExam(id: string, data: Partial<Exam>): Promise<Exam> {
+    return this.patch<Exam>(`/exams/${id}`, data);
+  }
+
+  async deleteExam(id: string): Promise<void> {
+    return this.delete<void>(`/exams/${id}`);
   }
 
   async registerForExam(examId: string): Promise<any> {
@@ -223,12 +252,32 @@ export class EnduranceApiClient {
   }
 
   // TESTES
-  async getAvailableTests(page: number = 1, limit: number = 100): Promise<PaginatedResponse<AvailableTest> | AvailableTest[]> {
-    return this.get<PaginatedResponse<AvailableTest> | AvailableTest[]>('/tests', { page, limit });
+  async getAvailableTests(filters?: any): Promise<PaginatedResponse<AvailableTest>> {
+    return this.get<PaginatedResponse<AvailableTest>>('/tests', filters);
   }
 
-  async getTestAppointments(userId: string): Promise<PaginatedResponse<UserTest> | UserTest[]> {
-    return this.get<PaginatedResponse<UserTest> | UserTest[]>(`/tests/appointments/list`, { userId });
+  async getTest(id: string): Promise<AvailableTest> {
+    return this.get<AvailableTest>(`/tests/${id}`);
+  }
+
+  async createTest(data: Partial<AvailableTest>): Promise<AvailableTest> {
+    return this.post<AvailableTest>('/tests', data);
+  }
+
+  async updateTest(id: string, data: Partial<AvailableTest>): Promise<AvailableTest> {
+    return this.patch<AvailableTest>(`/tests/${id}`, data);
+  }
+
+  async deleteTest(id: string): Promise<void> {
+    return this.delete<void>(`/tests/${id}`);
+  }
+
+  async getTestAppointments(userId: string): Promise<PaginatedResponse<UserTest>> {
+    const response = await this.get<PaginatedResponse<UserTest> | UserTest[]>(`/tests/appointments/list`, { userId });
+    if(Array.isArray(response)) {
+      return { data: response, pagination: { page: 1, limit: response.length, total: response.length, totalPages: 1, hasNext: false, hasPrev: false }};
+    }
+    return response as PaginatedResponse<UserTest>;
   }
 
   async requestTest(testId: string, notes?: string): Promise<UserTest> {
@@ -282,7 +331,7 @@ export class EnduranceApiClient {
     return this.get<SubaccountStats>('/subaccounts/stats');
   }
 
-  // USUÁRIOS
+  // USUÁRIOS (GERAL)
   async getUsers(filters?: UserFilters): Promise<PaginatedResponse<User>> {
     return this.get<PaginatedResponse<User>>('/users', filters);
   }
@@ -291,38 +340,55 @@ export class EnduranceApiClient {
     return this.get<User>(`/users/${id}`);
   }
 
+  async createUser(data: Partial<User>): Promise<User> {
+    return this.post<User>('/users', data);
+  }
+
   async updateUser(id: string, data: Partial<User>): Promise<User> {
     return this.put<User>(`/users/${id}`, data);
+  }
+
+  async updateUserStatus(id: string, isActive: boolean): Promise<User> {
+    return this.api.patch(`/users/${id}/status`, { isActive }).then(res => res.data.data);
   }
 
   async deleteUser(id: string): Promise<void> {
     return this.delete<void>(`/users/${id}`);
   }
 
-  // COACHES
+  // TREINADORES (Exemplo de especialização, pode não ser necessário se /users for suficiente)
   async getCoaches(filters?: UserFilters): Promise<PaginatedResponse<User>> {
     const response = await this.get<PaginatedResponse<User> | User[]>('/coaches', {
       ...filters,
-      userType: 'COACH',
     });
 
-    // Se a API retornar um array simples de usuários, embrulhar em estrutura paginada padrão
     if (Array.isArray(response)) {
       return {
         data: response,
-        total: response.length,
-        page: 1,
-        limit: response.length,
-        totalPages: 1,
-      } as PaginatedResponse<User>;
+        pagination: { page: 1, limit: response.length, total: response.length, totalPages: 1, hasNext: false, hasPrev: false }
+      };
     }
-
-    // Caso já venha na estrutura paginada, apenas retornar
     return response as PaginatedResponse<User>;
   }
 
   async getCoach(id: string): Promise<User> {
     return this.get<User>(`/coaches/${id}`);
+  }
+
+  async linkCoachToPlan(coachId: string, planId: string): Promise<void> {
+    return this.post(`/coaches/${coachId}/plans`, { planId });
+  }
+
+  async unlinkCoachFromPlan(coachId: string, planId: string): Promise<void> {
+    return this.delete(`/coaches/${coachId}/plans/${planId}`);
+  }
+
+  async linkCoachToModality(coachId: string, modalityId: string): Promise<void> {
+    return this.post(`/coaches/${coachId}/modalidades`, { modalidadeId: modalityId });
+  }
+
+  async unlinkCoachFromModality(coachId: string, modalityId: string): Promise<void> {
+    return this.delete(`/coaches/${coachId}/modalidades/${modalityId}`);
   }
 
   async updateCoach(id: string, data: Partial<User>): Promise<User> {
@@ -385,15 +451,15 @@ export class EnduranceApiClient {
 
   // ADMINISTRAÇÃO
   async createPlan(data: Partial<Plan>): Promise<Plan> {
-    return this.post<Plan>('/admin/plans', data);
+    return this.post<Plan>('/plans', data);
   }
 
   async updatePlan(id: string, data: Partial<Plan>): Promise<Plan> {
-    return this.put<Plan>(`/admin/plans/${id}`, data);
+    return this.patch<Plan>(`/plans/${id}`, data);
   }
 
   async deletePlan(id: string): Promise<void> {
-    return this.delete<void>(`/admin/plans/${id}`);
+    return this.delete<void>(`/plans/${id}`);
   }
 
   async createModalidade(data: Partial<Modalidade>): Promise<Modalidade> {
@@ -401,11 +467,55 @@ export class EnduranceApiClient {
   }
 
   async updateModalidade(id: string, data: Partial<Modalidade>): Promise<Modalidade> {
-    return this.put<Modalidade>(`/admin/modalidades/${id}`, data);
+    return this.patch<Modalidade>(`/modalidades/${id}`, data);
   }
 
   async deleteModalidade(id: string): Promise<void> {
     return this.delete<void>(`/admin/modalidades/${id}`);
+  }
+
+  // MARGENS E SPLIT
+  async getMargins(filters?: any): Promise<PaginatedResponse<Margin>> {
+    return this.get<PaginatedResponse<Margin>>('/margins', filters);
+  }
+
+  async createMargin(data: Partial<Margin>): Promise<Margin> {
+    return this.post<Margin>('/margins', data);
+  }
+
+  async updateMargin(id: string, data: Partial<Margin>): Promise<Margin> {
+    return this.patch<Margin>(`/margins/${id}`, data);
+  }
+
+  async deleteMargin(id: string): Promise<void> {
+    return this.delete<void>(`/margins/${id}`);
+  }
+
+  async calculateSplit(params: { planId: string; coachLevel: CoachLevel; amount: number }): Promise<SplitResult> {
+    return this.get<SplitResult>('/margins/calculate-split', params);
+  }
+
+  // MÓDULO FINANCEIRO
+  async getFinancialRecords(endpoint: string, filters?: any): Promise<PaginatedResponse<FinancialRecord>> {
+    return this.get<PaginatedResponse<FinancialRecord>>(endpoint, filters);
+  }
+
+  async updatePaymentNotes(paymentId: string, notes: string): Promise<FinancialRecord> {
+    return this.patch<FinancialRecord>(`/financial/payments/${paymentId}/notes`, { notes });
+  }
+
+  async exportFinancialsToPdf(filters?: any): Promise<void> {
+    const response = await this.api.get('/financial/export/pdf', {
+      params: filters,
+      responseType: 'blob', // Importante para receber o arquivo
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `relatorio-financeiro-${new Date().toISOString().split('T')[0]}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   }
 
   // UTILITÁRIOS

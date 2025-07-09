@@ -24,7 +24,7 @@ export enum PlanPeriod {
   BIWEEKLY = 'BIWEEKLY',
   MONTHLY = 'MONTHLY',
   QUARTERLY = 'QUARTERLY',
-  SEMIANNUAL = 'SEMIANNUALLY',
+  SEMIANNUALLY = 'SEMIANNUALLY',
   YEARLY = 'YEARLY',
 }
 
@@ -59,8 +59,8 @@ export interface User {
   bio?: string;
   image?: string;
   walletId?: string;
-  cpf?: string;
-  birthDate?: string;
+  cpfCnpj?: string; // Consolidado de 'cpf' e 'cpfCnpj'
+  birthDate?: string | null;
   address?: Address;
   specialties?: string[];
   certifications?: string[];
@@ -68,6 +68,13 @@ export interface User {
   has2FA?: boolean;
   twoFactorVerified?: boolean;
   onboardingCompleted?: boolean;
+  subaccountStatus?: SubaccountStatus;
+  subscriptions?: {
+    plan: { id: string; name: string; };
+    modalidade: { id: string; name: string; };
+  }[];
+  coachPlans?: { plan: Plan }[];
+  coachModalidades?: { modalidade: Modalidade }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -122,19 +129,19 @@ export interface Verify2FAResponse {
 }
 
 // Interfaces de Planos e Modalidades
+export interface PlanPrice {
+  id?: string;
+  period: PlanPeriod;
+  price: number;
+}
+
 export interface Plan {
   id: string;
   name: string;
-  description: string;
-  type: 'ESSENCIAL' | 'PREMIUM';
-  features: string[];
-  prices: {
-    monthly: number;
-    quarterly: number;
-    semiannual: number;
-    annual: number;
-  };
-  modalidades: Modalidade[];
+  description?: string;
+  enrollmentFee: number;
+  prices: PlanPrice[];
+  modalidades: { modalidade: Modalidade }[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -152,17 +159,21 @@ export interface Modalidade {
 }
 
 // Interfaces de Pagamento
-export interface CreditCardData {
+export interface AsaasCreditCardDto {
   holderName: string;
   number: string;
   expiryMonth: string;
   expiryYear: string;
   ccv: string;
-  holderEmail: string;
-  holderCpfCnpj: string;
-  holderPostalCode: string;
-  holderAddressNumber: string;
-  holderPhone: string;
+}
+
+export interface AsaasCreditCardHolderInfoDto {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  postalCode: string;
+  addressNumber: string;
+  phone: string;
 }
 
 export interface CheckoutRequest {
@@ -170,9 +181,11 @@ export interface CheckoutRequest {
   planId: string;
   modalidadeId: string;
   coachId?: string;
-  paymentMethod: PaymentMethod;
+  billingType: PaymentMethod;
   period: PlanPeriod;
-  creditCard?: CreditCardData;
+  creditCard?: AsaasCreditCardDto;
+  creditCardHolderInfo?: AsaasCreditCardHolderInfoDto;
+  remoteIp?: string;
   coupon?: string;
 }
 
@@ -181,12 +194,12 @@ export interface CheckoutResponse {
   subscriptionId: string;
   paymentId: string;
   asaasPaymentId: string;
+  asaasSubscriptionId: string;
   paymentMethod: PaymentMethod;
   amount: number;
-  hasSplit: boolean;
-  coachWalletId?: string;
+  status: 'ACTIVE' | 'PENDING'; // Status da Assinatura
+  paymentStatus: PaymentStatus; // Status do Pagamento
   dueDate: string;
-  status: PaymentStatus;
   pixQrCode?: string;
   pixCopyPaste?: string;
   bankSlipUrl?: string;
@@ -328,10 +341,14 @@ export interface ApiResponse<T> {
 
 export interface PaginatedResponse<T> {
   data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
 
 // Interfaces de Filtros
@@ -342,6 +359,11 @@ export interface UserFilters {
   search?: string;
   page?: number;
   limit?: number;
+  isActive?: boolean;
+  age?: number;
+  coachId?: string;
+  modalidadeId?: string;
+  planId?: string;
 }
 
 export interface PaymentFilters {
@@ -423,6 +445,10 @@ export interface PerformanceMetrics {
 
 // Interfaces de Testes e Avaliações
 export enum TestType {
+  RESISTENCIA = 'RESISTENCIA',
+  VELOCIDADE = 'VELOCIDADE',
+  FORCA = 'FORCA',
+  FLEXIBILIDADE = 'FLEXIBILIDADE',
   CARDIO = 'CARDIO',
   PERFORMANCE = 'PERFORMANCE',
   STRENGTH = 'STRENGTH',
@@ -434,6 +460,9 @@ export interface AvailableTest {
   name: string;
   description: string;
   type: TestType;
+  specificData?: any;
+  examId?: string;
+  exam?: Exam;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -453,6 +482,62 @@ export interface UserTest {
   results?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Exam {
+  id: string;
+  name: string;
+  description: string;
+  date: string;
+  location: string;
+  modalidadeId: string;
+  modalidade: Modalidade;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Margin {
+  id: string;
+  coachLevel: CoachLevel;
+  planId: string;
+  plan: Plan;
+  percentage: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SplitResult {
+  totalAmount: number;
+  coachPercentage: number;
+  coachAmount: number;
+  platformAmount: number;
+}
+
+export interface FinancialRecord {
+  paymentId: string;
+  paymentMethod: string;
+  period: string;
+  amount: number;
+  nextPaymentDate: string;
+  coachEarnings: number;
+  platformEarnings: number;
+  paymentStatus: PaymentStatus;
+  student: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  coach: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  plan: {
+    id: string;
+    name: string;
+  };
+  notes?: string;
 }
 
 // Interfaces de Carteira (Wallet)

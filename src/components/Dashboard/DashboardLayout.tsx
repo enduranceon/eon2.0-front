@@ -43,6 +43,10 @@ import {
   EmojiEvents as EventsIcon,
   Quiz as TestIcon,
   Assignment as AssignmentIcon,
+  AdminPanelSettings as AdminPanelSettingsIcon,
+  Percent as PercentIcon,
+  PlaylistAddCheck as PlaylistAddCheckIcon,
+  Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 import NotificationCenter from './NotificationCenter';
 import { User, UserType } from '../../types/api';
@@ -72,26 +76,102 @@ interface MenuItemProps {
 }
 
 const menuItems: MenuItemProps[] = [
+  // Role-specific Dashboards
   {
-    id: 'dashboard',
+    id: 'dashboard-admin',
+    label: 'Dashboard',
+    icon: <DashboardIcon />,
+    path: '/dashboard/admin',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'dashboard-others',
     label: 'Dashboard',
     icon: <DashboardIcon />,
     path: '/dashboard',
+    roles: [UserType.COACH, UserType.FITNESS_STUDENT],
   },
+
+  // Admin Menu
   {
-    id: 'users',
-    label: 'Usuários',
+    id: 'admin-students',
+    label: 'Alunos',
     icon: <PeopleIcon />,
-    path: '/dashboard/users',
+    path: '/dashboard/admin/students',
     roles: [UserType.ADMIN],
   },
   {
-    id: 'coaches',
+    id: 'admin-coaches',
     label: 'Treinadores',
     icon: <SportsIcon />,
-    path: '/dashboard/coaches',
+    path: '/dashboard/admin/coaches',
     roles: [UserType.ADMIN],
   },
+  {
+    id: 'admin-admins',
+    label: 'Administradores',
+    icon: <ManageAccountsIcon />,
+    path: '/dashboard/admin/administrators',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'admin-modalities',
+    label: 'Modalidades',
+    icon: <RunIcon />,
+    path: '/dashboard/admin/modalities',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'admin-plans',
+    label: 'Planos',
+    icon: <AssignmentIcon />,
+    path: '/dashboard/admin/plans',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'admin-events',
+    label: 'Eventos',
+    icon: <EventsIcon />,
+    path: '/dashboard/admin/events',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'admin-tests',
+    label: 'Testes',
+    icon: <TestIcon />,
+    path: '/dashboard/admin/tests',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'admin-margins',
+    label: 'Margens',
+    icon: <PercentIcon />,
+    path: '/dashboard/admin/margins',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'admin-finance',
+    label: 'Financeiro',
+    icon: <ReceiptIcon />,
+    path: '/dashboard/admin/finance',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'admin-requests',
+    label: 'Solicitações',
+    icon: <PlaylistAddCheckIcon />,
+    path: '/dashboard/admin/requests',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'admin-results',
+    label: 'Resultados',
+    icon: <AssessmentIcon />,
+    path: '/dashboard/admin/results',
+    roles: [UserType.ADMIN],
+  },
+  
+  // Coach
   {
     id: 'my-clients',
     label: 'Meus Clientes',
@@ -100,40 +180,14 @@ const menuItems: MenuItemProps[] = [
     roles: [UserType.COACH],
   },
   {
-    id: 'payments',
-    label: 'Pagamentos',
-    icon: <PaymentIcon />,
-    path: '/dashboard/payments',
-    roles: [UserType.ADMIN],
-  },
-  {
     id: 'personal-earnings',
     label: 'Meus Ganhos',
     icon: <MoneyIcon />,
     path: '/dashboard/personal-earnings',
     roles: [UserType.COACH],
   },
-  {
-    id: 'subaccounts',
-    label: 'Subcontas',
-    icon: <ManageAccountsIcon />,
-    path: '/dashboard/subaccounts',
-    roles: [UserType.ADMIN],
-  },
-  {
-    id: 'finance',
-    label: 'Financeiro',
-    icon: <ReceiptIcon />,
-    path: '/dashboard/admin/finance',
-    roles: [UserType.ADMIN],
-  },
-  {
-    id: 'analytics',
-    label: 'Análises',
-    icon: <AnalyticsIcon />,
-    path: '/dashboard/analytics',
-    roles: [UserType.ADMIN],
-  },
+  
+  // Student
   {
     id: 'student-coach',
     label: 'Meu Treinador',
@@ -250,6 +304,7 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Toolbar
         sx={{
+          minHeight: '120px!important',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -329,7 +384,7 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
           borderRadius: 0,
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ minHeight: '64px!important' }}>
           <IconButton
             aria-label="open drawer"
             edge="start"
@@ -343,7 +398,7 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
             <MenuIcon />
           </IconButton>
           <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
-            <Image src={LogoSimboloPreto} alt="EnduranceOn Symbol" width={40} />
+            <Image src={LogoSimboloPreto} alt="EnduranceOn Symbol" width={60} />
           </Box>
           <Box sx={{ flexGrow: 1 }} />
           

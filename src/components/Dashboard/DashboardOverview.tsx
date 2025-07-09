@@ -346,7 +346,6 @@ export default function DashboardOverview({ user }: DashboardOverviewProps) {
               changeLabel={stat.changeLabel}
               icon={stat.icon}
               color={stat.color}
-              gradient={stat.gradient}
             />
           </Grid>
         ))}
