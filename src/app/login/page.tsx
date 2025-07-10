@@ -31,6 +31,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { enduranceApi } from '../../services/enduranceApi';
+import { getPendingPaymentData, clearPendingPaymentData } from '../../utils/paymentUtils';
+import { PaymentStatus } from '../../types/api';
 import LogoSymbol from '@/assets/images/logo/logo_simbolo_preto.png';
 import NextLink from 'next/link';
 
@@ -99,12 +102,42 @@ export default function LoginPage() {
       setLoginStep('Processando login...');
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Aguardar que o AuthContext processe tudo
-      // O loading será mantido ativo pelo AuthContext até o redirecionamento
-      setLoginStep('Finalizando...');
-      
-      // Não finalizar o loading local - deixar o AuthContext controlar
-      // O AuthContext manterá isLoading=true até o redirecionamento ser concluído
+      // Verificar se há pagamento pendente
+      const pendingPayment = getPendingPaymentData();
+      if (pendingPayment) {
+        setLoginStep('Verificando status do pagamento...');
+        
+        try {
+          const paymentStatus = await enduranceApi.getPaymentStatus(pendingPayment.paymentId);
+          
+          if (paymentStatus.status === PaymentStatus.CONFIRMED) {
+            // Pagamento confirmado - limpar dados pendentes e redirecionar para dashboard
+            clearPendingPaymentData();
+            setLoginStep('Pagamento confirmado! Redirecionando...');
+            toast.success('Pagamento confirmado! Bem-vindo à plataforma!');
+            setTimeout(() => {
+              router.push('/dashboard');
+            }, 1500);
+          } else {
+            // Pagamento ainda pendente - redirecionar para tela de aguardo
+            setLoginStep('Pagamento pendente...');
+            setTimeout(() => {
+              router.push('/payment-pending');
+            }, 1500);
+          }
+        } catch (error) {
+          // Erro ao verificar pagamento - assumir que ainda está pendente
+          console.error('Erro ao verificar status do pagamento:', error);
+          setLoginStep('Pagamento pendente...');
+          setTimeout(() => {
+            router.push('/payment-pending');
+          }, 1500);
+        }
+      } else {
+        // Não há pagamento pendente - seguir fluxo normal
+        setLoginStep('Finalizando...');
+        // O AuthContext manterá isLoading=true até o redirecionamento ser concluído
+      }
       
     } catch (error: any) {
       console.error('Erro no login:', error);

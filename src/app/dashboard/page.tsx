@@ -9,6 +9,7 @@ import DashboardOverview from '../../components/Dashboard/DashboardOverview';
 import { User, UserType } from '../../types/api';
 import { enduranceApi } from '../../services/enduranceApi';
 import PageHeader from '@/components/Dashboard/PageHeader';
+import { checkUserHasPendingPayment } from '../../utils/paymentUtils';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -30,6 +31,17 @@ export default function DashboardPage() {
 
       const userProfile = await enduranceApi.getProfile();
       setUser(userProfile);
+
+      // Verificar se há pagamento pendente
+      try {
+        const hasPendingPayment = await checkUserHasPendingPayment(userProfile, enduranceApi);
+        if (hasPendingPayment) {
+          router.push('/payment-pending');
+          return;
+        }
+      } catch (error) {
+        console.error('Erro ao verificar pagamento pendente:', error);
+      }
       
       // Redirecionar para dashboard específico baseado no tipo de usuário
       if (userProfile.userType === UserType.ADMIN) {

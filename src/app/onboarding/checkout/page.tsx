@@ -56,6 +56,8 @@ import {
   Security as SecurityIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
+import CountdownTimer from '../../../components/CountdownTimer';
+import { clearStorageAndRedirectToLogin, savePaymentForVerification } from '../../../utils/paymentUtils';
 
 export default function CheckoutPage() {
   const theme = useTheme();
@@ -253,12 +255,27 @@ export default function CheckoutPage() {
       const result = await enduranceApi.checkout(checkoutData);
       setPaymentResult(result);
 
+      // Salvar dados do pagamento para verificação posterior
+      if (result.paymentId && auth.user?.id) {
+        savePaymentForVerification(result.paymentId, auth.user.id);
+      }
+
       if (result.paymentStatus === 'CONFIRMED') {
         enqueueSnackbar('Pagamento aprovado com sucesso!', { variant: 'success' });
         localStorage.setItem('onboarding_step_3_completed', 'true');
-        setTimeout(() => router.push('/dashboard'), 2000);
+        // Para cartão de crédito confirmado, redirecionar diretamente para dashboard
+        if (paymentMethod === PaymentMethod.CREDIT_CARD) {
+          setTimeout(() => router.push('/dashboard'), 2000);
+        }
       } else {
-         enqueueSnackbar('Pagamento pendente. Siga as instruções.', { variant: 'info' });
+        enqueueSnackbar('Pagamento pendente. Siga as instruções.', { variant: 'info' });
+        
+        // Para cartão de crédito pendente, redirecionar para tela de processamento
+        if (paymentMethod === PaymentMethod.CREDIT_CARD) {
+          setTimeout(() => {
+            router.push('/payment-processing');
+          }, 2000);
+        }
       }
 
     } catch (err: any) {
@@ -307,6 +324,10 @@ export default function CheckoutPage() {
     );
   }
 
+  const handleTimeout = () => {
+    clearStorageAndRedirectToLogin(router);
+  };
+
   if (paymentResult) {
     return (
       <Box
@@ -320,6 +341,13 @@ export default function CheckoutPage() {
           {paymentResult.paymentMethod === PaymentMethod.PIX && (
           <Card>
             <CardContent>
+              {/* Contador de 5 minutos */}
+              <CountdownTimer 
+                minutes={5} 
+                onTimeout={handleTimeout}
+                title="Tempo para realizar o pagamento PIX"
+              />
+              
               <PixIcon sx={{ fontSize: 60, color: 'success.main' }} />
               <Typography variant="h5" gutterBottom>Pague com PIX para ativar sua assinatura</Typography>
               <img src={`data:image/png;base64,${paymentResult.pixQrCode}`} alt="PIX QR Code" style={{ maxWidth: 300, margin: '20px auto' }} />
@@ -338,6 +366,13 @@ export default function CheckoutPage() {
         {paymentResult.paymentMethod === PaymentMethod.BOLETO && (
           <Card>
             <CardContent>
+              {/* Contador de 5 minutos */}
+              <CountdownTimer 
+                minutes={5} 
+                onTimeout={handleTimeout}
+                title="Tempo para acessar o boleto"
+              />
+              
                <BoletoIcon sx={{ fontSize: 60, color: 'info.main' }} />
               <Typography variant="h5" gutterBottom>Boleto Gerado</Typography>
               <Typography sx={{ mt: 2 }}>Clique no botão abaixo para visualizar e imprimir seu boleto. A confirmação pode levar até 2 dias úteis.</Typography>

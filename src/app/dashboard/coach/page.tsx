@@ -54,6 +54,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { UserType } from '../../../types/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../../components/Dashboard/DashboardLayout';
+import ProtectedRoute from '../../../components/ProtectedRoute';
 import { messageService } from '../../../services/messageService';
 import { scheduleService } from '../../../services/scheduleService';
 import { analyticsService } from '../../../services/analyticsService';
@@ -190,33 +191,38 @@ export default function CoachDashboard() {
 
   if (loading) {
     return (
-      <DashboardLayout user={auth.user} onLogout={handleLogout}>
-        <Container maxWidth="xl">
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-            <CircularProgress size={60} />
-          </Box>
-        </Container>
-      </DashboardLayout>
+      <ProtectedRoute allowedUserTypes={['COACH']}>
+        <DashboardLayout user={auth.user} onLogout={handleLogout}>
+          <Container maxWidth="xl">
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+              <CircularProgress size={60} />
+            </Box>
+          </Container>
+        </DashboardLayout>
+      </ProtectedRoute>
     );
   }
 
   if (error) {
     return (
-      <DashboardLayout user={auth.user} onLogout={handleLogout}>
-        <Container maxWidth="xl">
-          <Alert severity="error" sx={{ mb: 4 }}>
-            {error}
-          </Alert>
-          <Button variant="contained" onClick={loadDashboardData}>
-            Tentar Novamente
-          </Button>
-        </Container>
-      </DashboardLayout>
+      <ProtectedRoute allowedUserTypes={['COACH']}>
+        <DashboardLayout user={auth.user} onLogout={handleLogout}>
+          <Container maxWidth="xl">
+            <Alert severity="error" sx={{ mb: 4 }}>
+              {error}
+            </Alert>
+            <Button variant="contained" onClick={loadDashboardData}>
+              Tentar Novamente
+            </Button>
+          </Container>
+        </DashboardLayout>
+      </ProtectedRoute>
     );
   }
 
   return (
-    <DashboardLayout user={auth.user} onLogout={handleLogout}>
+    <ProtectedRoute allowedUserTypes={['COACH']}>
+      <DashboardLayout user={auth.user} onLogout={handleLogout}>
       <Container maxWidth="xl">
         {/* Header */}
         <Box sx={{ mb: 4 }}>
@@ -590,5 +596,6 @@ export default function CoachDashboard() {
         </Card>
       </Container>
     </DashboardLayout>
+    </ProtectedRoute>
   );
 }
