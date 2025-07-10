@@ -182,7 +182,6 @@ export default function DashboardOverview({ user }: DashboardOverviewProps) {
           changeLabel: 'taxa de conversão',
           icon: <MoneyIcon />,
           color: 'warning' as const,
-          gradient: true,
         },
         {
           title: 'Treinadores Ativos',
@@ -212,7 +211,6 @@ export default function DashboardOverview({ user }: DashboardOverviewProps) {
           changeLabel: 'vs mês anterior',
           icon: <MoneyIcon />,
           color: 'success' as const,
-          gradient: true,
         },
         {
           title: 'Treinos Ativos',

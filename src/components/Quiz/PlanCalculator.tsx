@@ -22,10 +22,13 @@ import {
   Sports as TriathlonIcon,
   CheckCircle as CheckIcon,
   Calculate as CalculateIcon,
+  QuestionAnswer as QuestionIcon,
+  ArrowForward as ArrowIcon,
 } from '@mui/icons-material';
 import QuizBase, { QuizQuestion, QuizResult } from './QuizBase';
 import { enduranceApi } from '../../services/enduranceApi';
 import { Plan, Modalidade, PlanPeriod } from '../../types/api';
+import PlanSelectionScreen from './PlanSelectionScreen';
 
 // Preços de fallback baseados na estrutura oficial dos planos
 const fallbackPrices = {
@@ -644,11 +647,14 @@ interface PlanCalculatorProps {
   onPlanSelected?: (planData: any) => void;
 }
 
+type PlanScreenType = 'initial' | 'selection' | 'quiz';
+
 export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<PlanScreenType>('initial');
 
   useEffect(() => {
     loadPlansAndModalidades();
@@ -661,10 +667,27 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
         id: 'essencial-corrida',
         name: 'PLANO ESSENCIAL DE CORRIDA',
         description: 'Plano ideal para corredores que buscam autonomia com suporte profissional.',
-        type: 'ESSENCIAL',
-        features: fallbackPlanData.essencial.corrida.features,
-        prices: fallbackPrices.essencial.corrida,
-        modalidades: [],
+        enrollmentFee: 0,
+        prices: [
+          { period: PlanPeriod.MONTHLY, price: 250 },
+          { period: PlanPeriod.QUARTERLY, price: 185 },
+          { period: PlanPeriod.SEMIANNUALLY, price: 175 },
+          { period: PlanPeriod.YEARLY, price: 165 },
+        ],
+        modalidades: [
+          {
+            modalidade: {
+              id: 'corrida-modal',
+              name: 'Corrida',
+              description: 'Modalidade focada em corrida de rua, montanha e pista.',
+              icon: '🏃‍♂️',
+              color: '#FF6B6B',
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          }
+        ],
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -673,10 +696,27 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
         id: 'essencial-triathlon',
         name: 'PLANO ESSENCIAL DE TRIATHLON',
         description: 'Plano ideal para triatletas que buscam autonomia com suporte nas três modalidades.',
-        type: 'ESSENCIAL',
-        features: fallbackPlanData.essencial.triathlon.features,
-        prices: fallbackPrices.essencial.triathlon,
-        modalidades: [],
+        enrollmentFee: 0,
+        prices: [
+          { period: PlanPeriod.MONTHLY, price: 320 },
+          { period: PlanPeriod.QUARTERLY, price: 250 },
+          { period: PlanPeriod.SEMIANNUALLY, price: 240 },
+          { period: PlanPeriod.YEARLY, price: 230 },
+        ],
+        modalidades: [
+          {
+            modalidade: {
+              id: 'triathlon-modal',
+              name: 'Triathlon',
+              description: 'Modalidade que combina natação, ciclismo e corrida.',
+              icon: '🏊‍♂️',
+              color: '#4ECDC4',
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          }
+        ],
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -685,10 +725,27 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
         id: 'premium-corrida',
         name: 'PLANO PREMIUM DE CORRIDA',
         description: 'Plano com acompanhamento próximo e análises detalhadas para alta performance.',
-        type: 'PREMIUM',
-        features: fallbackPlanData.premium.corrida.features,
-        prices: fallbackPrices.premium.corrida,
-        modalidades: [],
+        enrollmentFee: 0,
+        prices: [
+          { period: PlanPeriod.MONTHLY, price: 390 },
+          { period: PlanPeriod.QUARTERLY, price: 290 },
+          { period: PlanPeriod.SEMIANNUALLY, price: 280 },
+          { period: PlanPeriod.YEARLY, price: 270 },
+        ],
+        modalidades: [
+          {
+            modalidade: {
+              id: 'corrida-modal',
+              name: 'Corrida',
+              description: 'Modalidade focada em corrida de rua, montanha e pista.',
+              icon: '🏃‍♂️',
+              color: '#FF6B6B',
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          }
+        ],
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -697,10 +754,27 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
         id: 'premium-triathlon',
         name: 'PLANO PREMIUM DE TRIATHLON',
         description: 'Plano com acompanhamento próximo e análises detalhadas para alta performance no triathlon.',
-        type: 'PREMIUM',
-        features: fallbackPlanData.premium.triathlon.features,
-        prices: fallbackPrices.premium.triathlon,
-        modalidades: [],
+        enrollmentFee: 0,
+        prices: [
+          { period: PlanPeriod.MONTHLY, price: 560 },
+          { period: PlanPeriod.QUARTERLY, price: 420 },
+          { period: PlanPeriod.SEMIANNUALLY, price: 410 },
+          { period: PlanPeriod.YEARLY, price: 400 },
+        ],
+        modalidades: [
+          {
+            modalidade: {
+              id: 'triathlon-modal',
+              name: 'Triathlon',
+              description: 'Modalidade que combina natação, ciclismo e corrida.',
+              icon: '🏊‍♂️',
+              color: '#4ECDC4',
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          }
+        ],
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

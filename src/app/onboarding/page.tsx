@@ -49,6 +49,8 @@ export default function OnboardingPage() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
+        background: (theme) =>
+          theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
         padding: 2,
       }}
     >
@@ -60,23 +62,23 @@ export default function OnboardingPage() {
           width: 80,
           height: 80,
           borderRadius: '50%',
-          background: 'rgba(255, 255, 255, 0.2)',
-          color: 'white',
+          background: 'rgba(0, 0, 0, 0.1)',
+          color: 'text.primary',
           mb: 3,
         }}
       >
         <RunIcon sx={{ fontSize: 40 }} />
       </Box>
       
-      <Typography variant="h4" fontWeight="bold" color="white" gutterBottom>
+      <Typography variant="h4" fontWeight="bold" color="text.primary" gutterBottom>
         Preparando sua jornada...
       </Typography>
       
-      <Typography variant="body1" color="rgba(255, 255, 255, 0.8)" sx={{ mb: 4 }}>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
         Redirecionando para o onboarding personalizado
       </Typography>
       
-      <CircularProgress sx={{ color: 'white' }} />
+      <CircularProgress sx={{ color: 'primary.main' }} />
     </Box>
   );
 } 

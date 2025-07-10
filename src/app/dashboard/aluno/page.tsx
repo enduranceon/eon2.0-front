@@ -186,7 +186,6 @@ export default function StudentDashboard() {
                 subtitle="Seu plano de treinamento"
                 icon={<PlanIcon />}
                 color="primary"
-                gradient={true}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -196,7 +195,6 @@ export default function StudentDashboard() {
                 subtitle="Situação da conta"
                 icon={<CheckIcon />}
                 color="success"
-                gradient={true}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -206,7 +204,6 @@ export default function StudentDashboard() {
                 subtitle={`Conclusão: ${stats?.tests?.completionRate || 0}%`}
                 icon={<TrendingUpIcon />}
                 color="info"
-                gradient={true}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -216,7 +213,6 @@ export default function StudentDashboard() {
                 subtitle="Competições no calendário"
                 icon={<StarIcon />}
                 color="warning"
-                gradient={true}
               />
             </Grid>
           </Grid>

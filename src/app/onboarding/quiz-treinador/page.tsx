@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import { UserType, User } from '../../../types/api';
-import CoachMatcher from '../../../components/Quiz/CoachMatcher';
+import CoachMatcherWithSelection from '../../../components/Quiz/CoachMatcherWithSelection';
 import OnboardingStepper from '../../../components/Onboarding/OnboardingStepper';
 import { 
   DirectionsRun as RunIcon,
@@ -76,6 +76,8 @@ export default function QuizTreinadorPage() {
     <Box
       sx={{
         minHeight: '100vh',
+        background: (theme) =>
+          theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
         py: 4,
       }}
     >
@@ -90,17 +92,17 @@ export default function QuizTreinadorPage() {
               width: 64,
               height: 64,
               borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
+              background: 'rgba(0, 0, 0, 0.1)',
+              color: 'text.primary',
               mb: 2,
             }}
           >
             <RunIcon sx={{ fontSize: 32 }} />
           </Box>
-          <Typography variant="h3" fontWeight="bold" color="white" gutterBottom>
+          <Typography variant="h3" fontWeight="bold" color="text.primary" gutterBottom>
             Escolha seu Treinador
           </Typography>
-          <Typography variant="h6" color="rgba(255, 255, 255, 0.9)" sx={{ mb: 3 }}>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
             Encontre o coach ideal para sua jornada
           </Typography>
         </Box>
@@ -128,7 +130,7 @@ export default function QuizTreinadorPage() {
                 </Typography>
               </Box>
               
-              <CoachMatcher onComplete={handleCoachSelected} />
+              <CoachMatcherWithSelection onComplete={handleCoachSelected} />
               
             </CardContent>
           </Card>

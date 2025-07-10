@@ -120,6 +120,8 @@ export default function CoachProfilePage() {
     <Box
       sx={{
         minHeight: '100vh',
+        background: (theme) =>
+          theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
         py: 4,
       }}
     >
@@ -134,17 +136,17 @@ export default function CoachProfilePage() {
               width: 64,
               height: 64,
               borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
+              background: 'rgba(0, 0, 0, 0.1)',
+              color: 'text.primary',
               mb: 2,
             }}
           >
             <PersonIcon sx={{ fontSize: 32 }} />
           </Box>
-          <Typography variant="h3" fontWeight="bold" color="white" gutterBottom>
+          <Typography variant="h3" fontWeight="bold" color="text.primary" gutterBottom>
             Complete seu Perfil
           </Typography>
-          <Typography variant="h6" color="rgba(255, 255, 255, 0.9)" sx={{ mb: 3 }}>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
             Conte-nos sobre sua experiência como treinador
           </Typography>
         </Box>

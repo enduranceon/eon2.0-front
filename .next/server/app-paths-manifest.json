@@ -1,4 +1,4 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/dashboard/admin/finance/page": "app/dashboard/admin/finance/page.js"
+  "/onboarding/checkout/page": "app/onboarding/checkout/page.js"
 }

@@ -30,7 +30,7 @@ import { ptBR } from 'date-fns/locale';
 import { format } from 'date-fns';
 
 import { enduranceApi } from '../../../services/enduranceApi';
-import { FinancialRecord, PaginatedResponse, PaymentStatus, Plan, User, UserType } from '../../../types/api';
+import { FinancialRecord, PaginatedResponse, PaymentStatus, Plan, User } from '../../../types/api';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useSnackbar } from 'notistack';
 
@@ -90,7 +90,7 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
       try {
         const [plansRes, coachesRes] = await Promise.all([
           enduranceApi.getPlans({ limit: 100 }),
-          enduranceApi.getUsers({ userType: UserType.COACH, limit: 100 })
+          enduranceApi.getCoaches({ limit: 100 })
         ]);
         setPlans(plansRes.data);
         setCoaches(coachesRes.data);

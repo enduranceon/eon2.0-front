@@ -1,9 +1,9 @@
 {
   "pages": {
-    "/dashboard/admin/finance/page": [
+    "/onboarding/checkout/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/admin/finance/page.js"
+      "static/chunks/app/onboarding/checkout/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",

@@ -106,33 +106,111 @@ export default function CheckoutPage() {
     try {
       setDataLoading(true);
       setError(null);
+      
+      console.log('🔄 Carregando dados do checkout...');
+      
       const [plansData, modalidadesData, coachesData] = await Promise.all([
         enduranceApi.getPlans(),
         enduranceApi.getModalidades(),
-        enduranceApi.getUsers({ userType: UserType.COACH })
+        enduranceApi.getCoaches()
       ]);
+      
+      console.log('📊 Dados carregados:', {
+        planos: plansData.data?.length || 0,
+        modalidades: modalidadesData.data?.length || 0,
+        treinadores: coachesData.data?.length || 0
+      });
+      
       setPlans(plansData.data);
       setModalidades(modalidadesData.data);
       setCoaches(coachesData.data);
 
-      const savedPlanId = localStorage.getItem('onboarding_selected_plan');
-      const savedModalidadeId = localStorage.getItem('onboarding_selected_modalidade');
+      const savedPlanData = localStorage.getItem('onboarding_selected_plan');
+      const savedModalidadeData = localStorage.getItem('onboarding_selected_modalidade');
       const savedCoachId = localStorage.getItem('onboarding_selected_coach_id');
 
-      if (savedPlanId) {
-        const plan = plansData.data.find(p => p.id === savedPlanId);
-        if (plan) setSelectedPlan(plan);
+      // Recuperar dados do localStorage
+      console.log('📱 Dados salvos no localStorage:', {
+        planData: savedPlanData,
+        modalidadeData: savedModalidadeData,
+        coachId: savedCoachId
+      });
+
+      // Recuperar plano do localStorage
+      if (savedPlanData) {
+        try {
+          const planData = JSON.parse(savedPlanData);
+          console.log('🎯 Plano recuperado do localStorage:', planData);
+          
+          const plan = plansData.data.find(p => p.id === planData.id);
+          if (plan) {
+            console.log('✅ Plano encontrado na API:', plan.name);
+            setSelectedPlan(plan);
+            
+            // Definir período padrão baseado no primeiro preço disponível
+            if (plan.prices && plan.prices.length > 0) {
+              setTimeout(() => {
+                setPeriod(plan.prices[0].period);
+                console.log('💰 Período definido:', plan.prices[0].period);
+              }, 0);
+            }
+          } else {
+            console.warn('⚠️ Plano não encontrado na API com ID:', planData.id);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao recuperar plano do localStorage:', error);
+        }
+      } else {
+        console.warn('⚠️ Nenhum plano salvo no localStorage');
       }
-      if (savedModalidadeId) {
-        const modalidade = modalidadesData.data.find(m => m.id === savedModalidadeId);
-        if (modalidade) setSelectedModalidade(modalidade);
+
+      // Recuperar modalidade do localStorage
+      if (savedModalidadeData) {
+        try {
+          const modalidadeData = JSON.parse(savedModalidadeData);
+          console.log('🏃 Modalidade recuperada do localStorage:', modalidadeData);
+          
+          const modalidade = modalidadesData.data.find(m => m.id === modalidadeData.id);
+          if (modalidade) {
+            console.log('✅ Modalidade encontrada na API:', modalidade.name);
+            setSelectedModalidade(modalidade);
+          } else {
+            console.warn('⚠️ Modalidade não encontrada na API com ID:', modalidadeData.id);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao recuperar modalidade do localStorage:', error);
+        }
+      } else {
+        console.warn('⚠️ Nenhuma modalidade salva no localStorage');
       }
+
+      // Recuperar treinador do localStorage
       if (savedCoachId) {
         const coach = coachesData.data.find(c => c.id === savedCoachId);
-        if (coach) setSelectedCoach(coach);
+        if (coach) {
+          console.log('✅ Treinador encontrado na API:', coach.name);
+          setSelectedCoach(coach);
+        } else {
+          console.warn('⚠️ Treinador não encontrado na API com ID:', savedCoachId);
+        }
+      } else {
+        console.log('ℹ️ Nenhum treinador específico selecionado');
       }
+          // Verificar se os dados essenciais foram carregados
+      if (!selectedPlan || !selectedModalidade) {
+        console.log('⚠️ Dados essenciais não encontrados. Usuário pode completar o onboarding.');
+      } else {
+        setTimeout(() => {
+          console.log('✅ Checkout carregado com sucesso:', {
+            plano: selectedPlan?.name,
+            modalidade: selectedModalidade?.name,
+            treinador: selectedCoach?.name || 'Não selecionado'
+          });
+        }, 0);
+      }
+
     } catch (err) {
-      console.error('Erro ao carregar dados:', err);
+      console.error('❌ Erro ao carregar dados:', err);
       setError('Erro ao carregar dados. Tente novamente.');
     } finally {
       setDataLoading(false);
@@ -199,7 +277,7 @@ export default function CheckoutPage() {
   
   const getCurrentPrice = () => {
     const priceInfo = selectedPlan?.prices.find(p => p.period === period);
-    return priceInfo?.price || 0;
+    return Number(priceInfo?.price || 0);
   };
   
   const getPeriodLabel = (p: PlanPeriod) => {
@@ -213,13 +291,33 @@ export default function CheckoutPage() {
   };
 
   if (dataLoading) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
+    return (
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          background: (theme) =>
+            theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
   }
 
   if (paymentResult) {
     return (
-      <Container maxWidth="sm" sx={{ textAlign: 'center', py: 5 }}>
-        {paymentResult.paymentMethod === PaymentMethod.PIX && (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: (theme) =>
+            theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
+        }}
+      >
+        <Container maxWidth="sm" sx={{ textAlign: 'center', py: 5 }}>
+          {paymentResult.paymentMethod === PaymentMethod.PIX && (
           <Card>
             <CardContent>
               <PixIcon sx={{ fontSize: 60, color: 'success.main' }} />
@@ -266,81 +364,236 @@ export default function CheckoutPage() {
              </Card>
         )}
          <Button onClick={() => router.push('/dashboard')} sx={{ mt: 4 }}>Ir para o Dashboard</Button>
-      </Container>
+        </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 5 }}>
-      <OnboardingStepper activeStep={2} />
-      <Typography variant="h4" align="center" gutterBottom sx={{ mt: 4 }}>
-        Finalize sua Assinatura
-      </Typography>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: (theme) =>
+          theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
+      }}
+    >
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        {/* Header */}
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              background: 'rgba(0, 0, 0, 0.1)',
+              color: 'text.primary',
+              mb: 2,
+            }}
+          >
+            <SecurityIcon sx={{ fontSize: 32 }} />
+          </Box>
+          <Typography variant="h3" fontWeight="bold" color="text.primary" gutterBottom>
+            Finalize sua Assinatura
+          </Typography>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
+            Escolha sua forma de pagamento e conclua sua assinatura
+          </Typography>
+        </Box>
 
-      <Grid container spacing={4} mt={2}>
-        <Grid item xs={12} md={7}>
-            <Typography variant="h6">Forma de Pagamento</Typography>
-            <RadioGroup row value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}>
-                <FormControlLabel value={PaymentMethod.PIX} control={<Radio />} label={<Chip icon={<PixIcon/>} label="PIX" variant="outlined" sx={{ p: 2 }} />} />
-                <FormControlLabel value={PaymentMethod.CREDIT_CARD} control={<Radio />} label={<Chip icon={<CardIcon/>} label="Cartão de Crédito" variant="outlined" sx={{ p: 2 }} />} />
-                <FormControlLabel value={PaymentMethod.BOLETO} control={<Radio />} label={<Chip icon={<BoletoIcon/>} label="Boleto" variant="outlined" sx={{ p: 2 }} />} />
-            </RadioGroup>
+        {/* Stepper */}
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <OnboardingStepper
+              activeStep={2}
+              userType="FITNESS_STUDENT"
+            />
+          </CardContent>
+        </Card>
 
-            {paymentMethod === PaymentMethod.CREDIT_CARD && (
-                <form id="checkout-form" onSubmit={handleSubmit(handlePayment)}>
-                    <CheckoutCreditCardForm control={control} />
-                </form>
-            )}
-            
-            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-        </Grid>
+        <Grid container spacing={4} justifyContent="center">
+          <Grid item xs={12} lg={10}>
+            <Grid container spacing={4}>
+              {/* Card de Forma de Pagamento */}
+              <Grid item xs={12} md={7}>
+                <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+                  <CardContent sx={{ p: 4 }}>
+                    <Typography variant="h6" gutterBottom fontWeight="bold">
+                      Forma de Pagamento
+                    </Typography>
+                    
+                    <RadioGroup 
+                      row 
+                      value={paymentMethod} 
+                      onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                      sx={{ mb: 3, gap: 2 }}
+                    >
+                      <FormControlLabel 
+                        value={PaymentMethod.PIX} 
+                        control={<Radio />} 
+                        label={
+                          <Chip 
+                            icon={<PixIcon />} 
+                            label="PIX" 
+                            variant="outlined" 
+                            sx={{ p: 2, minWidth: 120 }} 
+                          />
+                        } 
+                      />
+                      <FormControlLabel 
+                        value={PaymentMethod.CREDIT_CARD} 
+                        control={<Radio />} 
+                        label={
+                          <Chip 
+                            icon={<CardIcon />} 
+                            label="Cartão de Crédito" 
+                            variant="outlined" 
+                            sx={{ p: 2, minWidth: 120 }} 
+                          />
+                        } 
+                      />
+                      <FormControlLabel 
+                        value={PaymentMethod.BOLETO} 
+                        control={<Radio />} 
+                        label={
+                          <Chip 
+                            icon={<BoletoIcon />} 
+                            label="Boleto" 
+                            variant="outlined" 
+                            sx={{ p: 2, minWidth: 120 }} 
+                          />
+                        } 
+                      />
+                    </RadioGroup>
 
-        <Grid item xs={12} md={5}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="h6" gutterBottom>Resumo do Pedido</Typography>
-              <List>
-                <ListItem>
-                  <ListItemIcon><RunIcon /></ListItemIcon>
-                  <ListItemText primary="Plano" secondary={selectedPlan?.name || 'N/A'} />
-                </ListItem>
-                <ListItem>
-                  <ListItemIcon><RunIcon /></ListItemIcon>
-                  <ListItemText primary="Modalidade" secondary={selectedModalidade?.name || 'N/A'} />
-                </ListItem>
-                <ListItem>
-                  <ListItemIcon><SecurityIcon /></ListItemIcon>
-                  <ListItemText primary="Treinador" secondary={selectedCoach?.name || 'Qualquer treinador da modalidade'} />
-                </ListItem>
-                <Divider sx={{ my: 1 }} />
-                <ListItem>
-                    <FormControl fullWidth>
-                        <InputLabel>Periodicidade</InputLabel>
-                        <Select value={period} label="Periodicidade" onChange={e => setPeriod(e.target.value as PlanPeriod)}>
+                    {paymentMethod === PaymentMethod.CREDIT_CARD && (
+                      <Box sx={{ mt: 3 }}>
+                        <form id="checkout-form" onSubmit={handleSubmit(handlePayment)}>
+                          <CheckoutCreditCardForm control={control} />
+                        </form>
+                      </Box>
+                    )}
+                    
+                    {error && <Alert severity="error" sx={{ mt: 3 }}>{error}</Alert>}
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Card de Resumo do Pedido */}
+              <Grid item xs={12} md={5}>
+                <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
+                  <CardContent sx={{ p: 4 }}>
+                    <Typography variant="h6" gutterBottom fontWeight="bold">
+                      Resumo do Pedido
+                    </Typography>
+                    
+                    <List sx={{ py: 0 }}>
+                      <ListItem sx={{ px: 0 }}>
+                        <ListItemIcon><RunIcon /></ListItemIcon>
+                        <ListItemText 
+                          primary="Plano" 
+                          secondary={selectedPlan?.name || 'Nenhum plano selecionado'} 
+                          primaryTypographyProps={{ fontWeight: 'medium' }}
+                          secondaryTypographyProps={{ 
+                            color: selectedPlan ? 'text.secondary' : 'error.main',
+                            fontWeight: selectedPlan ? 'normal' : 'medium'
+                          }}
+                        />
+                      </ListItem>
+                      <ListItem sx={{ px: 0 }}>
+                        <ListItemIcon><RunIcon /></ListItemIcon>
+                        <ListItemText 
+                          primary="Modalidade" 
+                          secondary={selectedModalidade?.name || 'Nenhuma modalidade selecionada'} 
+                          primaryTypographyProps={{ fontWeight: 'medium' }}
+                          secondaryTypographyProps={{ 
+                            color: selectedModalidade ? 'text.secondary' : 'error.main',
+                            fontWeight: selectedModalidade ? 'normal' : 'medium'
+                          }}
+                        />
+                      </ListItem>
+                      <ListItem sx={{ px: 0 }}>
+                        <ListItemIcon><SecurityIcon /></ListItemIcon>
+                        <ListItemText 
+                          primary="Treinador" 
+                          secondary={selectedCoach?.name || 'Qualquer treinador da modalidade'} 
+                          primaryTypographyProps={{ fontWeight: 'medium' }}
+                          secondaryTypographyProps={{ 
+                            color: 'text.secondary',
+                            fontStyle: selectedCoach ? 'normal' : 'italic'
+                          }}
+                        />
+                      </ListItem>
+                      
+                      <Divider sx={{ my: 2 }} />
+                      
+                      <ListItem sx={{ px: 0 }}>
+                        <FormControl fullWidth>
+                          <InputLabel>Periodicidade</InputLabel>
+                          <Select 
+                            value={period} 
+                            label="Periodicidade" 
+                            onChange={e => setPeriod(e.target.value as PlanPeriod)}
+                          >
                             {selectedPlan?.prices.map(p => (
-                                <MenuItem key={p.period} value={p.period}>{getPeriodLabel(p.period)} - R$ {p.price.toFixed(2)}</MenuItem>
+                              <MenuItem key={p.period} value={p.period}>
+                                {getPeriodLabel(p.period)} - R$ {Number(p.price).toFixed(2)}
+                              </MenuItem>
                             ))}
-                        </Select>
-                    </FormControl>
-                </ListItem>
-              </List>
-              <Box sx={{ p: 2, textAlign: 'right' }}>
-                <Typography variant="h5">Total: R$ {getCurrentPrice().toFixed(2)}</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-           <Button
-              variant="contained"
-              size="large"
-              fullWidth
-              sx={{ mt: 3, py: 2 }}
-              onClick={paymentMethod === 'CREDIT_CARD' ? handleSubmit(handlePayment) : () => handlePayment({} as any)}
-              disabled={loading}
-            >
-              {loading ? <CircularProgress color="inherit" size={28} /> : `Pagar com ${paymentMethod}`}
-            </Button>
+                          </Select>
+                        </FormControl>
+                      </ListItem>
+                    </List>
+                    
+                    <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="h5" fontWeight="bold" textAlign="center">
+                        Total: R$ {getCurrentPrice().toFixed(2)}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+                
+                {/* Aviso se dados essenciais estão faltando */}
+                {(!selectedPlan || !selectedModalidade) && (
+                  <Alert severity="warning" sx={{ mt: 3 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Dados do onboarding incompletos
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                      Para continuar com o pagamento, você precisa selecionar um plano e uma modalidade.
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => router.push('/onboarding/quiz-plano')}
+                    >
+                      Completar Onboarding
+                    </Button>
+                  </Alert>
+                )}
+                
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  sx={{ mt: 3, py: 2, fontWeight: 'bold' }}
+                  onClick={paymentMethod === 'CREDIT_CARD' ? handleSubmit(handlePayment) : () => handlePayment({} as any)}
+                  disabled={loading || !selectedPlan || !selectedModalidade}
+                >
+                  {loading ? (
+                    <CircularProgress color="inherit" size={28} />
+                  ) : (
+                    `Pagar com ${paymentMethod === PaymentMethod.PIX ? 'PIX' : 
+                      paymentMethod === PaymentMethod.CREDIT_CARD ? 'Cartão' : 'Boleto'}`
+                  )}
+                </Button>
+              </Grid>
+            </Grid>
+          </Grid>
         </Grid>
-      </Grid>
-    </Container>
+      </Container>
+    </Box>
   );
 } 

@@ -19,8 +19,8 @@ import {
   Payment as CheckoutIcon,
 } from '@mui/icons-material';
 import DashboardLayout from '../../../components/Dashboard/DashboardLayout';
-import PlanCalculator from '../../../components/Quiz/PlanCalculator';
-import CoachMatcher from '../../../components/Quiz/CoachMatcher';
+import PlanCalculatorWithSelection from '../../../components/Quiz/PlanCalculatorWithSelection';
+import CoachMatcherWithSelection from '../../../components/Quiz/CoachMatcherWithSelection';
 import { useAuth } from '../../../contexts/AuthContext';
 import { User } from '../../../types/api';
 import { useRouter } from 'next/navigation';
@@ -237,7 +237,7 @@ function PlanCalculatorWrapper({ onPlanSelected }: { onPlanSelected: (planData: 
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           Responda algumas perguntas para encontrarmos o plano que melhor se adapta ao seu perfil
         </Typography>
-        <PlanCalculator onPlanSelected={onPlanSelected} />
+        <PlanCalculatorWithSelection onPlanSelected={onPlanSelected} />
       </CardContent>
     </Card>
   );
@@ -254,7 +254,7 @@ function CoachMatcherWrapper({ onCoachSelected }: { onCoachSelected: (coach: Use
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           Agora vamos encontrar o treinador que melhor combina com seu perfil e objetivos
         </Typography>
-        <CoachMatcher onComplete={onCoachSelected} />
+        <CoachMatcherWithSelection onComplete={onCoachSelected} />
       </CardContent>
     </Card>
   );

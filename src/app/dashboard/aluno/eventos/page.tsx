@@ -214,7 +214,7 @@ export default function StudentEventsPage() {
   const loadExams = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await enduranceApi.getExams(1, 100); // Fetch more exams
+      const response = await enduranceApi.getExams({ page: 1, limit: 100 }); // Fetch more exams
       const examData = Array.isArray(response) ? response : response.data;
       setAllExams(examData || []);
       console.log('DEBUG: Dados brutos de todas as provas recebidas da API:', examData);

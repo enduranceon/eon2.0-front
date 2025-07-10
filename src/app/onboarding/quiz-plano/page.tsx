@@ -15,7 +15,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import { UserType } from '../../../types/api';
-import PlanCalculator from '../../../components/Quiz/PlanCalculator';
+import PlanCalculatorWithSelection from '../../../components/Quiz/PlanCalculatorWithSelection';
 import OnboardingStepper from '../../../components/Onboarding/OnboardingStepper';
 import { 
   DirectionsRun as RunIcon,
@@ -53,7 +53,7 @@ export default function QuizPlanoPage() {
 
     // Salvar plano e modalidade selecionados
     localStorage.setItem('onboarding_selected_plan', JSON.stringify(planData.plan));
-    localStorage.setItem('onboarding_selected_modalidade', JSON.stringify({ id: planData.modalidadeId, name: planData.modalidade }));
+    localStorage.setItem('onboarding_selected_modalidade', JSON.stringify({ id: planData.modalidadeId, name: planData.modalidade.name }));
     
     // Marcar etapa 1 como completa
     localStorage.setItem('onboarding_step_1_completed', 'true');
@@ -66,6 +66,8 @@ export default function QuizPlanoPage() {
     <Box
       sx={{
         minHeight: '100vh',
+        background: (theme) =>
+          theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[100],
         py: 4,
       }}
     >
@@ -80,17 +82,17 @@ export default function QuizPlanoPage() {
               width: 64,
               height: 64,
               borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
+              background: 'rgba(0, 0, 0, 0.1)',
+              color: 'text.primary',
               mb: 2,
             }}
           >
             <RunIcon sx={{ fontSize: 32 }} />
           </Box>
-          <Typography variant="h3" fontWeight="bold" color="white" gutterBottom>
+          <Typography variant="h3" fontWeight="bold" color="text.primary" gutterBottom>
             Bem-vindo, {auth.user?.name?.split(' ')[0]}!
           </Typography>
-          <Typography variant="h6" color="rgba(255, 255, 255, 0.9)" sx={{ mb: 3 }}>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
             Vamos descobrir o plano ideal para você
           </Typography>
         </Box>
@@ -118,7 +120,7 @@ export default function QuizPlanoPage() {
                 </Typography>
               </Box>
               
-              <PlanCalculator onPlanSelected={handlePlanSelected} />
+              <PlanCalculatorWithSelection onPlanSelected={handlePlanSelected} />
               
             </CardContent>
           </Card>

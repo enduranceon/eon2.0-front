@@ -258,7 +258,6 @@ export default function PersonalEarningsPage() {
             changeLabel="vs mês anterior"
             icon={<MoneyIcon />}
             color="success"
-            gradient
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
