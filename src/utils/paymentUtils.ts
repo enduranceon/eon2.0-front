@@ -20,8 +20,6 @@ export const clearAllStorageData = () => {
   
   // Limpar sessionStorage também
   sessionStorage.clear();
-  
-  console.log('🧹 Todos os dados de storage foram limpos');
 };
 
 /**
@@ -51,7 +49,6 @@ export const savePaymentForVerification = (paymentId: string, userId: string) =>
     timestamp: new Date().toISOString(),
   };
   localStorage.setItem('pending_payment_verification', JSON.stringify(paymentData));
-  console.log('💾 Dados de pagamento salvos para verificação:', paymentData);
 };
 
 /**
@@ -75,7 +72,6 @@ export const getPendingPaymentData = () => {
  */
 export const clearPendingPaymentData = () => {
   localStorage.removeItem('pending_payment_verification');
-  console.log('🧹 Dados de pagamento pendente removidos');
 };
 
 /**
@@ -86,7 +82,6 @@ export const checkUserHasPendingPayment = async (user: any, enduranceApi: any): 
   // 1. Verificar localStorage primeiro (fluxo recente)
   const pendingPaymentData = getPendingPaymentData();
   if (pendingPaymentData) {
-    console.log('💳 Pagamento pendente encontrado no localStorage:', pendingPaymentData);
     return true;
   }
 
@@ -100,20 +95,11 @@ export const checkUserHasPendingPayment = async (user: any, enduranceApi: any): 
         const status = subscription.status?.toString().trim().toUpperCase();
         
         if (status === 'PENDING' || status === 'INACTIVE') {
-          console.log('📋 Assinatura com status pendente encontrada na API:', {
-            subscriptionId: subscription.id,
-            status: subscription.status
-          });
           return true;
         }
 
         // Se a assinatura não está ativa e não há isActive=true
         if (!subscription.isActive && status !== 'ACTIVE') {
-          console.log('📋 Assinatura inativa encontrada na API:', {
-            subscriptionId: subscription.id,
-            isActive: subscription.isActive,
-            status: subscription.status
-          });
           return true;
         }
       }
@@ -131,17 +117,6 @@ export const checkUserHasPendingPayment = async (user: any, enduranceApi: any): 
         );
         
         if (pendingPayments.length > 0) {
-          const pendingPayment = pendingPayments[0];
-          console.log('💰 Pagamentos pendentes encontrados na API:', {
-            count: pendingPayments.length,
-            firstPayment: {
-              id: pendingPayment.id,
-              amount: pendingPayment.amount,
-              status: pendingPayment.status,
-              paymentMethod: pendingPayment.paymentMethod,
-              dueDate: pendingPayment.dueDate
-            }
-          });
           return true;
         }
       }

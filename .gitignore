@@ -2,4 +2,25 @@ node_modules
 
 .env
 
+.swc
+
 .next
+.next/app-build-manifest.json
+.next/trace
+.next/cache/webpack/client-development/0.pack.gz
+.next/cache/webpack/client-development/1.pack.gz
+.next/cache/webpack/client-development/index.pack.gz
+.next/cache/webpack/client-development/index.pack.gz.old
+.next/cache/webpack/server-development/0.pack.gz
+.next/cache/webpack/server-development/index.pack.gz
+.next/server/app-paths-manifest.json
+.next/server/server-reference-manifest.json
+.next/server/webpack-runtime.js
+.next/server/app/_not-found/page_client-reference-manifest.js
+.next/server/app/_not-found/page.js
+.next/server/vendor-chunks/@babel.js
+.next/server/vendor-chunks/@mui.js
+.next/server/vendor-chunks/next.js
+.next/server/vendor-chunks/react-transition-group.js
+.next/static/chunks/webpack.js
+.next/static/chunks/app/layout.js

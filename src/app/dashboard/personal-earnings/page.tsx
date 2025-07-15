@@ -110,7 +110,11 @@ export default function PersonalEarningsPage() {
         paymentsData,
         coachData
       ] = await Promise.all([
-        enduranceApi.getCoachEarnings(auth.user.id, startDateStr, endDate),
+        enduranceApi.getCoachFinancialEarnings({
+          startDate: startDateStr,
+          endDate: endDate,
+          limit: 100
+        }),
         enduranceApi.getPayments({ coachId: auth.user.id }),
         enduranceApi.getCoach(auth.user.id)
       ]);
@@ -153,7 +157,7 @@ export default function PersonalEarningsPage() {
       ]);
 
       // Calcula estatísticas
-      const totalEarnings = earningsResponse.totalEarnings || 0;
+      const totalEarnings = earningsResponse.summary?.totalCoachEarnings || 0;
       const currentMonth = monthlyData[monthlyData.length - 1];
       const previousMonth = monthlyData[monthlyData.length - 2];
       const growth = previousMonth ? ((currentMonth.earnings - previousMonth.earnings) / previousMonth.earnings) * 100 : 0;

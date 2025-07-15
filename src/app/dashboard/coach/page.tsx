@@ -124,38 +124,82 @@ export default function CoachDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const today = new Date();
-      const startDate = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
-      const endDate = new Date(today.getFullYear(), 11, 31).toISOString().split('T')[0];
-
-      const earningsPromise = enduranceApi.getCoachEarnings(auth.user.id, startDate, endDate);
-      const statsPromise = enduranceApi.getDashboardStats();
-
-      const [earningsData, statsData] = await Promise.all([
-        earningsPromise.catch(err => {
-          // Se a rota de ganhos não existir, não bloquear o dashboard
-          if (err.response && err.response.status === 404) {
-            console.warn('Rota de ganhos não encontrada (404), usando dados mock.');
-            return { monthly: [], total: 0, average: 0 }; // Retorna um valor padrão
-          }
-          throw err; // Lança outros erros
+      // Carregar dados do dashboard do coach usando os endpoints corretos
+      const [
+        coachProfile,
+        coachStudents,
+        coachExams,
+        coachEarnings,
+        coachAnalytics
+      ] = await Promise.all([
+        enduranceApi.getCoachProfile().catch(err => {
+          console.warn('Erro ao carregar perfil do coach:', err);
+          return null;
         }),
-        statsPromise.catch(err => {
-          if (err.response && err.response.status === 404) {
-            console.warn('Rota de estatísticas não encontrada (404), usando dados mock.');
-            return { clients: 0, activePlans: 0, conversionRate: 0, upcomingTests: 0 }; // Retorna valor padrão
-          }
-          throw err;
+        enduranceApi.getCoachStudents().catch(err => {
+          console.warn('Erro ao carregar alunos do coach:', err);
+          return { students: [], total: 0 };
+        }),
+        enduranceApi.getCoachExams().catch(err => {
+          console.warn('Erro ao carregar provas do coach:', err);
+          return { pagination: { total: 0 } };
+        }),
+        enduranceApi.getCoachEarnings({ period: 'monthly' }).catch(err => {
+          console.warn('Erro ao carregar ganhos do coach:', err);
+          return { totalEarnings: 0, periodEarnings: 0, recentTransactions: [] };
+        }),
+        enduranceApi.getCoachAnalytics().catch(err => {
+          console.warn('Erro ao carregar analytics do coach:', err);
+          return {
+            totalStudents: 0,
+            activeSubscriptions: 0,
+            examParticipations: 0,
+            testResults: 0,
+            modalidadeStats: {},
+            recentActivities: []
+          };
         })
       ]);
 
-      setEarnings(earningsData);
-      setCoachStats(statsData);
+      // Definir os dados do coach baseados na resposta da API
+      const coachStats = {
+        // Dados do perfil
+        profile: coachProfile || {
+          name: auth.user.name,
+          email: auth.user.email,
+          bio: "Treinador especializado",
+          experience: "Experiência profissional",
+          coachLevel: "PLENO",
+          coachModalidades: [],
+          coachPlans: []
+        },
+        
+        // Dados dos alunos
+        totalStudents: coachStudents?.total || 0,
+        activeStudents: coachStudents?.students?.filter(s => s.status === 'ACTIVE').length || 0,
+        
+        // Dados das provas
+        totalExams: coachExams?.pagination?.total || 0,
+        examParticipations: coachAnalytics?.examParticipations || 0,
+        
+        // Dados financeiros
+        totalEarnings: coachEarnings?.totalEarnings || 0,
+        monthlyEarnings: coachEarnings?.periodEarnings || 0,
+        
+        // Dados de analytics
+        averageRating: 4.5, // Valor padrão até ter na API
+        completedSessions: coachAnalytics?.testResults || 0,
+        
+        // Dados agregados
+        recentActivities: coachAnalytics?.recentActivities || [],
+        modalidadeStats: coachAnalytics?.modalidadeStats || {}
+      };
 
-      // (Manter o restante da lógica ou remover se os mocks não forem mais necessários)
-      setStudents([]);
-      setUpcomingSessions([]);
-      setAnalyticsData(statsData);
+      setCoachStats(coachStats);
+      setEarnings(coachEarnings);
+      setStudents(coachStudents?.students || []);
+      setUpcomingSessions([]); // Será implementado quando houver endpoint específico
+      setAnalyticsData(coachAnalytics);
 
       // Carregar conversas usando service existente
       const userConversations = messageService.getConversations(auth.user.id);
@@ -247,7 +291,7 @@ export default function CoachDashboard() {
                   {coachStats?.activeStudents || 0}/{coachStats?.totalStudents || 0}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Total de alunos registrados
+                  Total de alunos vinculados
                 </Typography>
               </CardContent>
             </Card>
@@ -261,7 +305,7 @@ export default function CoachDashboard() {
                   <Typography variant="h6">Ganhos do Mês</Typography>
                 </Box>
                 <Typography variant="h4" fontWeight="bold" color="success.main">
-                  {formatCurrency(earnings?.monthlyTotal || 0)}
+                  {formatCurrency(coachStats?.monthlyEarnings || 0)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Receita mensal atual
@@ -274,15 +318,14 @@ export default function CoachDashboard() {
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <RatingIcon color="warning" sx={{ mr: 1 }} />
-                  <Typography variant="h6">Avaliação</Typography>
+                  <EventsIcon color="warning" sx={{ mr: 1 }} />
+                  <Typography variant="h6">Provas Criadas</Typography>
                 </Box>
                 <Typography variant="h4" fontWeight="bold" color="warning.main">
-                  {coachStats?.averageRating || 0}
+                  {coachStats?.totalExams || 0}
                 </Typography>
-                <Rating value={coachStats?.averageRating || 0} precision={0.1} readOnly size="small" />
                 <Typography variant="body2" color="text.secondary">
-                  ({coachStats?.totalReviews || 0} avaliações)
+                  Total de provas cadastradas
                 </Typography>
               </CardContent>
             </Card>
@@ -293,13 +336,13 @@ export default function CoachDashboard() {
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <TestIcon color="info" sx={{ mr: 1 }} />
-                  <Typography variant="h6">Sessões</Typography>
+                  <Typography variant="h6">Participações</Typography>
                 </Box>
                 <Typography variant="h4" fontWeight="bold" color="info.main">
-                  {coachStats?.completedSessions || 0}
+                  {coachStats?.examParticipations || 0}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Sessões realizadas
+                  Total de participações
                 </Typography>
               </CardContent>
             </Card>
@@ -316,24 +359,31 @@ export default function CoachDashboard() {
                 </Typography>
                 <List>
                   <ListItem>
-                    <ListItemIcon><AlertIcon color="warning" /></ListItemIcon>
+                    <ListItemIcon><StudentsIcon color="primary" /></ListItemIcon>
                     <ListItemText 
-                      primary={`${upcomingSessions.length} sessões agendadas esta semana`}
-                      secondary="Verifique sua agenda"
+                      primary={`${coachStats?.totalStudents || 0} alunos vinculados`}
+                      secondary={`${coachStats?.activeStudents || 0} ativos`}
                     />
                   </ListItem>
                   <ListItem>
-                    <ListItemIcon><MessageIcon color="primary" /></ListItemIcon>
+                    <ListItemIcon><EventsIcon color="warning" /></ListItemIcon>
                     <ListItemText 
-                      primary={`${conversations.filter(c => c.unreadCount > 0).length} mensagens não lidas`}
-                      secondary="Responda seus alunos"
+                      primary={`${coachStats?.totalExams || 0} provas cadastradas`}
+                      secondary="Gerencie suas provas e eventos"
                     />
                   </ListItem>
                   <ListItem>
                     <ListItemIcon><EarningsIcon color="success" /></ListItemIcon>
                     <ListItemText 
-                      primary={`Faturamento: ${formatCurrency(earnings?.monthlyTotal || 0)}`}
-                      secondary="Meta mensal em andamento"
+                      primary={`Ganhos: ${formatCurrency(coachStats?.monthlyEarnings || 0)}`}
+                      secondary="Ganhos do mês atual"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemIcon><TestIcon color="info" /></ListItemIcon>
+                    <ListItemText 
+                      primary={`${coachStats?.examParticipations || 0} participações`}
+                      secondary="Total de participações em provas"
                     />
                   </ListItem>
                 </List>
@@ -349,29 +399,39 @@ export default function CoachDashboard() {
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <Avatar sx={{ width: 56, height: 56, mr: 2, bgcolor: 'primary.main' }}>
-                    {auth.user?.name.charAt(0)}
+                    {coachStats?.profile?.name?.charAt(0) || auth.user?.name?.charAt(0) || 'T'}
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{auth.user?.name}</Typography>
+                    <Typography variant="h6">{coachStats?.profile?.name || auth.user?.name}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Nível {auth.user?.coachLevel || 'Coach'}
+                      {coachStats?.profile?.coachLevel || 'Coach'}
                     </Typography>
-                    <Rating value={coachStats?.averageRating || 0} precision={0.1} readOnly size="small" />
                     <Typography variant="caption" color="text.secondary">
-                      ({coachStats?.averageRating || 0})
+                      {coachStats?.profile?.experience || 'Experiência profissional'}
                     </Typography>
                   </Box>
                 </Box>
                 <Typography variant="body2" paragraph>
-                  <strong>Experiência:</strong> {coachStats?.experience || 'Não informado'}
+                  <strong>Bio:</strong> {coachStats?.profile?.bio || 'Treinador especializado'}
+                </Typography>
+                <Typography variant="body2" paragraph>
+                  <strong>Modalidades:</strong> {coachStats?.profile?.coachModalidades?.length || 0} modalidades
+                </Typography>
+                <Typography variant="body2" paragraph>
+                  <strong>Planos:</strong> {coachStats?.profile?.coachPlans?.length || 0} planos disponíveis
                 </Typography>
                 <Typography variant="body2" paragraph>
                   <strong>Total de Alunos:</strong> {coachStats?.totalStudents || 0}
                 </Typography>
                 <Typography variant="body2" paragraph>
-                  <strong>Sessões Realizadas:</strong> {coachStats?.completedSessions || 0}
+                  <strong>Ganhos Totais:</strong> {formatCurrency(coachStats?.totalEarnings || 0)}
                 </Typography>
-                <Button variant="outlined" fullWidth startIcon={<EditIcon />}>
+                <Button 
+                  variant="outlined" 
+                  fullWidth 
+                  startIcon={<EditIcon />}
+                  onClick={() => router.push('/dashboard/coach/perfil')}
+                >
                   Editar Perfil
                 </Button>
               </CardContent>
@@ -393,7 +453,7 @@ export default function CoachDashboard() {
           {/* Tab Panel - Meus Alunos */}
           <TabPanel value={tabValue} index={0}>
             <Typography variant="h6" gutterBottom>
-              Gerenciamento de Alunos
+              Gerenciamento de Alunos ({students.length})
             </Typography>
             
             <TableContainer component={Paper} sx={{ mt: 2 }}>
@@ -403,8 +463,8 @@ export default function CoachDashboard() {
                     <TableCell>Aluno</TableCell>
                     <TableCell>Plano</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Última Sessão</TableCell>
-                    <TableCell>Progresso</TableCell>
+                    <TableCell>Modalidade</TableCell>
+                    <TableCell>Início</TableCell>
                     <TableCell align="center">Ações</TableCell>
                   </TableRow>
                 </TableHead>
@@ -414,48 +474,64 @@ export default function CoachDashboard() {
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                            {student.name.charAt(0)}
+                            {student.user?.name?.charAt(0) || 'A'}
                           </Avatar>
-                          <Typography variant="body2">{student.name}</Typography>
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">
+                              {student.user?.name || 'Nome não disponível'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {student.user?.email || 'Email não disponível'}
+                            </Typography>
+                          </Box>
                         </Box>
                       </TableCell>
                       <TableCell>
                         <Chip 
-                          label={student.subscription?.plan?.name || 'Sem plano'} 
+                          label={student.plan?.name || 'Sem plano'} 
                           color="primary" 
                           size="small" 
                         />
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={student.isActive ? 'Ativo' : 'Inativo'}
-                          color={student.isActive ? 'success' : 'default'}
+                          label={student.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+                          color={student.status === 'ACTIVE' ? 'success' : 'default'}
                           size="small"
                         />
                       </TableCell>
                       <TableCell>
-                        {student.lastSession ? new Date(student.lastSession).toLocaleDateString('pt-BR') : 'Nunca'}
+                        <Chip
+                          label={student.modalidade?.name || 'Sem modalidade'}
+                          color="secondary"
+                          size="small"
+                        />
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={student.progress || 0} 
-                            sx={{ width: 60, mr: 1 }} 
-                          />
-                          <Typography variant="caption">{student.progress || 0}%</Typography>
-                        </Box>
+                        {student.startDate ? new Date(student.startDate).toLocaleDateString('pt-BR') : 'Não definido'}
                       </TableCell>
                       <TableCell align="center">
-                        <IconButton size="small" color="primary">
+                        <IconButton size="small" color="primary" title="Ver detalhes">
                           <ViewIcon />
                         </IconButton>
-                        <IconButton size="small">
+                        <IconButton size="small" title="Enviar mensagem">
                           <MessageIcon />
+                        </IconButton>
+                        <IconButton size="small" color="secondary" title="Editar status">
+                          <EditIcon />
                         </IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
+                  {students.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        <Typography variant="body2" color="text.secondary">
+                          Nenhum aluno encontrado
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -471,7 +547,7 @@ export default function CoachDashboard() {
               <Grid item xs={12} md={4}>
                 <Paper sx={{ p: 3, textAlign: 'center' }}>
                   <Typography variant="h4" color="success.main" gutterBottom>
-                    {formatCurrency(earnings?.monthlyTotal || 0)}
+                    {formatCurrency(earnings?.periodEarnings || 0)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Ganhos Mensais
@@ -481,39 +557,73 @@ export default function CoachDashboard() {
               <Grid item xs={12} md={4}>
                 <Paper sx={{ p: 3, textAlign: 'center' }}>
                   <Typography variant="h4" color="primary.main" gutterBottom>
-                    {formatCurrency(earnings?.annualTotal || 0)}
+                    {formatCurrency(earnings?.totalEarnings || 0)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Ganhos Anuais
+                    Ganhos Totais
                   </Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} md={4}>
                 <Paper sx={{ p: 3, textAlign: 'center' }}>
                   <Typography variant="h4" color="warning.main" gutterBottom>
-                    {formatCurrency(earnings?.pendingPayments || 0)}
+                    {earnings?.recentTransactions?.length || 0}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Pagamentos Pendentes
+                    Transações Recentes
                   </Typography>
                 </Paper>
               </Grid>
             </Grid>
 
-            {earnings?.breakdown && (
+            {earnings?.recentTransactions && earnings.recentTransactions.length > 0 && (
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  Evolução Mensal
+                  Transações Recentes
                 </Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={earnings.breakdown}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Ganhos']} />
-                    <Bar dataKey="amount" fill="#2e7d32" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Data</TableCell>
+                        <TableCell>Aluno</TableCell>
+                        <TableCell>Plano</TableCell>
+                        <TableCell align="right">Valor</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {earnings.recentTransactions.map((transaction, index) => (
+                        <TableRow key={index}>
+                          <TableCell>
+                            {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                          </TableCell>
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body2" fontWeight="bold">
+                                {transaction.student?.name || 'Nome não disponível'}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {transaction.student?.email || 'Email não disponível'}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={transaction.plan?.name || 'Plano não especificado'}
+                              color="primary"
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" color="success.main" fontWeight="bold">
+                              {formatCurrency(transaction.amount)}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               </Paper>
             )}
           </TabPanel>
@@ -521,14 +631,64 @@ export default function CoachDashboard() {
           {/* Tab Panel - Eventos */}
           <TabPanel value={tabValue} index={2}>
             <Typography variant="h6" gutterBottom>
-              Eventos e Competições
+              Gerenciamento de Provas
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Gerencie a participação dos seus alunos em eventos
+              Gerencie suas provas, inscrições e resultados
             </Typography>
             
-            <Alert severity="info" sx={{ mt: 2 }}>
-              Funcionalidade de eventos em desenvolvimento. Em breve você poderá inscrever seus alunos em competições.
+            <Box sx={{ mb: 3 }}>
+              <Button 
+                variant="contained" 
+                startIcon={<AddIcon />} 
+                onClick={() => {
+                  // Implementar modal de criação de prova
+                  console.log('Criar nova prova');
+                }}
+                sx={{ mr: 2 }}
+              >
+                Criar Nova Prova
+              </Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<ViewIcon />}
+                onClick={() => {
+                  // Implementar navegação para lista completa
+                  console.log('Ver todas as provas');
+                }}
+              >
+                Ver Todas as Provas
+              </Button>
+            </Box>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h4" color="primary.main" gutterBottom>
+                    {coachStats?.totalExams || 0}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Provas Cadastradas
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h4" color="success.main" gutterBottom>
+                    {coachStats?.examParticipations || 0}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total de Participações
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+
+            <Alert severity="info" sx={{ mt: 3 }}>
+              <Typography variant="body2">
+                <strong>Próximas funcionalidades:</strong> Criação de provas, gerenciamento de inscrições, 
+                confirmação de presença e adição de resultados. Use os botões acima para começar.
+              </Typography>
             </Alert>
           </TabPanel>
 
@@ -538,60 +698,96 @@ export default function CoachDashboard() {
               Analytics e Performance
             </Typography>
             
-            {analyticsData && (
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 3, height: 400 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Performance Mensal
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3, height: 400 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Estatísticas por Modalidade
+                  </Typography>
+                  {coachStats?.modalidadeStats && Object.keys(coachStats.modalidadeStats).length > 0 ? (
+                    <Box sx={{ mt: 2 }}>
+                      {Object.entries(coachStats.modalidadeStats).map(([modalidade, stats]) => (
+                        <Box key={modalidade} sx={{ mb: 2 }}>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {modalidade}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {(stats as any)?.students || 0} alunos • {(stats as any)?.activeSubscriptions || 0} assinaturas ativas
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Nenhuma modalidade encontrada
                     </Typography>
-                    {analyticsData.sessions && (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={analyticsData.sessions}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="sessions" stroke="#1976d2" strokeWidth={3} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    )}
-                  </Paper>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ p: 3, height: 400 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Métricas Principais
-                    </Typography>
-                    <Box sx={{ mt: 3 }}>
-                      <Typography variant="h4" color="primary.main">
-                        {coachStats?.totalStudents || 0}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Total de Alunos
-                      </Typography>
-                    </Box>
-                    <Box sx={{ mt: 3 }}>
-                      <Typography variant="h4" color="success.main">
-                        {coachStats?.completedSessions || 0}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Sessões Completadas
-                      </Typography>
-                    </Box>
-                    <Box sx={{ mt: 3 }}>
-                      <Typography variant="h4" color="warning.main">
-                        {coachStats?.averageRating || 0}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Avaliação Média
-                      </Typography>
-                    </Box>
-                  </Paper>
-                </Grid>
+                  )}
+                </Paper>
               </Grid>
-            )}
+
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3, height: 400 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Métricas Principais
+                  </Typography>
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h4" color="primary.main">
+                      {coachStats?.totalStudents || 0}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Total de Alunos
+                    </Typography>
+                  </Box>
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h4" color="success.main">
+                      {coachStats?.activeStudents || 0}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Alunos Ativos
+                    </Typography>
+                  </Box>
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h4" color="warning.main">
+                      {coachStats?.totalExams || 0}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Provas Cadastradas
+                    </Typography>
+                  </Box>
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h4" color="info.main">
+                      {coachStats?.examParticipations || 0}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Total de Participações
+                    </Typography>
+                  </Box>
+                </Paper>
+              </Grid>
+
+              {coachStats?.recentActivities && coachStats.recentActivities.length > 0 && (
+                <Grid item xs={12}>
+                  <Paper sx={{ p: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Atividades Recentes
+                    </Typography>
+                    <List>
+                      {coachStats.recentActivities.map((activity, index) => (
+                        <ListItem key={index}>
+                          <ListItemIcon>
+                            <CheckIcon color="success" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={`${activity.type === 'new_student' ? 'Novo aluno' : 'Atividade'}: ${activity.student}`}
+                            secondary={`${activity.plan} - ${new Date(activity.date).toLocaleDateString('pt-BR')}`}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Paper>
+                </Grid>
+              )}
+            </Grid>
           </TabPanel>
         </Card>
       </Container>

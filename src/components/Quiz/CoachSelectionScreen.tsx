@@ -32,6 +32,7 @@ import {
   School as EducationIcon,
   DirectionsRun as RunIcon,
   Pool as TriathlonIcon,
+  FitnessCenter as FitnessIcon,
 } from '@mui/icons-material';
 import { enduranceApi } from '../../services/enduranceApi';
 import { User, UserType, CoachLevel } from '../../types/api';
@@ -60,22 +61,31 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
   const loadCoaches = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      const response = await enduranceApi.getCoaches({
-        isActive: true,
-        limit: 50,
-      });
-
-      console.log('👥 Treinadores carregados:', response);
-      const coachesData = response.data || [];
-      setCoaches(coachesData);
+      const response = await enduranceApi.getCoaches();
+      setCoaches(response.data || []);
     } catch (err) {
       console.error('❌ Erro ao carregar treinadores:', err);
-      setError('Erro ao carregar treinadores. Tente novamente.');
+      setError('Erro ao carregar treinadores');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCoachImagePath = (coach: User): string | undefined => {
+    // Mapear nomes dos treinadores para suas imagens
+    const nameImageMap: { [key: string]: string } = {
+      'Ian Ribeiro': '/images/treinadores/ian-ribeiro.jpg',
+      'Guto Fernandes': '/images/treinadores/guto-fernandes.jpg',
+      'Elinai Freitas': '/images/treinadores/elinai-freitas.jpg',
+      'Luis Fernando': '/images/treinadores/luis-fernando.jpg',
+      'Jéssica Rodrigues': '/images/treinadores/jessica-rodrigues.jpg',
+      'William Dutra': '/images/treinadores/william-dutra.jpg',
+      'Gabriel Hermann': '/images/treinadores/gabriel-hermann.jpg',
+      'Bruno Jeremias': '/images/treinadores/bruno-jeremias.jpg',
+      'Thaís Prando': '/images/treinadores/thais-prando.jpg',
+    };
+
+    return nameImageMap[coach.name] || coach.image;
   };
 
   const getCoachLevelDisplay = (level: CoachLevel | undefined) => {
@@ -96,13 +106,24 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
     if (specialties.length === 0) {
       // Especialidades padrão baseadas no nome
       const name = coach.name.toLowerCase();
-      if (name.includes('triathlon')) {
+      if (name.includes('triathlon') || name.includes('elinai') || name.includes('guto')) {
         return ['Triathlon', 'Natação', 'Ciclismo', 'Corrida'];
+      } else if (name.includes('bruno') || name.includes('ian')) {
+        return ['Corrida', 'Trail Running'];
+      } else if (name.includes('jessica') || name.includes('thais')) {
+        return ['Corrida', 'Triathlon'];
+      } else if (name.includes('william') || name.includes('gabriel')) {
+        return ['Fitness', 'Condicionamento'];
       }
-      return ['Corrida', 'Condicionamento', 'Performance'];
+      return ['Corrida', 'Condicionamento'];
     }
     
     return specialties;
+  };
+
+  const getPrimarySpecialty = (coach: User) => {
+    const specialties = getCoachSpecialties(coach);
+    return specialties[0] || 'Corrida';
   };
 
   const getCoachRating = (coach: User) => {
@@ -130,7 +151,6 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
   };
 
   const handleCoachSelect = (coach: User) => {
-    console.log('✅ Treinador selecionado:', coach);
     onCoachSelected(coach);
   };
 
@@ -161,6 +181,17 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
     }
     
     return certifications;
+  };
+
+  const getCoachBio = (coach: User) => {
+    if (coach.bio) return coach.bio;
+    
+    // Bio padrão baseada no nível e especialidades
+    const name = coach.name.split(' ')[0];
+    const specialty = getPrimarySpecialty(coach);
+    const experience = getCoachExperience(coach);
+    
+    return `${name} é um treinador especializado em ${specialty} com ${experience} de experiência. Dedica-se a ajudar atletas a alcançarem seus objetivos através de treinamentos personalizados e acompanhamento próximo.`;
   };
 
   if (loading) {
@@ -206,10 +237,11 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
           <Grid item xs={12} sm={6} md={4} key={coach.id}>
             <Card 
               sx={{ 
-                minHeight: 550,
+                minHeight: 400,
                 display: 'flex',
                 flexDirection: 'column',
                 borderRadius: 2,
+                overflow: 'hidden',
                 '&:hover': {
                   boxShadow: theme.shadows[8],
                   transform: 'translateY(-4px)',
@@ -217,88 +249,70 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
                 transition: 'all 0.3s ease',
               }}
             >
-              <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                <Box sx={{ textAlign: 'center', mb: 2 }}>
-                  <Avatar
-                    src={coach.image}
-                    alt={coach.name}
+              {/* Imagem do treinador - 70% da altura */}
+              <Box
+                sx={{
+                  width: '100%',
+                  height: '70%',
+                  minHeight: '280px',
+                  backgroundImage: `url(${getCoachImagePath(coach)})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundColor: theme.palette.grey[100],
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                }}
+              >
+                {/* Fallback para quando não há imagem */}
+                {!getCoachImagePath(coach) && (
+                  <Typography 
+                    variant="h2" 
                     sx={{ 
-                      width: 80, 
-                      height: 80, 
-                      mx: 'auto', 
-                      mb: 2,
-                      fontSize: '2rem',
-                      fontWeight: 'bold'
+                      color: theme.palette.grey[500],
+                      fontWeight: 'bold',
+                      zIndex: 1,
                     }}
                   >
                     {coach.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                  </Avatar>
-                  
-                  <Typography variant="h6" fontWeight="bold" gutterBottom>
-                    {coach.name}
-                  </Typography>
-                  
-                  <Chip 
-                    label={getCoachLevelDisplay(coach.coachLevel).label}
-                    color={getCoachLevelDisplay(coach.coachLevel).color}
-                    size="small"
-                    sx={{ mb: 1 }}
-                  />
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                    <Rating 
-                      value={getCoachRating(coach)} 
-                      readOnly 
-                      precision={0.1} 
-                      size="small"
-                    />
-                    <Typography variant="body2" color="text.secondary">
-                      {getCoachRating(coach)}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Experiência: {getCoachExperience(coach)}
-                  </Typography>
-                  
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-                    {getCoachSpecialties(coach).slice(0, 3).map((specialty, index) => (
-                      <Chip
-                        key={index}
-                        label={specialty}
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontSize: '0.75rem' }}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-
-                {coach.bio && (
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary" 
-                    sx={{ 
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {coach.bio}
                   </Typography>
                 )}
+              </Box>
+
+              {/* Conteúdo do card - 30% da altura */}
+              <CardContent sx={{ 
+                flexGrow: 1, 
+                p: 2, 
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                minHeight: '30%'
+              }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  {coach.name}
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+                  <Chip 
+                    label={getPrimarySpecialty(coach)}
+                    variant="outlined"
+                    color="primary"
+                  />
+                </Box>
               </CardContent>
 
-              <CardActions sx={{ p: 3, pt: 0, flexDirection: 'column', gap: 1, mt: 'auto' }}>
+              <CardActions sx={{ p: 2, pt: 0, flexDirection: 'column', gap: 1 }}>
                 <Button
                   variant="contained"
                   fullWidth
                   onClick={() => handleCoachSelect(coach)}
-                  sx={{ fontWeight: 'bold', py: 1.2 }}
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    py: 1.2,
+                    borderRadius: 2,
+                  }}
                 >
                   Selecionar
                 </Button>
@@ -308,9 +322,12 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
                   fullWidth
                   startIcon={<InfoIcon />}
                   onClick={() => handleDetailsClick(coach)}
-                  sx={{ py: 1 }}
+                  sx={{ 
+                    py: 1,
+                    borderRadius: 2,
+                  }}
                 >
-                  Detalhes
+                  Conhecer
                 </Button>
               </CardActions>
             </Card>
@@ -350,17 +367,19 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
 
             {modalData && (
               <>
-                <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Box sx={{ textAlign: 'center', mb: 4 }}>
                   <Avatar
-                    src={modalData.coach.image}
+                    src={getCoachImagePath(modalData.coach)}
                     alt={modalData.coach.name}
                     sx={{ 
-                      width: 100, 
-                      height: 100, 
+                      width: 120, 
+                      height: 120, 
                       mx: 'auto', 
                       mb: 2,
                       fontSize: '2.5rem',
-                      fontWeight: 'bold'
+                      fontWeight: 'bold',
+                      border: 3,
+                      borderColor: 'primary.main',
                     }}
                   >
                     {modalData.coach.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
@@ -370,20 +389,22 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
                     {modalData.coach.name}
                   </Typography>
                   
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 2 }}>
                     <Chip 
                       label={getCoachLevelDisplay(modalData.coach.coachLevel).label}
                       color={getCoachLevelDisplay(modalData.coach.coachLevel).color}
                     />
-                    <Rating 
-                      value={getCoachRating(modalData.coach)} 
-                      readOnly 
-                      precision={0.1} 
-                      size="small"
-                    />
-                    <Typography variant="body2" color="text.secondary">
-                      {getCoachRating(modalData.coach)}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Rating 
+                        value={getCoachRating(modalData.coach)} 
+                        readOnly 
+                        precision={0.1} 
+                        size="small"
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        {getCoachRating(modalData.coach)}
+                      </Typography>
+                    </Box>
                   </Box>
                 </Box>
 
@@ -396,16 +417,14 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
                   </Typography>
                 </Box>
 
-                {modalData.coach.bio && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" fontWeight="bold" gutterBottom>
-                      Sobre
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {modalData.coach.bio}
-                    </Typography>
-                  </Box>
-                )}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    Sobre
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {getCoachBio(modalData.coach)}
+                  </Typography>
+                </Box>
 
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -449,7 +468,7 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
                       handleCoachSelect(modalData.coach);
                       closeModal();
                     }}
-                    sx={{ fontWeight: 'bold' }}
+                    sx={{ fontWeight: 'bold', py: 1.2 }}
                   >
                     Selecionar este Treinador
                   </Button>
@@ -458,6 +477,7 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
                     variant="outlined"
                     fullWidth
                     onClick={closeModal}
+                    sx={{ py: 1.2 }}
                   >
                     Fechar
                   </Button>

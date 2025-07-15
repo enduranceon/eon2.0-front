@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, CircularProgress, Tabs, Tab, Container } from '@mui/material';
 
 import ProtectedRoute from '../../../../components/ProtectedRoute';
@@ -8,6 +8,7 @@ import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import { useAuth } from '../../../../contexts/AuthContext';
 import PageHeader from '../../../../components/Dashboard/PageHeader';
 import FinancialDataTable from '../../../../components/Dashboard/Admin/FinancialDataTable';
+import FinancialSummaryCards from '../../../../components/Dashboard/Admin/FinancialSummaryCards';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -46,10 +47,24 @@ const TABS_CONFIG = [
 
 function FinancePageContent() {
   const [tabIndex, setTabIndex] = useState(0);
+  const [isReady, setIsReady] = useState(false);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabIndex(newValue);
   };
+
+  // Garantir que o componente está pronto antes de renderizar
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
+
+  if (!isReady) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -57,6 +72,7 @@ function FinancePageContent() {
         title="Módulo Financeiro"
         description="Visualize e gerencie todos os dados financeiros da plataforma."
       />
+      <FinancialSummaryCards onCardClick={setTabIndex} />
       <Paper sx={{ mt: 3 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs 
@@ -83,14 +99,6 @@ function FinancePageContent() {
 
 export default function FinancePage() {
   const { user, logout } = useAuth();
-
-  if (!user) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <ProtectedRoute allowedUserTypes={['ADMIN']}>

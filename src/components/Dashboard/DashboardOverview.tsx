@@ -113,20 +113,25 @@ export default function DashboardOverview({ user }: DashboardOverviewProps) {
         customerSatisfaction: 4.6
       });
 
-      // Tentar carregar dados reais, se falhar usar mock
+      // Verificar se o usuário é admin antes de fazer chamadas
       let dashboardStatsResponse, revenueReportResponse, performanceMetricsResponse;
 
-      try {
-        // Carrega dados em paralelo
-        [dashboardStatsResponse, revenueReportResponse, performanceMetricsResponse] = await Promise.all([
-          enduranceApi.getDashboardStats(),
-          enduranceApi.getRevenueReport('monthly'),
-          enduranceApi.getPerformanceMetrics()
-        ]);
-      } catch (apiError) {
-        console.log('⚠️ Rotas do dashboard não disponíveis, usando dados mock');
-        
-        // Usar dados mock quando as rotas não existem
+      if (user.userType === UserType.ADMIN) {
+        try {
+          // Carrega dados em paralelo apenas para admin
+          [dashboardStatsResponse, revenueReportResponse, performanceMetricsResponse] = await Promise.all([
+            enduranceApi.getDashboardStats(),
+            enduranceApi.getRevenueReport('monthly'),
+            enduranceApi.getPerformanceMetrics()
+          ]);
+        } catch (apiError) {
+          // Usar dados mock quando as rotas não existem
+          dashboardStatsResponse = getMockDashboardStats();
+          revenueReportResponse = getMockRevenueReport();
+          performanceMetricsResponse = getMockPerformanceMetrics();
+        }
+      } else {
+        // Para usuários não-admin, usar dados mock diretamente
         dashboardStatsResponse = getMockDashboardStats();
         revenueReportResponse = getMockRevenueReport();
         performanceMetricsResponse = getMockPerformanceMetrics();

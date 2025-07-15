@@ -1,5 +1,15 @@
 'use client';
 
+/*
+ * Página de Eventos do Aluno
+ * 
+ * Funcionalidade de verificação de inscrições:
+ * - Busca todos os exames disponíveis via GET /exams
+ * - Busca exames em que o usuário está inscrito via GET /exams/user/:userId
+ * - Combina os dados para verificar status: INSCRITO, DISPONÍVEL, ENCERRADA, PARTICIPOU
+ * - Impede inscrições duplicadas verificando se o exame já está na lista do usuário
+ */
+
 import React, { useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
@@ -33,7 +43,7 @@ import {
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ptBR } from 'date-fns/locale';
-import ProtectedRoute from '../../../../components/ProtectedRoute';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../../contexts/AuthContext';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import { 
@@ -74,24 +84,40 @@ const getStatusChip = (status: string) => {
 
 const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId }: any) => {
   const getExamStatusForUser = (exam: any): 'INSCRITO' | 'DISPONÍVEL' | 'ENCERRADA' | 'PARTICIPOU' => {
-    const isRegistered = exam.registrations?.some((reg: any) => reg.userId === userId);
+    // Verifica se o usuário está inscrito baseado na presença de registrations
+    const isRegistered = exam.registrations && exam.registrations.length > 0;
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const examDate = new Date(exam.date);
 
+    console.log(`DEBUG: Status do evento "${exam.name}" para usuário ${userId}:`, {
+      examId: exam.id,
+      isRegistered,
+      registrations: exam.registrations,
+      examDate: exam.date,
+      today: today.toISOString(),
+      isPastEvent: examDate < today,
+      isActive: exam.isActive
+    });
+
+    // Se o usuário está inscrito
     if (isRegistered) {
       return examDate < today ? 'PARTICIPOU' : 'INSCRITO';
     }
 
+    // Se o exame já passou
     if (examDate < today) {
       return 'ENCERRADA';
     }
     
-    if (exam.isActive) {
+    // Se o exame está ativo e no futuro
+    if (exam.isActive !== false) { 
       return 'DISPONÍVEL';
     }
 
-    return 'ENCERRADA'; // Fallback for inactive future events
+    // Fallback para eventos inativos futuros
+    return 'ENCERRADA';
   };
 
   return (
@@ -152,7 +178,7 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
   );
 };
 
-const PastExams = ({ exams, userId }: any) => {
+const PastExams = ({ userExams }: any) => {
   const [filters, setFilters] = useState({ search: '', startDate: null, endDate: null });
 
   const handleFilterChange = (field: string, value: any) => {
@@ -160,18 +186,23 @@ const PastExams = ({ exams, userId }: any) => {
   };
 
   const filteredHistory = useMemo(() => {
-    return exams.filter((exam: any) => {
-      const isRegistered = exam.registrations?.some((reg: any) => reg.userId === userId);
-      if (!isRegistered) return false;
+    // Filtra apenas os exames do usuário que já passaram
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return userExams.filter((exam: any) => {
+      const examDate = new Date(exam.date);
+      const isPastEvent = examDate < today;
+      
+      if (!isPastEvent) return false; // Só mostra eventos passados
 
       const searchMatch = filters.search ? exam.name.toLowerCase().includes(filters.search.toLowerCase()) : true;
-      const examDate = new Date(exam.date);
       const startDateMatch = filters.startDate ? examDate >= filters.startDate : true;
       const endDateMatch = filters.endDate ? examDate <= filters.endDate : true;
 
       return searchMatch && startDateMatch && endDateMatch;
     });
-  }, [exams, userId, filters]);
+  }, [userExams, filters]);
 
   return (
     <Box>
@@ -184,14 +215,81 @@ const PastExams = ({ exams, userId }: any) => {
       </Paper>
       {filteredHistory.length > 0 ? (
         <List>
-          {filteredHistory.map((exam: any) => (
-            <React.Fragment key={exam.id}>
-              <ListItem>
-                <ListItemText primary={exam.name} secondary={`Data: ${formatDate(exam.date)} - Local: ${exam.location}`}/>
-              </ListItem>
-              <Divider />
-            </React.Fragment>
-          ))}
+          {filteredHistory.map((exam: any) => {
+            // Buscar informações de inscrição do usuário para esta prova
+            const userRegistration = exam.registrations?.[0];
+            
+            return (
+              <React.Fragment key={exam.id}>
+                <ListItem>
+                  <ListItemIcon>
+                    <EventIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Typography variant="subtitle1" fontWeight="medium">
+                          {exam.name}
+                        </Typography>
+                        {userRegistration && (
+                          <Chip 
+                            label={userRegistration.attended ? 'Participou' : 'Inscrito'} 
+                            size="small" 
+                            color={userRegistration.attended ? 'success' : 'primary'}
+                            icon={userRegistration.attended ? <CheckCircleIcon /> : <EventIcon />}
+                          />
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      <Box sx={{ mt: 1 }}>
+                        <Typography component="span" variant="body2" color="text.primary">
+                          📅 Data: {formatDate(exam.date)}
+                        </Typography>
+                        <br />
+                        <Typography component="span" variant="body2" color="text.secondary">
+                          📍 Local: {exam.location}
+                        </Typography>
+                        <br />
+                        <Typography component="span" variant="body2" color="text.secondary">
+                          🏃 Modalidade: {exam.modalidade?.name}
+                        </Typography>
+                        
+                        {/* Informações de participação */}
+                        {userRegistration && (
+                          <Box sx={{ mt: 1, p: 2, backgroundColor: userRegistration.attended ? 'success.50' : 'info.50', borderRadius: 1, borderLeft: 3, borderColor: userRegistration.attended ? 'success.main' : 'info.main' }}>
+                            <Typography variant="body2" fontWeight="bold" color={userRegistration.attended ? 'success.main' : 'info.main'}>
+                              {userRegistration.attended ? '✅ Participação Confirmada' : '📝 Inscrição Realizada'}
+                            </Typography>
+                            
+                            {userRegistration.attended && userRegistration.attendanceConfirmedAt && (
+                              <>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Presença confirmada em: {new Date(userRegistration.attendanceConfirmedAt).toLocaleDateString('pt-BR')} às {new Date(userRegistration.attendanceConfirmedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </Typography>
+                                {userRegistration.attendanceConfirmedBy && (
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    Confirmado pelo treinador
+                                  </Typography>
+                                )}
+                              </>
+                            )}
+                            
+                            {!userRegistration.attended && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Inscrito em: {new Date(userRegistration.createdAt).toLocaleDateString('pt-BR')}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                    }
+                  />
+                </ListItem>
+                <Divider />
+              </React.Fragment>
+            );
+          })}
         </List>
       ) : (
         <Alert severity="info">Nenhum histórico de prova encontrado.</Alert>
@@ -200,58 +298,141 @@ const PastExams = ({ exams, userId }: any) => {
   );
 };
 
-export default function StudentEventsPage() {
+export default function EventsPage() {
   const auth = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allExams, setAllExams] = useState<any[]>([]);
+  const [userRegistrations, setUserRegistrations] = useState<any[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedExam, setSelectedExam] = useState<any | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
+  // Todos os hooks devem ser chamados antes de qualquer return condicional
   const loadExams = useCallback(async () => {
+    if (!auth.user?.id) {
+      setError('Usuário não autenticado');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await enduranceApi.getExams({ page: 1, limit: 100 }); // Fetch more exams
-      const examData = Array.isArray(response) ? response : response.data;
-      setAllExams(examData || []);
-      console.log('DEBUG: Dados brutos de todas as provas recebidas da API:', examData);
+      setError(null);
+      
+      // Buscar todos os eventos e os eventos em que o usuário está inscrito
+      const [allExamsResponse, userExamsResponse] = await Promise.all([
+        enduranceApi.getExams({ page: 1, limit: 100 }),
+        enduranceApi.getUserExams(auth.user.id)
+      ]);
+
+      const allExamsData = Array.isArray(allExamsResponse) ? allExamsResponse : allExamsResponse.data;
+      
+      // Processar userExamsResponse que pode ter estrutura aninhada
+      let userExamsData;
+      if (Array.isArray(userExamsResponse)) {
+        userExamsData = userExamsResponse;
+      } else if ((userExamsResponse as any)?.data?.data) {
+        // Estrutura: { data: { data: [...], pagination: {...} } }
+        userExamsData = (userExamsResponse as any).data.data;
+      } else if ((userExamsResponse as any)?.data) {
+        userExamsData = (userExamsResponse as any).data;
+      } else {
+        userExamsData = [];
+      }
+      
+      console.log('📋 Dados dos exames do usuário processados:', userExamsData);
+      
+      // Criar um mapa de exames em que o usuário está inscrito
+      const userExamIds = new Set(userExamsData?.map((exam: any) => exam.id) || []);
+      
+      setUserRegistrations(userExamsData || []);
+      
+      // Combinar dados de eventos com informações de inscrição
+      const examsWithRegistrations = allExamsData?.map((exam: any) => ({
+        ...exam,
+        registrations: userExamIds.has(exam.id) ? [{
+          id: `registration-${exam.id}`,
+          userId: auth.user.id,
+          examId: exam.id,
+          status: 'registered',
+          createdAt: new Date().toISOString()
+        }] : []
+      })) || [];
+
+      setAllExams(examsWithRegistrations);
+      console.log('DEBUG: Todos os exames disponíveis:', allExamsData);
+      console.log('DEBUG: Exames em que o usuário está inscrito:', userExamsData);
+      console.log('DEBUG: Exames com informações de inscrição:', examsWithRegistrations);
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao carregar provas:', err);
       setError('Erro ao carregar provas.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [auth.user?.id]);
 
   React.useEffect(() => {
-    if (auth.user) loadExams();
-  }, [auth.user, loadExams]);
+    if (auth.user?.id) {
+      loadExams();
+    }
+  }, [auth.user?.id, loadExams]);
   
-  const pastExams = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-    return allExams.filter(exam => new Date(exam.date) < today);
-  }, [allExams]);
+  // PastExams component now handles filtering internally using userRegistrations
+
+  // Redirecionar para login se usuário não estiver autenticado
+  React.useEffect(() => {
+    if (!auth.isLoading && !auth.user) {
+      router.push('/login');
+    }
+  }, [auth.isLoading, auth.user, router]);
+
+  // Verificação simples de autenticação (substitui ProtectedRoute)
+  if (auth.isLoading || !auth.user) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (auth.user.userType !== 'FITNESS_STUDENT') {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Typography>Acesso não autorizado</Typography>
+      </Box>
+    );
+  }
 
   const handleRegister = async (examId: string) => {
+    if (!auth.user) return;
+    
     setProcessingId(examId);
     toast.promise(enduranceApi.registerForExam(examId), {
       loading: 'Realizando inscrição...',
-      success: () => { loadExams(); return 'Inscrição realizada com sucesso!'; },
+      success: () => { 
+        loadExams(); // Recarrega eventos e inscrições
+        return 'Inscrição realizada com sucesso!'; 
+      },
       error: (err) => handleApiError(err),
     }).finally(() => setProcessingId(null));
   };
 
   const handleCancelRegistration = async () => {
-    if (!selectedExam) return;
+    if (!selectedExam || !auth.user) return;
+    
     setProcessingId(selectedExam.id);
     setIsCancelConfirmOpen(false);
     toast.promise(enduranceApi.cancelExamRegistration(selectedExam.id), {
       loading: 'Cancelando inscrição...',
-      success: () => { loadExams(); setIsDetailsModalOpen(false); return 'Inscrição cancelada com sucesso!'; },
+      success: () => { 
+        loadExams(); // Recarrega eventos e inscrições
+        setIsDetailsModalOpen(false); 
+        return 'Inscrição cancelada com sucesso!'; 
+      },
       error: (err) => handleApiError(err),
     }).finally(() => setProcessingId(null));
   };
@@ -266,83 +447,79 @@ export default function StudentEventsPage() {
     setSelectedExam(null);
   };
   
-  if (!auth.user) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
-
   return (
-    <ProtectedRoute allowedUserTypes={['FITNESS_STUDENT']}>
-      <DashboardLayout user={auth.user} onLogout={auth.logout}>
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>Provas & Competições</Typography>
-          
-          <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-              <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} aria-label="abas de eventos">
-                <Tab label="Provas Disponíveis" id="tab-available" aria-controls="tabpanel-available" />
-                <Tab label="Histórico de Provas" id="tab-history" aria-controls="tabpanel-history" />
-              </Tabs>
-            </Box>
-
-            <Box role="tabpanel" hidden={activeTab !== 0} id="tabpanel-available" aria-labelledby="tab-available">
-              {activeTab === 0 && (loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : 
-                allExams.length > 0 ?
-                <AvailableExams
-                  exams={allExams}
-                  userId={auth.user.id}
-                  onRegister={handleRegister}
-                  onOpenDetails={handleOpenDetailsModal}
-                  processingId={processingId}
-                /> : <Alert severity="info">Nenhuma prova disponível no momento.</Alert>
-              )}
-            </Box>
-
-            <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-history" aria-labelledby="tab-history">
-              {activeTab === 1 && (loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : 
-                <PastExams exams={pastExams} userId={auth.user.id} />
-              )}
-            </Box>
-          </LocalizationProvider>
-        </Container>
+    <DashboardLayout user={auth.user} onLogout={auth.logout}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>Provas & Competições</Typography>
         
-        <Modal open={isDetailsModalOpen} onClose={handleCloseDetailsModal}>
-          <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 450, bgcolor: 'background.paper', boxShadow: 24, p: 4, borderRadius: 2 }}>
-            <Typography variant="h6" component="h2" fontWeight="bold" color="text.primary">{selectedExam?.name}</Typography>
-            <Divider sx={{my: 2}} />
-            <List>
-              <ListItem><ListItemIcon><CalendarIcon/></ListItemIcon><ListItemText primary="Data" secondary={selectedExam ? formatDate(selectedExam.date) : ''} primaryTypographyProps={{ color: 'text.primary' }} secondaryTypographyProps={{ color: 'text.secondary' }} /></ListItem>
-              <ListItem><ListItemIcon><PlaceIcon/></ListItemIcon><ListItemText primary="Local" secondary={selectedExam?.location || 'A definir'} primaryTypographyProps={{ color: 'text.primary' }} secondaryTypographyProps={{ color: 'text.secondary' }}/></ListItem>
-              <ListItem>
-                <ListItemIcon><InfoIcon/></ListItemIcon>
-                <ListItemText 
-                  primary="Status" 
-                  secondary={<Chip label="Inscrição Confirmada" color="success" size="small" />}
-                  primaryTypographyProps={{ color: 'text.primary' }} 
-                  secondaryTypographyProps={{ component: 'div' }} 
-                />
-              </ListItem>
-            </List>
-            <DialogActions sx={{ pt: 2, px: 0 }}>
-                <Button 
-                    variant="outlined"
-                    color="error"
-                    startIcon={processingId === selectedExam?.id ? <CircularProgress size={16} /> : <CancelIcon />}
-                    onClick={() => setIsCancelConfirmOpen(true)}
-                    disabled={processingId === selectedExam?.id}
-                >
-                    Cancelar Inscrição
-                </Button>
-            </DialogActions>
+        <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+            <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} aria-label="abas de eventos">
+              <Tab label="Provas Disponíveis" id="tab-available" aria-controls="tabpanel-available" />
+              <Tab label="Histórico de Provas" id="tab-history" aria-controls="tabpanel-history" />
+            </Tabs>
           </Box>
-        </Modal>
 
-        <Dialog open={isCancelConfirmOpen} onClose={() => setIsCancelConfirmOpen(false)}>
-          <DialogTitle>Confirmar Cancelamento</DialogTitle>
-          <DialogContent><DialogContentText>Tem certeza que deseja cancelar sua inscrição nesta prova? Esta ação não poderá ser desfeita.</DialogContentText></DialogContent>
-          <DialogActions>
-            <Button onClick={() => setIsCancelConfirmOpen(false)}>Não, voltar</Button>
-            <Button onClick={handleCancelRegistration} color="error" autoFocus>Sim, cancelar</Button>
+          <Box role="tabpanel" hidden={activeTab !== 0} id="tabpanel-available" aria-labelledby="tab-available">
+            {activeTab === 0 && (loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : 
+              allExams.length > 0 ?
+              <AvailableExams
+                exams={allExams}
+                userId={auth.user.id}
+                onRegister={handleRegister}
+                onOpenDetails={handleOpenDetailsModal}
+                processingId={processingId}
+              /> : <Alert severity="info">Nenhuma prova disponível no momento.</Alert>
+            )}
+          </Box>
+
+          <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-history" aria-labelledby="tab-history">
+            {activeTab === 1 && (loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : 
+              <PastExams userExams={userRegistrations} />
+            )}
+          </Box>
+        </LocalizationProvider>
+      </Container>
+      
+      <Modal open={isDetailsModalOpen} onClose={handleCloseDetailsModal}>
+        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 450, bgcolor: 'background.paper', boxShadow: 24, p: 4, borderRadius: 2 }}>
+          <Typography variant="h6" component="h2" fontWeight="bold" color="text.primary">{selectedExam?.name}</Typography>
+          <Divider sx={{my: 2}} />
+          <List>
+            <ListItem><ListItemIcon><CalendarIcon/></ListItemIcon><ListItemText primary="Data" secondary={selectedExam ? formatDate(selectedExam.date) : ''} primaryTypographyProps={{ color: 'text.primary' }} secondaryTypographyProps={{ color: 'text.secondary' }} /></ListItem>
+            <ListItem><ListItemIcon><PlaceIcon/></ListItemIcon><ListItemText primary="Local" secondary={selectedExam?.location || 'A definir'} primaryTypographyProps={{ color: 'text.primary' }} secondaryTypographyProps={{ color: 'text.secondary' }}/></ListItem>
+            <ListItem>
+              <ListItemIcon><InfoIcon/></ListItemIcon>
+              <ListItemText 
+                primary="Status" 
+                secondary={<Chip label="Inscrição Confirmada" color="success" size="small" />}
+                primaryTypographyProps={{ color: 'text.primary' }} 
+                secondaryTypographyProps={{ component: 'div' }} 
+              />
+            </ListItem>
+          </List>
+          <DialogActions sx={{ pt: 2, px: 0 }}>
+              <Button 
+                  variant="outlined"
+                  color="error"
+                  startIcon={processingId === selectedExam?.id ? <CircularProgress size={16} /> : <CancelIcon />}
+                  onClick={() => setIsCancelConfirmOpen(true)}
+                  disabled={processingId === selectedExam?.id}
+              >
+                  Cancelar Inscrição
+              </Button>
           </DialogActions>
-        </Dialog>
-      </DashboardLayout>
-    </ProtectedRoute>
+        </Box>
+      </Modal>
+
+      <Dialog open={isCancelConfirmOpen} onClose={() => setIsCancelConfirmOpen(false)}>
+        <DialogTitle>Confirmar Cancelamento</DialogTitle>
+        <DialogContent><DialogContentText>Tem certeza que deseja cancelar sua inscrição nesta prova? Esta ação não poderá ser desfeita.</DialogContentText></DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsCancelConfirmOpen(false)}>Não, voltar</Button>
+          <Button onClick={handleCancelRegistration} color="error" autoFocus>Sim, cancelar</Button>
+        </DialogActions>
+      </Dialog>
+    </DashboardLayout>
   );
 } 

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { User, UserType, LoginRequest, LoginResponse } from '../types/api';
 import { enduranceApi } from '../services/enduranceApi';
 
@@ -30,6 +30,7 @@ interface AuthContextType extends AuthState {
   checkSubscriptionStatus: () => Promise<void>;
   hasRole: (roles: UserType[]) => boolean;
   requiresSubscription: () => boolean;
+  updateProfile: (updatedData: Partial<User>) => void;
   isLoading: boolean;
 }
 
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           user,
           token,
           isAuthenticated: true,
-          emailVerified: process.env.NODE_ENV === 'production' ? !!user.emailVerified : true,
+          emailVerified: true, // Temporariamente desabilitado
           has2FA: !!user.has2FA,
           subscriptionActive: subscriptionStatus === 'ACTIVE',
           subscriptionStatus,
@@ -185,24 +186,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return response;
       }
 
-      // Verificar se email está confirmado (desabilitado em desenvolvimento)
-      if (!user.emailVerified && process.env.NODE_ENV === 'production') {
-        setState(prev => ({
-          ...prev,
-          user,
-          token: access_token,
-          emailVerified: false,
-          isLoading: true, // Manter loading ativo
-        }));
-        router.push('/verify-email');
-        
-        // Aguardar redirecionamento ser processado
-        setTimeout(() => {
-          setState(prev => ({ ...prev, isLoading: false }));
-        }, 1000);
-        
-        return response;
-      }
+      // Verificar se email está confirmado (TEMPORARIAMENTE DESABILITADO)
+      // if (!user.emailVerified && process.env.NODE_ENV === 'production') {
+      //   setState(prev => ({
+      //     ...prev,
+      //     user,
+      //     token: access_token,
+      //     emailVerified: false,
+      //     isLoading: true, // Manter loading ativo
+      //   }));
+      //   router.push('/verify-email');
+      //   
+      //   // Aguardar redirecionamento ser processado
+      //   setTimeout(() => {
+      //     setState(prev => ({ ...prev, isLoading: false }));
+      //   }, 1000);
+      //   
+      //   return response;
+      // }
 
       // Login completo
       setState(prev => ({
@@ -257,15 +258,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       await enduranceApi.register(userData);
       
-      if (process.env.NODE_ENV === 'production') {
-        toast.success('Conta criada! Verifique seu email para confirmar.');
-        // Redirecionar para verificação de email em produção
-        router.push('/verify-email');
-      } else {
-        toast.success('Conta criada com sucesso! Faça login para acessar o dashboard.');
-        // Em desenvolvimento, redirecionar para login
-        router.push('/login');
-      }
+      // Temporariamente desabilitado - sempre redirecionar para login
+      toast.success('Conta criada com sucesso! Faça login para acessar o dashboard.');
+      router.push('/login');
     } catch (error: any) {
       const message = error.response?.data?.message || 'Erro ao criar conta';
       toast.error(message);
@@ -432,6 +427,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const updateProfile = (updatedData: Partial<User>) => {
+    setState(prev => ({
+      ...prev,
+      user: prev.user ? { ...prev.user, ...updatedData } : prev.user,
+    }));
+  };
+
   const contextValue: AuthContextType = {
     ...state,
     login,
@@ -446,6 +448,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkSubscriptionStatus,
     hasRole,
     requiresSubscription,
+    updateProfile,
     isLoading: state.isLoading,
   };
 
@@ -478,11 +481,11 @@ export function useRequireAuth(requiredRoles?: UserType[], requireSubscription =
       return;
     }
 
-    // Email não verificado
-    if (!auth.emailVerified) {
-      router.push('/verify-email');
-      return;
-    }
+    // Email não verificado (TEMPORARIAMENTE DESABILITADO)
+    // if (!auth.emailVerified) {
+    //   router.push('/verify-email');
+    //   return;
+    // }
 
     // 2FA pendente
     if (auth.has2FA && !auth.isAuthenticated) {

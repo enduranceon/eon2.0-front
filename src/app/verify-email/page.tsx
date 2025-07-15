@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import {
   Box,
   Card,
@@ -28,7 +28,7 @@ import { enduranceTheme } from '../../theme/enduranceTheme';
 
 type VerificationStatus = 'loading' | 'success' | 'error' | 'expired' | 'pending';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const theme = useTheme();
   const router = useRouter();
   const auth = useAuth();
@@ -183,7 +183,7 @@ export default function VerifyEmailPage() {
               variant="contained"
               onClick={handleGoToLogin}
               sx={{
-                background: theme.colors.gradient.primary,
+                background: 'linear-gradient(135deg, #FF8012, #E67300)',
                 mr: 2,
               }}
             >
@@ -229,7 +229,7 @@ export default function VerifyEmailPage() {
               disabled={resendLoading || resendCooldown > 0}
               startIcon={resendLoading ? <CircularProgress size={16} /> : <RefreshIcon />}
               sx={{
-                background: theme.colors.gradient.primary,
+                background: 'linear-gradient(135deg, #FF8012, #E67300)',
                 mr: 2,
               }}
             >
@@ -274,7 +274,7 @@ export default function VerifyEmailPage() {
               disabled={resendLoading || resendCooldown > 0}
               startIcon={resendLoading ? <CircularProgress size={16} /> : <RefreshIcon />}
               sx={{
-                background: theme.colors.gradient.primary,
+                background: 'linear-gradient(135deg, #FF8012, #E67300)',
                 mr: 2,
               }}
             >
@@ -313,7 +313,7 @@ export default function VerifyEmailPage() {
                 width: 64,
                 height: 64,
                 borderRadius: '50%',
-                background: theme.colors.gradient.primary,
+                background: 'linear-gradient(135deg, #FF8012, #E67300)',
                 color: 'white',
                 mb: 2,
               }}
@@ -348,5 +348,13 @@ export default function VerifyEmailPage() {
         </CardContent>
       </Card>
     </Box>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<CircularProgress />}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 } 

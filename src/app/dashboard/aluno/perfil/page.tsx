@@ -26,7 +26,7 @@ import {
   DialogActions,
   DialogContentText,
 } from '@mui/material';
-import ProtectedRoute from '../../../../components/ProtectedRoute';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../../contexts/AuthContext';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import {
@@ -76,12 +76,64 @@ interface ProfileData {
 
 export default function StudentProfilePage() {
   const auth = useAuth();
+  const router = useRouter();
+  
+  // TODOS OS HOOKS DEVEM VIR PRIMEIRO - ANTES DE QUALQUER LÓGICA CONDICIONAL
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [editing, setEditing] = useState(false);
+  const [profileData, setProfileData] = useState<any>({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [formData, setFormData] = useState<Partial<ProfileData>>({});
+  const [initialFormData, setInitialFormData] = useState<Partial<ProfileData>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [profile, setProfile] = React.useState<ProfileData | null>(null);
-  const [isUploading, setIsUploading] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  // useEffect também deve vir antes de lógica condicional
+  React.useEffect(() => {
+    if (!auth.isLoading && !auth.user) {
+      router.push('/login');
+    }
+  }, [auth.isLoading, auth.user, router]);
+
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await enduranceApi.getProfile();
+        setProfile(data);
+      } catch (err) {
+        console.error('❌ Erro ao carregar perfil:', err);
+        setError('Erro ao carregar perfil. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // Só carrega o perfil se o usuário estiver autenticado
+    if (auth.user && !auth.isLoading) {
+      loadProfile();
+    }
+  }, [auth.user, auth.isLoading]);
+
+  // AGORA SIM PODEMOS TER EARLY RETURNS - APÓS TODOS OS HOOKS
+  if (auth.isLoading || !auth.user) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress size={60} />
+      </Box>
+    );
+  }
+
+  if (auth.user.userType !== 'FITNESS_STUDENT') {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Typography>Acesso não autorizado</Typography>
+      </Box>
+    );
+  }
 
   const getAbsoluteImageUrl = (url: string | undefined | null): string | undefined => {
     if (!url) return undefined;
@@ -112,11 +164,6 @@ export default function StudentProfilePage() {
     return `${origin}${finalPath.replace('/api//', '/api/')}`; // Limpeza final para barras duplas
   };
 
-  // Edit dialog
-  const [editOpen, setEditOpen] = React.useState(false);
-  const [formData, setFormData] = React.useState<Partial<ProfileData>>({});
-  const [initialFormData, setInitialFormData] = React.useState<Partial<ProfileData>>({});
-
   // Deriva o endereço principal do novo formato de dados
   const mainAddress = profile?.addresses?.find(addr => addr.isMain) || profile?.address;
 
@@ -129,6 +176,9 @@ export default function StudentProfilePage() {
       const { url } = await enduranceApi.uploadFile(file, 'avatars');
       const updatedProfile = await enduranceApi.updateUser(profile.id, { image: url });
       setProfile(updatedProfile);
+      
+      // Atualizar o contexto de autenticação para refletir a mudança no header
+      auth.updateProfile({ image: url });
     } catch (err) {
       console.error(err);
       alert('Falha ao fazer upload da imagem. Verifique o console para mais detalhes.');
@@ -143,6 +193,9 @@ export default function StudentProfilePage() {
       setIsUploading(true);
       const updatedProfile = await enduranceApi.updateUser(profile.id, { image: null });
       setProfile(updatedProfile);
+      
+      // Atualizar o contexto de autenticação para refletir a mudança no header
+      auth.updateProfile({ image: null });
     } catch (err) {
       console.error(err);
       alert('Falha ao remover a foto.');
@@ -209,6 +262,10 @@ export default function StudentProfilePage() {
         changedData as Partial<User>
       );
       setProfile(updatedProfile);
+      
+      // Atualizar o contexto de autenticação para refletir as mudanças no header
+      auth.updateProfile(changedData as Partial<User>);
+      
       setEditOpen(false);
     } catch (err) {
       console.error(err);
@@ -232,227 +289,358 @@ export default function StudentProfilePage() {
     }
   };
 
-  React.useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        setLoading(true);
-        const data = await enduranceApi.getProfile();
-        setProfile(data);
-      } catch (err) {
-        console.error(err);
-        setError('Erro ao carregar perfil');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadProfile();
-  }, [auth]);
-
   if (loading) {
     return (
-      <ProtectedRoute allowedUserTypes={['FITNESS_STUDENT']}>
-        <DashboardLayout user={auth.user!} onLogout={auth.logout}>
-          <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-              <CircularProgress size={60} />
-            </Box>
-          </Container>
-        </DashboardLayout>
-      </ProtectedRoute>
+      <DashboardLayout user={auth.user} onLogout={auth.logout}>
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+            <CircularProgress size={60} />
+          </Box>
+        </Container>
+      </DashboardLayout>
     );
   }
 
   if (error) {
     return (
-      <ProtectedRoute allowedUserTypes={['FITNESS_STUDENT']}>
-        <DashboardLayout user={auth.user!} onLogout={auth.logout}>
-          <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
-          </Container>
-        </DashboardLayout>
-      </ProtectedRoute>
+      <DashboardLayout user={auth.user} onLogout={auth.logout}>
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <Alert severity="error" sx={{ mb: 4 }}>
+            {error}
+          </Alert>
+        </Container>
+      </DashboardLayout>
     );
   }
 
   return (
-    <ProtectedRoute allowedUserTypes={['FITNESS_STUDENT']}>
-      <DashboardLayout user={auth.user!} onLogout={auth.logout}>
-        <Container maxWidth="md" sx={{ py: 4 }}>
-          {!profile ? (
-            <Alert severity="info">Não foi possível carregar os dados do perfil.</Alert>
-          ) : (
-            <Paper 
-              elevation={3} 
-              sx={{ 
-                p: { xs: 2, md: 3 },
-                border: (theme) => (theme.palette.mode === 'dark' ? `1px solid ${theme.palette.divider}` : 'none'),
-              }}
-            >
-              <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ color: 'text.primary', mb: 2, textAlign: 'center' }}>
-                Meu Perfil
-              </Typography>
-              <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)' }}>
-                <CardContent sx={{ textAlign: 'center', p: { xs: 2, md: 3 } }}>
-                  <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
-                    <Avatar
-                      src={getAbsoluteImageUrl(profile.image)}
-                      alt={profile.name}
-                      sx={{
-                        width: 120,
-                        height: 120,
-                        margin: '0 auto',
-                        border: '4px solid',
-                        borderColor: 'primary.main',
-                        boxShadow: 3,
-                      }}
-                    />
-                    <Box sx={{ position: 'absolute', bottom: 0, right: -10 }}>
-                      <Tooltip title="Alterar foto">
+    <DashboardLayout user={auth.user} onLogout={auth.logout}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        {/* Profile content */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            Meu Perfil
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Visualize e edite suas informações pessoais
+          </Typography>
+        </Box>
+
+        {/* Profile form content */}
+        {profile ? (
+          <Grid container spacing={3}>
+            {/* Foto do Perfil */}
+            <Grid item xs={12} md={4}>
+              <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
+                <Box sx={{ mb: 2 }}>
+                  <Avatar
+                    src={getAbsoluteImageUrl(profile.image || profile.avatar)}
+                    sx={{ width: 120, height: 120, margin: '0 auto', mb: 2 }}
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                    <Tooltip title="Alterar foto">
+                      <IconButton
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        color="primary"
+                      >
+                        <PhotoCameraIcon />
+                      </IconButton>
+                    </Tooltip>
+                    {(profile.image || profile.avatar) && (
+                      <Tooltip title="Remover foto">
                         <IconButton
-                          size="small"
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={handleRemovePhoto}
                           disabled={isUploading}
-                          sx={{
-                            bgcolor: 'background.paper',
-                            color: 'primary.main',
-                            '&:hover': { bgcolor: 'primary.main', color: 'white' },
-                          }}
+                          color="error"
                         >
-                          {isUploading ? <CircularProgress size={20} /> : <PhotoCameraIcon fontSize="small" />}
+                          <DeleteIcon />
                         </IconButton>
                       </Tooltip>
-                      {profile.image && (
-                        <Tooltip title="Remover foto">
-                          <IconButton
-                            size="small"
-                            onClick={handleRemovePhoto}
-                            disabled={isUploading}
-                            sx={{
-                              bgcolor: 'background.paper',
-                              color: 'error.main',
-                              '&:hover': { bgcolor: 'error.main', color: 'white' },
-                              ml: 1,
-                            }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Box>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                      hidden
-                      accept="image/*"
-                    />
+                    )}
                   </Box>
+                  {isUploading && <CircularProgress size={24} sx={{ mt: 1 }} />}
+                </Box>
+                <Typography variant="h6" gutterBottom>
+                  {profile.name}
+                </Typography>
+                <Chip 
+                  label={profile.userType === 'FITNESS_STUDENT' ? 'Aluno' : profile.userType}
+                  color="primary"
+                  size="small"
+                />
+              </Paper>
+            </Grid>
 
-                  <Typography variant="h5" fontWeight="bold" color="text.primary">
-                    {profile.name}
+            {/* Informações Pessoais */}
+            <Grid item xs={12} md={8}>
+              <Paper elevation={3} sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="h6" fontWeight="bold">
+                    Informações Pessoais
                   </Typography>
-
-                  <Chip 
-                    icon={<CheckCircleIcon />} 
-                    label={profile.isActive ? 'Ativo' : 'Inativo'}
-                    color={profile.isActive ? 'success' : 'default'} 
-                    size="small" 
-                    sx={{ mt: 1, fontWeight: 'bold' }}
-                  />
-
-                  <Divider sx={{ my: 3 }} />
-
-                  <Box sx={{ textAlign: 'left', color: 'text.secondary' }}>
-                    <List dense>
-                      <ListItem>
-                        <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}>
-                          <EmailIcon />
-                        </ListItemIcon>
-                        <ListItemText primary="Email" secondary={profile.email} />
-                      </ListItem>
-                      {profile.phone && (
-                        <ListItem>
-                          <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}>
-                            <PhoneIcon />
-                          </ListItemIcon>
-                          <ListItemText primary="Telefone" secondary={profile.phone} />
-                        </ListItem>
-                      )}
-                      {mainAddress && (
-                        <ListItem>
-                          <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}>
-                            <HomeIcon />
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary="Endereço Principal" 
-                            secondary={`${mainAddress.street}, ${mainAddress.number} - ${mainAddress.city}, ${mainAddress.state}`} 
-                          />
-                        </ListItem>
-                      )}
-                    </List>
-                  </Box>
-
-                  <Button variant="contained" sx={{ mt: 3 }} startIcon={<EditIcon />} onClick={openEdit}>
-                    Editar Perfil
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={openEdit}
+                  >
+                    Editar
                   </Button>
-                </CardContent>
-              </Card>
-            </Paper>
-          )}
+                </Box>
 
-          {/* Edit Dialog */}
-          <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-            <DialogTitle color="text.primary">Editar Perfil</DialogTitle>
-            <DialogContent>
-              <DialogContentText sx={{ mb: 2 }}>
-                Faça as alterações nos seus dados cadastrais.
-              </DialogContentText>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField name="name" label="Nome Completo" value={formData.name || ''} onChange={handleChange} fullWidth margin="normal" />
+                <List>
+                  <ListItem>
+                    <ListItemIcon>
+                      <EmailIcon />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="Email"
+                      secondary={profile.email}
+                    />
+                    {profile.emailVerified && (
+                      <CheckCircleIcon color="success" fontSize="small" />
+                    )}
+                  </ListItem>
+
+                  <Divider />
+
+                  {profile.phone && (
+                    <>
+                      <ListItem>
+                        <ListItemIcon>
+                          <PhoneIcon />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary="Telefone"
+                          secondary={profile.phone}
+                        />
+                      </ListItem>
+                      <Divider />
+                    </>
+                  )}
+
+                  {(profile.cpf || profile.cpfCnpj) && (
+                    <>
+                      <ListItem>
+                        <ListItemText
+                          primary="CPF"
+                          secondary={profile.cpf || profile.cpfCnpj}
+                        />
+                      </ListItem>
+                      <Divider />
+                    </>
+                  )}
+
+                  {profile.birthDate && (
+                    <>
+                      <ListItem>
+                        <ListItemText
+                          primary="Data de Nascimento"
+                          secondary={new Date(profile.birthDate).toLocaleDateString('pt-BR')}
+                        />
+                      </ListItem>
+                      <Divider />
+                    </>
+                  )}
+
+                  {mainAddress && (
+                    <ListItem>
+                      <ListItemIcon>
+                        <HomeIcon />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Endereço"
+                        secondary={`${mainAddress.street}, ${mainAddress.number}${mainAddress.complement ? `, ${mainAddress.complement}` : ''} - ${mainAddress.neighborhood}, ${mainAddress.city}/${mainAddress.state} - CEP: ${mainAddress.zipCode}`}
+                      />
+                    </ListItem>
+                  )}
+                </List>
+              </Paper>
+            </Grid>
+
+            {/* Informações da Conta */}
+            <Grid item xs={12}>
+              <Paper elevation={3} sx={{ p: 3 }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  Informações da Conta
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Data de Criação
+                    </Typography>
+                    <Typography variant="body1">
+                      {new Date(profile.createdAt).toLocaleDateString('pt-BR')}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Última Atualização
+                    </Typography>
+                    <Typography variant="body1">
+                      {new Date(profile.updatedAt).toLocaleDateString('pt-BR')}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Status da Conta
+                    </Typography>
+                    <Chip 
+                      label={profile.isActive ? 'Ativa' : 'Inativa'}
+                      color={profile.isActive ? 'success' : 'error'}
+                      size="small"
+                    />
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField name="cpf" label="CPF" value={formData.cpf || ''} onChange={handleChange} fullWidth margin="normal" />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField name="birthDate" label="Data de Nascimento" type="date" value={formData.birthDate ? new Date(formData.birthDate).toISOString().split('T')[0] : ''} onChange={handleChange} fullWidth margin="normal" InputLabelProps={{ shrink: true }} />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField name="phone" label="Telefone" value={formData.phone || ''} onChange={handleChange} fullWidth margin="normal" />
-                </Grid>
-                <Grid item xs={12}>
-                  <Divider sx={{ my: 1 }}><Chip label="Endereço Principal" /></Divider>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField name="address.street" label="Rua" value={formData.address?.street || ''} onChange={handleChange} fullWidth margin="normal" />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField name="address.number" label="Número" value={formData.address?.number || ''} onChange={handleChange} fullWidth margin="normal" />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField name="address.complement" label="Complemento" value={formData.address?.complement || ''} onChange={handleChange} fullWidth margin="normal" />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField name="address.neighborhood" label="Bairro" value={formData.address?.neighborhood || ''} onChange={handleChange} fullWidth margin="normal" />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField name="address.city" label="Cidade" value={formData.address?.city || ''} onChange={handleChange} fullWidth margin="normal" />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField name="address.state" label="Estado" value={formData.address?.state || ''} onChange={handleChange} fullWidth margin="normal" />
-                </Grid>
-                 <Grid item xs={12}>
-                  <TextField name="address.zipCode" label="CEP" value={formData.address?.zipCode || ''} onChange={handleChange} fullWidth margin="normal" />
-                </Grid>
+              </Paper>
+            </Grid>
+          </Grid>
+        ) : (
+          <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="h6" color="text.secondary">
+              Nenhum dado de perfil encontrado
+            </Typography>
+          </Paper>
+        )}
+
+        {/* Modal de Edição */}
+        <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle>Editar Perfil</DialogTitle>
+          <DialogContent>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="name"
+                  label="Nome"
+                  fullWidth
+                  value={formData.name || ''}
+                  onChange={handleChange}
+                />
               </Grid>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setEditOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSave} variant="contained">Salvar Alterações</Button>
-            </DialogActions>
-          </Dialog>
-        </Container>
-      </DashboardLayout>
-    </ProtectedRoute>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="email"
+                  label="Email"
+                  type="email"
+                  fullWidth
+                  value={formData.email || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="phone"
+                  label="Telefone"
+                  fullWidth
+                  value={formData.phone || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="cpf"
+                  label="CPF"
+                  fullWidth
+                  value={formData.cpf || formData.cpfCnpj || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="birthDate"
+                  label="Data de Nascimento"
+                  type="date"
+                  fullWidth
+                  value={formData.birthDate ? formData.birthDate.split('T')[0] : ''}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              
+              {/* Endereço */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+                  Endereço
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={8}>
+                <TextField
+                  name="address.street"
+                  label="Rua"
+                  fullWidth
+                  value={formData.address?.street || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  name="address.number"
+                  label="Número"
+                  fullWidth
+                  value={formData.address?.number || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="address.complement"
+                  label="Complemento"
+                  fullWidth
+                  value={formData.address?.complement || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="address.neighborhood"
+                  label="Bairro"
+                  fullWidth
+                  value={formData.address?.neighborhood || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="address.city"
+                  label="Cidade"
+                  fullWidth
+                  value={formData.address?.city || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <TextField
+                  name="address.state"
+                  label="Estado"
+                  fullWidth
+                  value={formData.address?.state || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <TextField
+                  name="address.zipCode"
+                  label="CEP"
+                  fullWidth
+                  value={formData.address?.zipCode || ''}
+                  onChange={handleChange}
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSave} variant="contained">Salvar</Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    </DashboardLayout>
   );
 } 

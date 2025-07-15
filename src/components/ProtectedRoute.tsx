@@ -18,16 +18,12 @@ export default function ProtectedRoute({ children, allowedUserTypes }: Protected
   const theme = useTheme();
   const [accessGranted, setAccessGranted] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
-  const hasChecked = useRef(false);
 
   useEffect(() => {
     const performAllChecks = async () => {
-      // Reset flags when user changes
-      if (!hasChecked.current) {
-        hasChecked.current = true;
-        setAccessGranted(false);
-        setCheckingPayment(false);
-      }
+      // Reset states
+      setAccessGranted(false);
+      setCheckingPayment(false);
 
       // Wait for auth to load
       if (auth.isLoading) return;
@@ -38,8 +34,8 @@ export default function ProtectedRoute({ children, allowedUserTypes }: Protected
         return;
       }
 
-      // Only check payment for students and only once
-      if (auth.user?.userType === 'FITNESS_STUDENT' && !checkingPayment) {
+      // Only check payment for students
+      if (auth.user?.userType === 'FITNESS_STUDENT') {
         setCheckingPayment(true);
         
         try {
@@ -91,12 +87,6 @@ export default function ProtectedRoute({ children, allowedUserTypes }: Protected
 
     performAllChecks();
   }, [auth.isLoading, auth.isAuthenticated, auth.user?.id, auth.subscriptionStatus, allowedUserTypes, router]);
-
-  // Reset when user changes
-  useEffect(() => {
-    hasChecked.current = false;
-    setAccessGranted(false);
-  }, [auth.user?.id]);
 
   if (auth.isLoading || checkingPayment) {
     return (

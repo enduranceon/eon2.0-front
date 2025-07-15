@@ -30,8 +30,8 @@ import { enduranceApi } from '../../../services/enduranceApi';
 const planPeriodTranslations: { [key in PlanPeriod]: string } = {
   [PlanPeriod.MONTHLY]: 'Mensal',
   [PlanPeriod.QUARTERLY]: 'Trimestral',
-  [PlanPeriod.SEMIANNUALLY]: 'Semestral',
-  [PlanPeriod.YEARLY]: 'Anual',
+  [PlanPeriod.SEMIANNUAL]: 'Semestral',
+  [PlanPeriod.ANNUAL]: 'Anual',
   [PlanPeriod.WEEKLY]: 'Semanal',
   [PlanPeriod.BIWEEKLY]: 'Quinzenal',
 };

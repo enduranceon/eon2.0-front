@@ -49,13 +49,14 @@ interface PaymentHistoryProps {
 }
 
 const PaymentHistory: React.FC<PaymentHistoryProps> = ({ payments }) => {
-  // Separar faturas pagas das outras
-  const paidPayments = payments.filter(payment => payment.status === PaymentStatus.CONFIRMED);
-  const otherPayments = payments.filter(payment => payment.status !== PaymentStatus.CONFIRMED);
+  const processPayments = (payments: Payment[]) => {
+    const paidPayments = payments.filter(payment => payment.status === 'CONFIRMED');
+    const otherPayments = payments.filter(payment => payment.status !== 'CONFIRMED');
+    
+    return { paidPayments, otherPayments };
+  };
 
-  console.log('📋 PaymentHistory - Total de pagamentos:', payments.length);
-  console.log('💰 PaymentHistory - Faturas pagas:', paidPayments.length);
-  console.log('⏳ PaymentHistory - Outros pagamentos:', otherPayments.length);
+  const { paidPayments, otherPayments } = processPayments(payments);
 
   return (
     <Card sx={{ height: '100%' }}>

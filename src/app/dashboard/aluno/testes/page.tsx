@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Container, Typography, Box, Paper, Card, CardContent, Button, Grid,
   CircularProgress, Alert, TextField, List, ListItem, ListItemIcon,
-  ListItemText, Avatar, Divider, Tabs, Tab,
+  ListItemText, Avatar, Divider, Tabs, Tab, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
@@ -111,8 +111,8 @@ const TestHistory = ({ history, loading, error }: { history: UserTest[], loading
       const test = item.test;
       if (!test) return false;
 
-      // Status check: only show completed tests
-      if (item.status !== 'COMPLETED') return false;
+      // Mostrar todos os testes (SCHEDULED, COMPLETED, PENDING, CANCELLED)
+      // Removi o filtro que só mostrava COMPLETED
       
       // Filter by search term
       const searchMatch = filters.search.toLowerCase() 
@@ -120,8 +120,8 @@ const TestHistory = ({ history, loading, error }: { history: UserTest[], loading
           (test.description && test.description.toLowerCase().includes(filters.search.toLowerCase()))
         : true;
 
-      // Filter by date
-      const testDate = new Date(item.date);
+      // Filter by date - usar scheduledAt em vez de date
+      const testDate = item.scheduledAt ? new Date(item.scheduledAt) : new Date(item.createdAt);
       const startDateMatch = filters.startDate ? testDate >= filters.startDate : true;
       const endDateMatch = filters.endDate ? testDate <= filters.endDate : true;
 
@@ -188,17 +188,129 @@ const TestHistory = ({ history, loading, error }: { history: UserTest[], loading
           {filteredHistory.map(item => (
             <React.Fragment key={item.id}>
               <ListItem>
+                <ListItemIcon>
+                  {getTestIcon(item.test?.type)}
+                </ListItemIcon>
                 <ListItemText
-                  primary={item.test?.name}
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="subtitle1" fontWeight="medium">
+                        {item.test?.name}
+                      </Typography>
+                      <Chip 
+                        label={item.status} 
+                        size="small" 
+                        color={
+                          item.status === 'COMPLETED' ? 'success' : 
+                          item.status === 'SCHEDULED' ? 'primary' : 
+                          item.status === 'PENDING' ? 'warning' : 'default'
+                        }
+                      />
+                    </Box>
+                  }
                   secondary={
                     <>
                       <Typography component="span" variant="body2" color="text.primary">
-                        Data: {new Date(item.date).toLocaleDateString()}
+                        {item.scheduledAt 
+                          ? `Agendado para: ${new Date(item.scheduledAt).toLocaleDateString('pt-BR')} às ${new Date(item.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                          : `Criado em: ${new Date(item.createdAt).toLocaleDateString('pt-BR')}`
+                        }
                       </Typography>
                       <br />
-                      <Typography component="span" variant="body2">
-                        Resultado: {item.results || 'Não disponível'}
-                      </Typography>
+                      {item.location && (
+                        <>
+                          <Typography component="span" variant="body2">
+                            Local: {item.location}
+                          </Typography>
+                          <br />
+                        </>
+                      )}
+                      {(item as any).coach && (
+                        <>
+                          <Typography component="span" variant="body2">
+                            Treinador: {(item as any).coach.name}
+                          </Typography>
+                          <br />
+                        </>
+                      )}
+                      {item.status === 'COMPLETED' && (() => {
+                        const hasResults = item.testResult || item.results;
+
+                        return (
+                          <>
+                            {hasResults ? (
+                              <Box sx={{ my: 1, p: 2, backgroundColor: 'success.50', borderLeft: 3, borderColor: 'success.main', borderRadius: 1 }}>
+                                <Typography component="div" variant="body2" color="success.main" fontWeight="bold" sx={{ mb: 1 }}>
+                                  📊 Resultado do Teste:
+                                </Typography>
+                                
+                                {/* Resultado detalhado estruturado */}
+                                {item.testResult && (
+                                  <Box sx={{ ml: 2 }}>
+                                    <Typography component="span" variant="body2" fontWeight="medium">
+                                      Valor: {item.testResult.value} {item.testResult.unit}
+                                    </Typography>
+                                    <br />
+                                    {item.testResult.recorder && (
+                                      <>
+                                        <Typography component="span" variant="caption" color="text.secondary">
+                                          Registrado por: {item.testResult.recorder.name}
+                                        </Typography>
+                                        <br />
+                                      </>
+                                    )}
+                                    {item.testResult.recordedAt && (
+                                      <>
+                                        <Typography component="span" variant="caption" color="text.secondary">
+                                          Em: {new Date(item.testResult.recordedAt).toLocaleDateString('pt-BR')}
+                                        </Typography>
+                                        <br />
+                                      </>
+                                    )}
+                                    {item.testResult.notes && (
+                                      <Typography component="span" variant="body2" color="text.secondary" fontStyle="italic">
+                                        Observações: {item.testResult.notes}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                )}
+
+                                {/* Resultado básico (fallback) */}
+                                {!item.testResult && item.results && (
+                                  <Typography component="span" variant="body2" sx={{ ml: 2 }}>
+                                    {item.results}
+                                  </Typography>
+                                )}
+                              </Box>
+                            ) : (
+                              <Typography component="span" variant="body2" color="warning.main" fontStyle="italic">
+                                ⏳ Resultado ainda não registrado pelo treinador
+                              </Typography>
+                            )}
+                          </>
+                        );
+                      })()}
+                      {item.status === 'SCHEDULED' && (
+                        <>
+                          <Typography component="span" variant="body2" color="info.main">
+                            📅 Teste agendado - aguardando realização
+                          </Typography>
+                          <br />
+                        </>
+                      )}
+                      {item.status === 'PENDING' && (
+                        <>
+                          <Typography component="span" variant="body2" color="warning.main">
+                            ⏰ Aguardando agendamento pelo treinador
+                          </Typography>
+                          <br />
+                        </>
+                      )}
+                      {item.notes && (
+                        <Typography component="span" variant="body2" fontStyle="italic">
+                          Observações: {item.notes}
+                        </Typography>
+                      )}
                     </>
                   }
                 />

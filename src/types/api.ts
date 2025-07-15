@@ -24,8 +24,8 @@ export enum PlanPeriod {
   BIWEEKLY = 'BIWEEKLY',
   MONTHLY = 'MONTHLY',
   QUARTERLY = 'QUARTERLY',
-  SEMIANNUALLY = 'SEMIANNUALLY',
-  YEARLY = 'YEARLY',
+  SEMIANNUAL = 'SEMIANNUAL',
+  ANNUAL = 'ANNUAL',
 }
 
 export enum PaymentStatus {
@@ -142,6 +142,7 @@ export interface Plan {
   enrollmentFee: number;
   prices: PlanPrice[];
   modalidades: { modalidade: Modalidade }[];
+  features?: string[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -480,8 +481,21 @@ export interface UserTest {
   location?: string;
   date?: string;
   results?: string;
+  completedAt?: string;
   createdAt: string;
   updatedAt: string;
+  testResult?: {
+    id: string;
+    value: number;
+    unit: string;
+    notes?: string;
+    recordedAt: string;
+    recordedBy: string;
+    recorder: {
+      id: string;
+      name: string;
+    };
+  };
 }
 
 export interface Exam {
@@ -492,6 +506,14 @@ export interface Exam {
   location: string;
   modalidadeId: string;
   modalidade: Modalidade;
+  isActive?: boolean;
+  registrations?: {
+    id: string;
+    userId: string;
+    examId: string;
+    status: string;
+    createdAt: string;
+  }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -569,4 +591,265 @@ export interface Wallet {
 
 export interface WalletBalance {
   balance: number;
+}
+
+// Interfaces para Dashboard do Coach - Testes e Exames
+export interface TestAppointment {
+  id: string;
+  status: 'PENDING' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  notes?: string;
+  scheduledAt?: string;
+  location?: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    age?: number;
+  };
+  test: {
+    id: string;
+    name: string;
+    type: TestType;
+    exam?: {
+      id: string;
+      name: string;
+      modalidade: {
+        id: string;
+        name: string;
+      };
+    };
+  };
+  coach: {
+    id: string;
+    name: string;
+    image?: string;
+  };
+}
+
+export interface ExamRegistration {
+  id: string;
+  attended: boolean;
+  attendanceConfirmedBy?: string;
+  attendanceConfirmedAt?: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    age?: number;
+  };
+  exam: {
+    id: string;
+    name: string;
+    date: string;
+    location: string;
+    modalidade: {
+      id: string;
+      name: string;
+    };
+  };
+  confirmedBy?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface TestAppointmentsList {
+  data: TestAppointment[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  summary: {
+    total: number;
+    pending: number;
+    scheduled: number;
+    completed: number;
+    cancelled: number;
+  };
+}
+
+export interface ExamRegistrationsList {
+  data: ExamRegistration[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  summary: {
+    total: number;
+    attended: number;
+    pending: number;
+    upcomingExams: number;
+  };
+}
+
+export interface ConfirmAttendanceRequest {
+  registrationId: string;
+}
+
+export interface RecordTestResultRequest {
+  testId: string;
+  userId: string;
+  value: number;
+  unit?: string;
+  notes?: string;
+}
+
+export interface TestResultResponse {
+  id: string;
+  testId: string;
+  userId: string;
+  value: number;
+  unit?: string;
+  notes?: string;
+  recordedBy: string;
+  recordedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  test: {
+    id: string;
+    name: string;
+    description?: string;
+    type: TestType;
+    exam?: {
+      id: string;
+      name: string;
+      modalidade: {
+        id: string;
+        name: string;
+      };
+    };
+  };
+  recorder: {
+    id: string;
+    name: string;
+  };
+}
+
+// Interfaces para Dashboard do Coach - Financeiro
+export interface FinancialTransaction {
+  id: string;
+  coachAmount: number;
+  platformAmount: number;
+  totalAmount: number;
+  marginPercentage: number;
+  createdAt: string;
+  updatedAt: string;
+  payment: {
+    id: string;
+    amount: number;
+    status: PaymentStatus;
+    createdAt: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      image?: string;
+    };
+    subscription: {
+      id: string;
+      status: 'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | 'PENDING';
+      startDate: string;
+      endDate: string;
+      plan: {
+        id: string;
+        name: string;
+        description: string;
+      };
+      modalidade: {
+        id: string;
+        name: string;
+      };
+    };
+  };
+}
+
+export interface FinancialSummary {
+  totalCoachEarnings: number;
+  totalPlatformAmount: number;
+  totalAmount: number;
+  overallMarginPercentage: number;
+  transactionCount: number;
+}
+
+export interface FinancialEarningsList {
+  data: FinancialTransaction[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  summary: FinancialSummary;
+}
+
+export interface CoachFinancialSummary {
+  totalEarnings: number;
+  monthlyEarnings: number;
+  yearlyEarnings: number;
+  pendingPayments: number;
+  currentMonth: number;
+  currentYear: number;
+}
+
+export interface PeriodTotalsRequest {
+  startDate: string;
+  endDate: string;
+  modalidadeId?: string;
+  planId?: string;
+  paymentStatus?: string;
+}
+
+export interface PeriodTotals {
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+  totals: {
+    coachEarnings: number;
+    platformAmount: number;
+    totalAmount: number;
+    marginPercentage: number;
+    transactionCount: number;
+  };
+  breakdown: {
+    byPlan: Array<{
+      planName: string;
+      totalAmount: number;
+      transactionCount: number;
+    }>;
+    byModalidade: Array<{
+      modalidadeName: string;
+      totalAmount: number;
+      transactionCount: number;
+    }>;
+  };
+}
+
+export interface FinancialFilters {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  studentId?: string;
+  planId?: string;
+  modalidadeId?: string;
+  paymentStatus?: PaymentStatus;
+  subscriptionStatus?: 'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | 'PENDING';
 } 

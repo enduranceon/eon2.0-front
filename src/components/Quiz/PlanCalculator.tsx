@@ -71,9 +71,6 @@ const getFallbackPrices = (planType: 'ESSENCIAL' | 'PREMIUM', modalidade: string
 
 // Função para extrair preços dos dados da API
 const extractPricesFromAPI = (plan: Plan) => {
-  console.log('🔍 Extraindo preços da API para o plano:', plan.name);
-  console.log('📊 Dados de preços recebidos:', plan.prices);
-
   // Verifica se prices é um array (estrutura real da API)
   if (Array.isArray(plan.prices)) {
     const pricesMap = plan.prices.reduce((acc, priceObj) => {
@@ -83,7 +80,6 @@ const extractPricesFromAPI = (plan: Plan) => {
       return acc;
     }, {} as Record<string, number>);
     
-    console.log('✅ Preços extraídos do array (convertidos para números):', pricesMap);
     return pricesMap;
   }
   
@@ -96,11 +92,9 @@ const extractPricesFromAPI = (plan: Plan) => {
       return acc;
     }, {} as Record<string, number>);
     
-    console.log('✅ Preços extraídos do objeto (convertidos para números):', convertedPrices);
     return convertedPrices;
   }
   
-  console.log('❌ Estrutura de preços não reconhecida, usando fallback');
   return {};
 };
 
@@ -165,12 +159,7 @@ const getFallbackPlanData = (planType: 'ESSENCIAL' | 'PREMIUM', modalidade: stri
 
 // Função para normalizar tipos de planos da API
 const normalizePlanType = (plan: Plan): 'ESSENCIAL' | 'PREMIUM' => {
-  // Se já tem o tipo correto, retornar
-  if (plan.type === 'ESSENCIAL' || plan.type === 'PREMIUM') {
-    return plan.type;
-  }
-  
-  // Tentar inferir pelo nome
+  // Inferir pelo nome
   const name = plan.name?.toLowerCase() || '';
   if (name.includes('premium') || name.includes('avançado') || name.includes('pro')) {
     return 'PREMIUM';
@@ -329,11 +318,6 @@ const questions: QuizQuestion[] = [
 
 // Lógica de recomendação baseada nas respostas
 const calculatePlan = (answers: Record<string, any>, plans: Plan[], modalidades: Modalidade[]): { plan: Plan; modalidade: Modalidade } | null => {
-  console.log('🧮 Calculando plano ideal...');
-  console.log('📝 Respostas:', answers);
-  console.log('📊 Planos disponíveis:', plans.length);
-  console.log('🎯 Modalidades disponíveis:', modalidades.length);
-  
   // Verificações defensivas
   if (!Array.isArray(plans) || plans.length === 0) {
     console.error('❌ Plans não é um array válido:', plans);
@@ -374,68 +358,39 @@ const calculatePlan = (answers: Record<string, any>, plans: Plan[], modalidades:
   // Determinar o tipo de plano baseado nas respostas
   const planType = premiumScore >= 5 ? 'PREMIUM' : 'ESSENCIAL';
   
-  console.log(`🎯 Score Premium: ${premiumScore} -> Tipo recomendado: ${planType}`);
-  
-  // Loggar todos os planos disponíveis
-  console.log('📋 Analisando planos disponíveis:');
-  plans.forEach((p, index) => {
-    console.log(`  ${index + 1}. ${p.name} (${p.type}) - Ativo: ${p.isActive}`);
-  });
-  
   // Encontrar plano ideal
   let plan = plans.find(p => {
     const normalizedType = normalizePlanType(p);
     const match = normalizedType === planType && p.isActive;
-    console.log(`  Verificando ${p.name}: tipo=${normalizedType}, match=${match}`);
     return match;
   });
   
   // Se não encontrar o tipo exato, buscar por nome
   if (!plan) {
-    console.log(`⚠️ Plano ${planType} não encontrado pelo tipo, buscando por nome...`);
     plan = plans.find(p => {
       const nameMatch = p.name && p.name.toLowerCase().includes(planType.toLowerCase()) && p.isActive;
-      console.log(`  Verificando ${p.name} por nome: match=${nameMatch}`);
       return nameMatch;
     });
   }
   
   // Se ainda não encontrar, usar o primeiro plano ativo
   if (!plan) {
-    console.log(`⚠️ Plano ${planType} não encontrado, usando primeiro plano ativo...`);
     plan = plans.find(p => p.isActive);
   }
 
   if (!plan) {
     console.error('❌ Nenhum plano ativo encontrado!');
-    console.log('Planos disponíveis:', plans.map(p => ({ 
-      id: p.id, 
-      name: p.name, 
-      type: p.type, 
-      normalizedType: normalizePlanType(p),
-      isActive: p.isActive 
-    })));
     return null;
   }
 
-  console.log(`✅ Plano selecionado: ${plan.name} (tipo: ${normalizePlanType(plan)})`);
-  
   // Encontrar modalidade adequada baseada na resposta do usuário
-  console.log('🎯 Buscando modalidade adequada para:', answers.modalidade);
-  console.log('📋 Modalidades disponíveis:');
-  modalidades.forEach((m, index) => {
-    console.log(`  ${index + 1}. ${m.name} - Ativo: ${m.isActive}`);
-  });
-  
   let modalidade = modalidades.find(m => {
     const match = m.name && m.name.toLowerCase().includes(answers.modalidade) && m.isActive;
-    console.log(`  Verificando ${m.name}: match=${match}`);
     return match;
   });
   
   // Se não encontrar, usar a primeira modalidade ativa
   if (!modalidade) {
-    console.log('⚠️ Modalidade específica não encontrada, usando primeira ativa...');
     modalidade = modalidades.find(m => m.isActive);
   }
   
@@ -444,8 +399,6 @@ const calculatePlan = (answers: Record<string, any>, plans: Plan[], modalidades:
     return null;
   }
 
-  console.log(`✅ Modalidade selecionada: ${modalidade.name}`);
-  
   return { plan, modalidade };
 };
 
@@ -462,9 +415,6 @@ const PlanResult = ({
 }) => {
   const theme = useTheme();
   
-  console.log('💰 Processando preços para o plano:', plan.name);
-  console.log('🎯 Modalidade:', modalidade.name);
-  
   // Extrair preços da API
   const apiPrices = extractPricesFromAPI(plan);
   const apiSemiannualPrice = apiPrices.semiannual || 0;
@@ -479,12 +429,9 @@ const PlanResult = ({
   
   // Se não temos preços válidos da API, usar fallback
   if (!semiannualPrice || !monthlyPrice) {
-    console.log('⚠️ Preços da API inválidos, usando fallback');
     const fallbackPriceData = getFallbackPrices(normalizedType, modalidade.name || '');
     semiannualPrice = semiannualPrice || fallbackPriceData.semiannual;
     monthlyPrice = monthlyPrice || fallbackPriceData.monthly;
-  } else {
-    console.log('✅ Usando preços da API:', { semiannualPrice, monthlyPrice });
   }
   
   // Garantir que todos os preços sejam números válidos
@@ -504,14 +451,6 @@ const PlanResult = ({
   // Validar se os preços são válidos
   const isValidPrice = displayMonthlyPrice > 0 && displayTotalPrice > 0;
   
-  console.log('📊 Preços finais:', {
-    displayMonthlyPrice,
-    displayTotalPrice,
-    isValidPrice,
-    numericSemiannualPrice,
-    numericMonthlyPrice
-  });
-
   const handleSelectPlan = () => {
     if (onSelectPlan) {
       onSelectPlan({
@@ -671,8 +610,8 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
         prices: [
           { period: PlanPeriod.MONTHLY, price: 250 },
           { period: PlanPeriod.QUARTERLY, price: 185 },
-          { period: PlanPeriod.SEMIANNUALLY, price: 175 },
-          { period: PlanPeriod.YEARLY, price: 165 },
+          { period: PlanPeriod.SEMIANNUAL, price: 175 },
+          { period: PlanPeriod.ANNUAL, price: 165 },
         ],
         modalidades: [
           {
@@ -700,8 +639,8 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
         prices: [
           { period: PlanPeriod.MONTHLY, price: 320 },
           { period: PlanPeriod.QUARTERLY, price: 250 },
-          { period: PlanPeriod.SEMIANNUALLY, price: 240 },
-          { period: PlanPeriod.YEARLY, price: 230 },
+          { period: PlanPeriod.SEMIANNUAL, price: 240 },
+          { period: PlanPeriod.ANNUAL, price: 230 },
         ],
         modalidades: [
           {
@@ -729,8 +668,8 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
         prices: [
           { period: PlanPeriod.MONTHLY, price: 390 },
           { period: PlanPeriod.QUARTERLY, price: 290 },
-          { period: PlanPeriod.SEMIANNUALLY, price: 280 },
-          { period: PlanPeriod.YEARLY, price: 270 },
+          { period: PlanPeriod.SEMIANNUAL, price: 280 },
+          { period: PlanPeriod.ANNUAL, price: 270 },
         ],
         modalidades: [
           {
@@ -758,8 +697,8 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
         prices: [
           { period: PlanPeriod.MONTHLY, price: 560 },
           { period: PlanPeriod.QUARTERLY, price: 420 },
-          { period: PlanPeriod.SEMIANNUALLY, price: 410 },
-          { period: PlanPeriod.YEARLY, price: 400 },
+          { period: PlanPeriod.SEMIANNUAL, price: 410 },
+          { period: PlanPeriod.ANNUAL, price: 400 },
         ],
         modalidades: [
           {
@@ -813,16 +752,10 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Carregando planos e modalidades da API...');
-
       const [plansResponse, modalidadesResponse] = await Promise.all([
         enduranceApi.getPlans(),
         enduranceApi.getModalidades()
       ]);
-
-      console.log('📊 Dados recebidos da API:');
-      console.log('Plans Response:', plansResponse);
-      console.log('Modalidades Response:', modalidadesResponse);
 
       // Extrair dados do formato paginado ou array direto
       const plansData = Array.isArray(plansResponse) 
@@ -833,56 +766,23 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
         ? modalidadesResponse 
         : modalidadesResponse?.data || [];
 
-      console.log('📋 Dados extraídos:');
-      console.log('Plans Data:', plansData);
-      console.log('Modalidades Data:', modalidadesData);
-
       // PRIORIZAR DADOS REAIS DA API
       let finalPlans = plansData;
       let finalModalidades = modalidadesData;
 
       // Só usar fallback se realmente não há dados da API
       if (!Array.isArray(plansData) || plansData.length === 0) {
-        console.warn('⚠️ API não retornou planos válidos, usando fallback');
         finalPlans = createFallbackPlans();
-      } else {
-        console.log('✅ Usando planos reais da API');
-        // Loggar detalhes dos planos reais
-        finalPlans.forEach((plan, index) => {
-          console.log(`📄 Plano ${index + 1}:`, {
-            id: plan.id,
-            name: plan.name,
-            type: plan.type,
-            prices: plan.prices,
-            isActive: plan.isActive
-          });
-        });
       }
 
       if (!Array.isArray(modalidadesData) || modalidadesData.length === 0) {
-        console.warn('⚠️ API não retornou modalidades válidas, usando fallback');
         finalModalidades = createFallbackModalidades();
-      } else {
-        console.log('✅ Usando modalidades reais da API');
-        // Loggar detalhes das modalidades reais
-        finalModalidades.forEach((modalidade, index) => {
-          console.log(`🎯 Modalidade ${index + 1}:`, {
-            id: modalidade.id,
-            name: modalidade.name,
-            isActive: modalidade.isActive
-          });
-        });
       }
 
       setPlans(finalPlans);
       setModalidades(finalModalidades);
-
-      console.log('✅ Dados carregados com sucesso:');
-      console.log(`- ${finalPlans.length} planos (${Array.isArray(plansData) && plansData.length > 0 ? 'REAIS' : 'FALLBACK'})`);
-      console.log(`- ${finalModalidades.length} modalidades (${Array.isArray(modalidadesData) && modalidadesData.length > 0 ? 'REAIS' : 'FALLBACK'})`);
     } catch (err) {
       console.error('❌ Erro ao carregar planos e modalidades:', err);
-      console.log('🔄 Usando dados de fallback devido ao erro da API');
       
       // Em caso de erro, usar dados de fallback
       setPlans(createFallbackPlans());

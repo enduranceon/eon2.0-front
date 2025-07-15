@@ -29,7 +29,7 @@ type CoachScreenType = 'initial' | 'selection' | 'quiz';
 
 const CoachMatcherWithSelection: React.FC<CoachMatcherWithSelectionProps> = ({ onComplete }) => {
   const theme = useTheme();
-  const [currentScreen, setCurrentScreen] = useState<CoachScreenType>('initial');
+  const [currentScreen, setCurrentScreen] = useState<CoachScreenType>('quiz'); // Iniciar diretamente no quiz
   const [loading, setLoading] = useState(false);
 
   const handleKnowsCoach = () => {
@@ -45,14 +45,12 @@ const CoachMatcherWithSelection: React.FC<CoachMatcherWithSelectionProps> = ({ o
   };
 
   const handleCoachSelected = (coach: User) => {
-    console.log('✅ Treinador selecionado via seleção direta:', coach);
     if (onComplete) {
       onComplete(coach);
     }
   };
 
   const handleQuizCoachSelected = (coach: User) => {
-    console.log('✅ Treinador selecionado via quiz:', coach);
     if (onComplete) {
       onComplete(coach);
     }
@@ -180,18 +178,29 @@ const CoachMatcherWithSelection: React.FC<CoachMatcherWithSelectionProps> = ({ o
       
       case 'selection':
         return (
-          <CoachSelectionScreen
-            onCoachSelected={handleCoachSelected}
-            onBack={handleBackToInitial}
-          />
+          <Box>
+            <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Button onClick={handleBackToInitial} variant="outlined" size="small">
+                ← Voltar
+              </Button>
+              <Button onClick={handleDoesntKnowCoach} variant="outlined" size="small">
+                Usar Quiz
+              </Button>
+            </Box>
+            
+            <CoachSelectionScreen
+              onCoachSelected={handleCoachSelected}
+              onBack={handleBackToInitial}
+            />
+          </Box>
         );
       
       case 'quiz':
         return (
           <Box>
-            <Box sx={{ mb: 3 }}>
-              <Button onClick={handleBackToInitial} variant="outlined">
-                ← Voltar
+            <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Button onClick={handleKnowsCoach} variant="outlined" size="small">
+                ← Escolher Manualmente
               </Button>
             </Box>
             

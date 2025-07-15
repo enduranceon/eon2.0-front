@@ -83,7 +83,7 @@ export default function CalculadorasPage() {
     if (savedUserId && savedUserId !== auth.user.id) {
       // Dados pertencem a outro usuário, limpar tudo
       [...keysToCheck, 'onboarding_user_id'].forEach(key => localStorage.removeItem(key));
-      console.log('🧹 Dados de onboarding de outro usuário removidos');
+      console.error('🧹 Dados de onboarding de outro usuário removidos');
       return;
     }
     
@@ -94,7 +94,7 @@ export default function CalculadorasPage() {
     // Se não tem ambos, limpar tudo para começar fresh
     if (!hasPlan || !hasCoach) {
       keysToCheck.forEach(key => localStorage.removeItem(key));
-      console.log('🧹 Dados de onboarding parciais limpos - iniciando fluxo do zero');
+      console.error('🧹 Dados de onboarding parciais limpos - iniciando fluxo do zero');
     }
   };
 
@@ -106,16 +106,14 @@ export default function CalculadorasPage() {
     const savedPlan = localStorage.getItem('onboarding_selected_plan');
     const savedCoach = localStorage.getItem('onboarding_selected_coach');
     
-    if (savedPlan && savedCoach) {
-      // Se já tem plano e treinador salvos, ir direto para checkout
-      console.log('✅ Onboarding completo encontrado - redirecionando para checkout');
-      router.push('/onboarding/checkout');
-      return;
-    }
-    
-    // SEMPRE começar pelo plano para garantir fluxo correto
-    console.log('🚀 Iniciando fluxo de onboarding - começando pela calculadora de planos');
-    setOnboardingState(prev => ({ ...prev, step: 'plan' }));
+          if (savedPlan && savedCoach) {
+        // Se já tem plano e treinador salvos, ir direto para checkout
+        router.push('/onboarding/checkout');
+        return;
+      }
+      
+      // SEMPRE começar pelo plano para garantir fluxo correto
+      setOnboardingState(prev => ({ ...prev, step: 'plan' }));
   }, [router]);
 
   const handleLogout = () => {
@@ -125,14 +123,10 @@ export default function CalculadorasPage() {
 
   // Callback quando plano é selecionado
   const handlePlanSelected = (planData: any) => {
-    console.log('✅ Plano selecionado:', planData);
-    
-    // Salvar no localStorage para persistir entre navegações
-    localStorage.setItem('onboarding_selected_plan', planData.planId || planData.id || planData.name || '');
-    localStorage.setItem('onboarding_user_id', auth.user.id);
+    localStorage.setItem('onboarding_selected_plan', JSON.stringify(planData.plan));
+    localStorage.setItem('onboarding_selected_modalidade', JSON.stringify(planData.modalidade));
     localStorage.setItem('onboarding_step_1_completed', 'true');
     
-    // Atualizar estado e avançar para próximo step
     setOnboardingState(prev => ({
       ...prev,
       selectedPlan: planData,
@@ -142,15 +136,14 @@ export default function CalculadorasPage() {
 
   // Callback quando treinador é selecionado  
   const handleCoachSelected = (coach: User) => {
-    console.log('✅ Treinador selecionado:', coach);
-    
-    // Salvar no localStorage
-    localStorage.setItem('onboarding_selected_coach', coach.id);
-    localStorage.setItem('onboarding_user_id', auth.user.id);
+    localStorage.setItem('onboarding_selected_coach_id', coach.id);
     localStorage.setItem('onboarding_step_2_completed', 'true');
     
-    // Ir para checkout
-    router.push('/onboarding/checkout');
+    setOnboardingState(prev => ({
+      ...prev,
+      selectedCoach: coach,
+      step: 'completed'
+    }));
   };
 
   const getActiveStep = () => {

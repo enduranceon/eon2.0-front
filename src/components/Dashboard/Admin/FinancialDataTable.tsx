@@ -32,7 +32,7 @@ import { format } from 'date-fns';
 import { enduranceApi } from '../../../services/enduranceApi';
 import { FinancialRecord, PaginatedResponse, PaymentStatus, Plan, User } from '../../../types/api';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { useSnackbar } from 'notistack';
+import toast from 'react-hot-toast';
 
 interface FinancialDataTableProps {
   endpoint: string;
@@ -56,7 +56,6 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
   const [coaches, setCoaches] = useState<User[]>([]);
 
   const debouncedSearch = useDebounce(searchTerm, 500);
-  const { enqueueSnackbar } = useSnackbar();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -70,18 +69,32 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
         startDate: filters.startDate ? format(filters.startDate, 'yyyy-MM-dd') : undefined,
         endDate: filters.endDate ? format(filters.endDate, 'yyyy-MM-dd') : undefined,
       };
-      const response = await enduranceApi.getFinancialRecords(endpoint, params);
-      setData(response.data);
-      setTotalRows(response.pagination.total);
+      
+      // Timeout para evitar loading infinito
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout ao carregar dados')), 10000)
+      );
+      
+      const response = await Promise.race([
+        enduranceApi.getFinancialRecords(endpoint, params),
+        timeoutPromise
+      ]) as PaginatedResponse<FinancialRecord>;
+      
+      setData(response.data || []);
+      setTotalRows(response.pagination?.total || 0);
     } catch (err) {
+      console.error('Erro ao carregar dados financeiros:', err);
       setError('Erro ao carregar dados financeiros.');
-      enqueueSnackbar('Erro ao carregar dados financeiros.', { variant: 'error' });
+      toast.error('Erro ao carregar dados financeiros.');
+      setData([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, endpoint, filters, debouncedSearch, enqueueSnackbar]);
+  }, [page, rowsPerPage, endpoint, filters, debouncedSearch]);
 
   useEffect(() => {
+    // Carrega dados imediatamente quando o componente é montado
     loadData();
   }, [loadData]);
 
@@ -92,14 +105,16 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
           enduranceApi.getPlans({ limit: 100 }),
           enduranceApi.getCoaches({ limit: 100 })
         ]);
-        setPlans(plansRes.data);
-        setCoaches(coachesRes.data);
+        setPlans(plansRes.data || []);
+        setCoaches(coachesRes.data || []);
       } catch (err) {
-        enqueueSnackbar('Erro ao carregar dados para filtros.', { variant: 'warning' });
+        console.error('Erro ao carregar dados para filtros:', err);
+        toast.error('Erro ao carregar dados para filtros.');
       }
     }
+    // Carrega dados dos filtros imediatamente
     fetchFilterData();
-  }, [enqueueSnackbar]);
+  }, []);
 
   const handleFilterChange = (key: string, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -121,9 +136,9 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
         endDate: filters.endDate ? format(filters.endDate, 'yyyy-MM-dd') : undefined,
       };
       await enduranceApi.exportFinancialsToPdf(params);
-      enqueueSnackbar('Seu download começará em breve.', { variant: 'success' });
+      toast.success('Seu download começará em breve.');
     } catch (err) {
-      enqueueSnackbar('Erro ao exportar o relatório.', { variant: 'error' });
+      toast.error('Erro ao exportar o relatório.');
     }
   };
 
@@ -145,14 +160,89 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
         </Box>
         
         <Grid container spacing={2} p={2}>
-            <Grid item xs={12} sm={6} md={3}><TextField fullWidth label="Buscar por nome/email" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></Grid>
-            <Grid item xs={12} sm={6} md={3}><DatePicker label="Data de Início" value={filters.startDate || null} onChange={date => handleFilterChange('startDate', date)} /></Grid>
-            <Grid item xs={12} sm={6} md={3}><DatePicker label="Data de Fim" value={filters.endDate || null} onChange={date => handleFilterChange('endDate', date)} /></Grid>
-            <Grid item xs={12} sm={6} md={3}><TextField select fullWidth label="Treinador" value={filters.coachId || ''} onChange={e => handleFilterChange('coachId', e.target.value)}><MenuItem value="">Todos</MenuItem>{coaches.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}</TextField></Grid>
-            <Grid item xs={12} sm={6} md={3}><TextField select fullWidth label="Plano" value={filters.planId || ''} onChange={e => handleFilterChange('planId', e.target.value)}><MenuItem value="">Todos</MenuItem>{plans.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}</TextField></Grid>
-            <Grid item xs={12} sm={6} md={3}><TextField select fullWidth label="Status do Pagamento" value={filters.paymentStatus || ''} onChange={e => handleFilterChange('paymentStatus', e.target.value)}><MenuItem value="">Todos</MenuItem>{paymentStatusOptions.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField></Grid>
-            <Grid item xs={12} sm={6} md={3}><TextField select fullWidth label="Método de Pagamento" value={filters.paymentMethod || ''} onChange={e => handleFilterChange('paymentMethod', e.target.value)}><MenuItem value="">Todos</MenuItem>{paymentMethodOptions.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</TextField></Grid>
-            {areFiltersActive && <Grid item xs={12} sm={6} md={3} display="flex" alignItems="center"><Button onClick={handleClearFilters}>Limpar Filtros</Button></Grid>}
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField 
+              fullWidth 
+              label="Buscar por nome/email" 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <DatePicker 
+              label="Data de Início" 
+              value={filters.startDate || null} 
+              onChange={date => handleFilterChange('startDate', date)} 
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <DatePicker 
+              label="Data de Fim" 
+              value={filters.endDate || null} 
+              onChange={date => handleFilterChange('endDate', date)} 
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField 
+              select 
+              fullWidth 
+              label="Treinador" 
+              value={filters.coachId || ''} 
+              onChange={e => handleFilterChange('coachId', e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {coaches.map(c => (
+                <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField 
+              select 
+              fullWidth 
+              label="Plano" 
+              value={filters.planId || ''} 
+              onChange={e => handleFilterChange('planId', e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {plans.map(p => (
+                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField 
+              select 
+              fullWidth 
+              label="Status do Pagamento" 
+              value={filters.paymentStatus || ''} 
+              onChange={e => handleFilterChange('paymentStatus', e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {paymentStatusOptions.map(s => (
+                <MenuItem key={s} value={s}>{s}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField 
+              select 
+              fullWidth 
+              label="Método de Pagamento" 
+              value={filters.paymentMethod || ''} 
+              onChange={e => handleFilterChange('paymentMethod', e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {paymentMethodOptions.map(m => (
+                <MenuItem key={m} value={m}>{m}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          {areFiltersActive && (
+            <Grid item xs={12} sm={6} md={3} display="flex" alignItems="center">
+              <Button onClick={handleClearFilters}>Limpar Filtros</Button>
+            </Grid>
+          )}
         </Grid>
 
         <TableContainer>
@@ -172,22 +262,38 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} align="center"><CircularProgress /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} align="center"><CircularProgress /></TableCell></TableRow>
               ) : error ? (
-                <TableRow><TableCell colSpan={8} align="center"><Alert severity="error">{error}</Alert></TableCell></TableRow>
-              ) : data.map((row) => (
-                <TableRow key={row.paymentId}>
-                  <TableCell>{row.student.name}</TableCell>
-                  <TableCell>{row.coach.name}</TableCell>
-                  <TableCell>{row.plan.name}</TableCell>
-                  <TableCell>R$ {Number(row.amount).toFixed(2)}</TableCell>
-                  <TableCell>R$ {Number(row.coachEarnings).toFixed(2)}</TableCell>
-                  <TableCell>R$ {Number(row.platformEarnings).toFixed(2)}</TableCell>
-                  <TableCell>{row.paymentMethod}</TableCell>
-                  <TableCell>{format(new Date(row.nextPaymentDate), 'dd/MM/yyyy')}</TableCell>
-                  <TableCell><Chip label={row.paymentStatus} color={row.paymentStatus === 'CONFIRMED' ? 'success' : row.paymentStatus === 'OVERDUE' ? 'error' : 'warning'} size="small" /></TableCell>
+                <TableRow><TableCell colSpan={9} align="center"><Alert severity="error">{error}</Alert></TableCell></TableRow>
+              ) : (Array.isArray(data) && data.length > 0) ? (
+                data.map((row) => (
+                  <TableRow key={row.paymentId}>
+                    <TableCell>{row.student?.name || 'N/A'}</TableCell>
+                    <TableCell>{row.coach?.name || 'N/A'}</TableCell>
+                    <TableCell>{row.plan?.name || 'N/A'}</TableCell>
+                    <TableCell>R$ {Number(row.amount || 0).toFixed(2)}</TableCell>
+                    <TableCell>R$ {Number(row.coachEarnings || 0).toFixed(2)}</TableCell>
+                    <TableCell>R$ {Number(row.platformEarnings || 0).toFixed(2)}</TableCell>
+                    <TableCell>{row.paymentMethod || 'N/A'}</TableCell>
+                    <TableCell>{row.nextPaymentDate ? format(new Date(row.nextPaymentDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={row.paymentStatus || 'N/A'} 
+                        color={row.paymentStatus === 'CONFIRMED' ? 'success' : row.paymentStatus === 'OVERDUE' ? 'error' : 'warning'} 
+                        size="small" 
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={9} align="center">
+                    <Typography variant="body2" color="textSecondary">
+                      Nenhum registro encontrado
+                    </Typography>
+                  </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </TableContainer>

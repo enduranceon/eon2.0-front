@@ -74,10 +74,6 @@ function ResultsPageContent() {
 export default function ResultsPage() {
   const { user, logout } = useAuth();
 
-  if (!user) {
-    return <CircularProgress />;
-  }
-
   return (
     <ProtectedRoute allowedUserTypes={['ADMIN']}>
       <DashboardLayout user={user} onLogout={logout}>

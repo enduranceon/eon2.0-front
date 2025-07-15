@@ -109,19 +109,11 @@ export default function CheckoutPage() {
       setDataLoading(true);
       setError(null);
       
-      console.log('🔄 Carregando dados do checkout...');
-      
       const [plansData, modalidadesData, coachesData] = await Promise.all([
         enduranceApi.getPlans(),
         enduranceApi.getModalidades(),
         enduranceApi.getCoaches()
       ]);
-      
-      console.log('📊 Dados carregados:', {
-        planos: plansData.data?.length || 0,
-        modalidades: modalidadesData.data?.length || 0,
-        treinadores: coachesData.data?.length || 0
-      });
       
       setPlans(plansData.data);
       setModalidades(modalidadesData.data);
@@ -132,28 +124,18 @@ export default function CheckoutPage() {
       const savedCoachId = localStorage.getItem('onboarding_selected_coach_id');
 
       // Recuperar dados do localStorage
-      console.log('📱 Dados salvos no localStorage:', {
-        planData: savedPlanData,
-        modalidadeData: savedModalidadeData,
-        coachId: savedCoachId
-      });
-
-      // Recuperar plano do localStorage
       if (savedPlanData) {
         try {
           const planData = JSON.parse(savedPlanData);
-          console.log('🎯 Plano recuperado do localStorage:', planData);
           
           const plan = plansData.data.find(p => p.id === planData.id);
           if (plan) {
-            console.log('✅ Plano encontrado na API:', plan.name);
             setSelectedPlan(plan);
             
             // Definir período padrão baseado no primeiro preço disponível
             if (plan.prices && plan.prices.length > 0) {
               setTimeout(() => {
                 setPeriod(plan.prices[0].period);
-                console.log('💰 Período definido:', plan.prices[0].period);
               }, 0);
             }
           } else {
@@ -170,45 +152,26 @@ export default function CheckoutPage() {
       if (savedModalidadeData) {
         try {
           const modalidadeData = JSON.parse(savedModalidadeData);
-          console.log('🏃 Modalidade recuperada do localStorage:', modalidadeData);
           
           const modalidade = modalidadesData.data.find(m => m.id === modalidadeData.id);
           if (modalidade) {
-            console.log('✅ Modalidade encontrada na API:', modalidade.name);
             setSelectedModalidade(modalidade);
           } else {
-            console.warn('⚠️ Modalidade não encontrada na API com ID:', modalidadeData.id);
+            // Modalidade não encontrada na API
           }
         } catch (error) {
-          console.error('❌ Erro ao recuperar modalidade do localStorage:', error);
+          // Erro ao recuperar modalidade do localStorage
         }
-      } else {
-        console.warn('⚠️ Nenhuma modalidade salva no localStorage');
       }
 
       // Recuperar treinador do localStorage
       if (savedCoachId) {
         const coach = coachesData.data.find(c => c.id === savedCoachId);
         if (coach) {
-          console.log('✅ Treinador encontrado na API:', coach.name);
           setSelectedCoach(coach);
         } else {
-          console.warn('⚠️ Treinador não encontrado na API com ID:', savedCoachId);
+          // Treinador não encontrado na API
         }
-      } else {
-        console.log('ℹ️ Nenhum treinador específico selecionado');
-      }
-          // Verificar se os dados essenciais foram carregados
-      if (!selectedPlan || !selectedModalidade) {
-        console.log('⚠️ Dados essenciais não encontrados. Usuário pode completar o onboarding.');
-      } else {
-        setTimeout(() => {
-          console.log('✅ Checkout carregado com sucesso:', {
-            plano: selectedPlan?.name,
-            modalidade: selectedModalidade?.name,
-            treinador: selectedCoach?.name || 'Não selecionado'
-          });
-        }, 0);
       }
 
     } catch (err) {
@@ -301,8 +264,8 @@ export default function CheckoutPage() {
     switch (p) {
       case PlanPeriod.MONTHLY: return 'Mensal';
       case PlanPeriod.QUARTERLY: return 'Trimestral';
-      case PlanPeriod.SEMIANNUALLY: return 'Semestral';
-      case PlanPeriod.YEARLY: return 'Anual';
+      case PlanPeriod.SEMIANNUAL: return 'Semestral';
+      case PlanPeriod.ANNUAL: return 'Anual';
       default: return p;
     }
   };

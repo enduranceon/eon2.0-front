@@ -31,7 +31,7 @@ type PlanScreenType = 'initial' | 'selection' | 'quiz';
 
 const PlanCalculatorWithSelection: React.FC<PlanCalculatorWithSelectionProps> = ({ onPlanSelected }) => {
   const theme = useTheme();
-  const [currentScreen, setCurrentScreen] = useState<PlanScreenType>('initial');
+  const [currentScreen, setCurrentScreen] = useState<PlanScreenType>('quiz'); // Iniciar diretamente no quiz
   const [loading, setLoading] = useState(false);
 
   const handleKnowsPlan = () => {
@@ -47,14 +47,12 @@ const PlanCalculatorWithSelection: React.FC<PlanCalculatorWithSelectionProps> = 
   };
 
   const handlePlanSelected = (planData: any) => {
-    console.log('✅ Plano selecionado via seleção direta:', planData);
     if (onPlanSelected) {
       onPlanSelected(planData);
     }
   };
 
-  const handleQuizPlanSelected = (planData: any) => {
-    console.log('✅ Plano selecionado via quiz:', planData);
+  const handleQuizComplete = (planData: any) => {
     if (onPlanSelected) {
       onPlanSelected(planData);
     }
@@ -182,22 +180,33 @@ const PlanCalculatorWithSelection: React.FC<PlanCalculatorWithSelectionProps> = 
       
       case 'selection':
         return (
-          <PlanSelectionScreen
-            onPlanSelected={handlePlanSelected}
-            onBack={handleBackToInitial}
-          />
+          <Box>
+            <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Button onClick={handleBackToInitial} variant="outlined" size="small">
+                ← Voltar
+              </Button>
+              <Button onClick={handleDoesntKnowPlan} variant="outlined" size="small">
+                Usar Quiz
+              </Button>
+            </Box>
+            
+            <PlanSelectionScreen
+              onPlanSelected={handlePlanSelected}
+              onBack={handleBackToInitial}
+            />
+          </Box>
         );
       
       case 'quiz':
         return (
           <Box>
-            <Box sx={{ mb: 3 }}>
-              <Button onClick={handleBackToInitial} variant="outlined">
-                ← Voltar
+            <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Button onClick={handleBackToInitial} variant="outlined" size="small">
+                ← Escolher Manualmente
               </Button>
             </Box>
             
-            <PlanCalculator onPlanSelected={handleQuizPlanSelected} />
+            <PlanCalculator onPlanSelected={handleQuizComplete} />
           </Box>
         );
       

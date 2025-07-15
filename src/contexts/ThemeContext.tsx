@@ -29,7 +29,7 @@ export function ColorModeProvider({ children }: ColorModeProviderProps) {
         setMode(savedMode);
       }
     } catch (error) {
-      console.log('localStorage is not available, using default light mode.');
+      // localStorage não disponível, usar modo padrão
     }
   }, []);
 
@@ -41,7 +41,7 @@ export function ColorModeProvider({ children }: ColorModeProviderProps) {
           try {
             localStorage.setItem('colorMode', newMode);
           } catch (error) {
-             console.log('localStorage is not available, cannot save color mode.');
+            // localStorage não disponível
           }
           return newMode;
         });

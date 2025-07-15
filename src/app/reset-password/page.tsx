@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import {
   Box,
   Card,
@@ -28,7 +28,7 @@ import { enduranceTheme } from '../../theme/enduranceTheme';
 
 type ResetStatus = 'loading' | 'valid' | 'invalid' | 'success' | 'error';
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const theme = useTheme();
   const router = useRouter();
   const auth = useAuth();
@@ -193,7 +193,7 @@ export default function ResetPasswordPage() {
               variant="contained"
               onClick={handleGoToLogin}
               sx={{
-                background: theme.colors.gradient.primary,
+                background: 'linear-gradient(135deg, #FF8012, #E67300)',
                 minWidth: 140,
               }}
             >
@@ -220,7 +220,7 @@ export default function ResetPasswordPage() {
                 variant="contained"
                 onClick={handleRequestNewToken}
                 sx={{
-                  background: theme.colors.gradient.primary,
+                  background: 'linear-gradient(135deg, #FF8012, #E67300)',
                 }}
               >
                 Solicitar Novo Link
@@ -365,11 +365,11 @@ export default function ResetPasswordPage() {
                 sx={{
                   py: 1.5,
                   mb: 3,
-                  background: theme.colors.gradient.primary,
+                  background: 'linear-gradient(135deg, #FF8012, #E67300)',
                   fontWeight: 'bold',
                   fontSize: '1.1rem',
                   '&:hover': {
-                    background: theme.colors.gradient.secondary,
+                    background: 'linear-gradient(135deg, #E67300, #FF8012)',
                     transform: 'translateY(-2px)',
                   },
                   '&:disabled': {
@@ -402,7 +402,7 @@ export default function ResetPasswordPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: theme.colors.gradient.primary,
+        background: 'linear-gradient(135deg, #FF8012, #E67300)',
         padding: 2,
       }}
     >
@@ -418,7 +418,7 @@ export default function ResetPasswordPage() {
                 width: 64,
                 height: 64,
                 borderRadius: '50%',
-                background: theme.colors.gradient.primary,
+                background: 'linear-gradient(135deg, #FF8012, #E67300)',
                 color: 'white',
                 mb: 2,
               }}
@@ -452,5 +452,13 @@ export default function ResetPasswordPage() {
         </CardContent>
       </Card>
     </Box>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 } 

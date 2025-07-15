@@ -29,13 +29,12 @@ import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Refresh as Refr
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useSnackbar } from 'notistack';
+import toast from 'react-hot-toast';
 
 import ProtectedRoute from '../../../../components/ProtectedRoute';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import { useAuth } from '../../../../contexts/AuthContext';
 import PageHeader from '../../../../components/Dashboard/PageHeader';
-import { useDebounce } from '../../../../hooks/useDebounce';
 import { enduranceApi } from '../../../../services/enduranceApi';
 import { Margin, Plan, CoachLevel, SplitResult } from '../../../../types/api';
 import MarginForm from '../../../../components/Dashboard/Admin/MarginForm';
@@ -66,8 +65,6 @@ function MarginsPageContent() {
   const [splitResult, setSplitResult] = useState<SplitResult | null>(null);
   const [calculating, setCalculating] = useState(false);
 
-  const { enqueueSnackbar } = useSnackbar();
-
   const { control: splitControl, handleSubmit: handleSplitSubmit, reset: resetSplitForm } = useForm<SplitFormData>({
     resolver: zodResolver(splitSchema),
     defaultValues: {
@@ -89,11 +86,11 @@ function MarginsPageContent() {
       setTotalRows(response.pagination.total);
     } catch (err) {
       setError('Erro ao carregar as margens.');
-      enqueueSnackbar('Erro ao carregar as margens.', { variant: 'error' });
+      toast.error('Erro ao carregar as margens.');
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, filters, enqueueSnackbar]);
+  }, [page, rowsPerPage, filters]);
 
   useEffect(() => {
     loadMargins();
@@ -105,11 +102,11 @@ function MarginsPageContent() {
         const response = await enduranceApi.getPlans({ limit: 100 }); // Pega todos os planos
         setPlans(response.data);
       } catch (err) {
-        enqueueSnackbar('Erro ao carregar planos para os filtros.', { variant: 'warning' });
+        toast.error('Erro ao carregar planos para os filtros.');
       }
     }
     fetchPlans();
-  }, [enqueueSnackbar]);
+  }, []);
 
   const handleFilterChange = (key: 'planId' | 'coachLevel', value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -141,10 +138,10 @@ function MarginsPageContent() {
     if (window.confirm('Tem certeza que deseja remover esta margem?')) {
       try {
         await enduranceApi.deleteMargin(id);
-        enqueueSnackbar('Margem removida com sucesso!', { variant: 'success' });
+        toast.success('Margem removida com sucesso!');
         loadMargins();
       } catch (error) {
-        enqueueSnackbar('Erro ao remover a margem.', { variant: 'error' });
+        toast.error('Erro ao remover a margem.');
       }
     }
   };
@@ -161,7 +158,7 @@ function MarginsPageContent() {
       const result = await enduranceApi.calculateSplit(params);
       setSplitResult(result);
     } catch (error) {
-      enqueueSnackbar('Erro ao calcular o split. Verifique se existe uma margem para a combinação selecionada.', { variant: 'error' });
+      toast.error('Erro ao calcular o split. Verifique se existe uma margem para a combinação selecionada.');
     } finally {
       setCalculating(false);
     }
@@ -194,6 +191,7 @@ function MarginsPageContent() {
                 <Typography variant="h6" gutterBottom>
                   Calculadora de Split
                 </Typography>
+                
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
                     <Controller
@@ -288,38 +286,39 @@ function MarginsPageContent() {
             </Box>
             <Box p={2} display="flex" gap={2} alignItems="center">
               <TextField
-                  select
-                  label="Filtrar por Plano"
-                  value={filters.planId || ''}
-                  onChange={(e) => handleFilterChange('planId', e.target.value)}
-                  fullWidth
+                select
+                label="Filtrar por Plano"
+                value={filters.planId || ''}
+                onChange={(e) => handleFilterChange('planId', e.target.value)}
+                fullWidth
+              >
+                <MenuItem value="">Todos os Planos</MenuItem>
+                {plans.map((plan) => (
+                  <MenuItem key={plan.id} value={plan.id}>{plan.name}</MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Filtrar por Nível"
+                value={filters.coachLevel || ''}
+                onChange={(e) => handleFilterChange('coachLevel', e.target.value)}
+                fullWidth
+              >
+                <MenuItem value="">Todos os Níveis</MenuItem>
+                {coachLevels.map((level) => (
+                  <MenuItem key={level} value={String(level)}>{level}</MenuItem>
+                ))}
+              </TextField>
+              {areFiltersActive && (
+                <Button 
+                  onClick={handleClearFilters}
+                  variant="outlined"
                 >
-                  <MenuItem value="">Todos os Planos</MenuItem>
-                  {plans.map((plan) => (
-                    <MenuItem key={plan.id} value={plan.id}>{plan.name}</MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Filtrar por Nível"
-                  value={filters.coachLevel || ''}
-                  onChange={(e) => handleFilterChange('coachLevel', e.target.value)}
-                  fullWidth
-                >
-                  <MenuItem value="">Todos os Níveis</MenuItem>
-                  {coachLevels.map((level) => (
-                    <MenuItem key={level} value={String(level)}>{level}</MenuItem>
-                  ))}
-                </TextField>
-                {areFiltersActive && (
-                  <Button 
-                    onClick={handleClearFilters}
-                    variant="outlined"
-                  >
-                    Limpar Filtros
-                  </Button>
-                )}
+                  Limpar Filtros
+                </Button>
+              )}
             </Box>
+            
             <TableContainer>
               <Table>
                 <TableHead>
@@ -340,32 +339,40 @@ function MarginsPageContent() {
                     <TableRow>
                       <TableCell colSpan={5} align="center"><Alert severity="error">{error}</Alert></TableCell>
                     </TableRow>
-                  ) : margins.map((margin) => (
-                    <TableRow key={margin.id}>
-                      <TableCell>{margin.plan?.name || 'N/A'}</TableCell>
-                      <TableCell>{margin.coachLevel}</TableCell>
-                      <TableCell align="right">{Number(margin.percentage).toFixed(2)}</TableCell>
-                      <TableCell align="center">
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            color: margin.isActive ? 'success.main' : 'error.main',
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          {margin.isActive ? 'Ativa' : 'Inativa'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Editar">
-                          <IconButton onClick={() => handleOpenModal(margin)}><EditIcon /></IconButton>
-                        </Tooltip>
-                        <Tooltip title="Remover">
-                          <IconButton onClick={() => handleDelete(margin.id)}><DeleteIcon /></IconButton>
-                        </Tooltip>
+                  ) : margins.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">
+                        <Typography color="text.secondary">Nenhuma margem encontrada</Typography>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    margins.map((margin) => (
+                      <TableRow key={margin.id}>
+                        <TableCell>{margin.plan?.name || 'N/A'}</TableCell>
+                        <TableCell>{margin.coachLevel}</TableCell>
+                        <TableCell align="right">{Number(margin.percentage).toFixed(2)}</TableCell>
+                        <TableCell align="center">
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: margin.isActive ? 'success.main' : 'error.main',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            {margin.isActive ? 'Ativa' : 'Inativa'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Tooltip title="Editar">
+                            <IconButton onClick={() => handleOpenModal(margin)}><EditIcon /></IconButton>
+                          </Tooltip>
+                          <Tooltip title="Remover">
+                            <IconButton onClick={() => handleDelete(margin.id)}><DeleteIcon /></IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -397,15 +404,11 @@ function MarginsPageContent() {
 export default function MarginsPage() {
   const { user, logout } = useAuth();
 
-  if (!user) {
-    return <CircularProgress />;
-  }
-  
   return (
     <ProtectedRoute allowedUserTypes={['ADMIN']}>
       <DashboardLayout user={user} onLogout={logout}>
         <MarginsPageContent />
       </DashboardLayout>
     </ProtectedRoute>
-  )
+  );
 } 

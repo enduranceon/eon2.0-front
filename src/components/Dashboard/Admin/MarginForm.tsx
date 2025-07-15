@@ -15,7 +15,7 @@ import {
   FormControlLabel,
   Switch,
 } from '@mui/material';
-import { useSnackbar } from 'notistack';
+import toast from 'react-hot-toast';
 
 import { enduranceApi } from '../../../services/enduranceApi';
 import { Margin, Plan, CoachLevel } from '../../../types/api';
@@ -38,7 +38,6 @@ interface MarginFormProps {
 const coachLevels = Object.values(CoachLevel);
 
 export default function MarginForm({ open, onClose, margin }: MarginFormProps) {
-  const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
 
@@ -58,11 +57,11 @@ export default function MarginForm({ open, onClose, margin }: MarginFormProps) {
         const response = await enduranceApi.getPlans({ limit: 100 });
         setPlans(response.data);
       } catch (err) {
-        enqueueSnackbar('Erro ao carregar planos.', { variant: 'error' });
+        toast.error('Erro ao carregar planos.');
       }
     }
     fetchPlans();
-  }, [enqueueSnackbar]);
+  }, []);
 
   useEffect(() => {
     if (margin) {
@@ -85,15 +84,15 @@ export default function MarginForm({ open, onClose, margin }: MarginFormProps) {
     try {
       if (margin) {
         await enduranceApi.updateMargin(margin.id, data);
-        enqueueSnackbar('Margem atualizada com sucesso!', { variant: 'success' });
+        toast.success('Margem atualizada com sucesso!');
       } else {
         await enduranceApi.createMargin(data);
-        enqueueSnackbar('Margem criada com sucesso!', { variant: 'success' });
+        toast.success('Margem criada com sucesso!');
       }
       onClose();
     } catch (error) {
       console.error(error);
-      enqueueSnackbar('Erro ao salvar a margem. Verifique se já não existe uma margem para esta combinação de plano e nível.', { variant: 'error', autoHideDuration: 5000 });
+      toast.error('Erro ao salvar a margem. Verifique se já não existe uma margem para esta combinação de plano e nível.');
     } finally {
       setLoading(false);
     }

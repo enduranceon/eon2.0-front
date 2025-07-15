@@ -380,9 +380,7 @@ class PaymentService {
 
   async getActiveSubscription(): Promise<Subscription | null> {
     try {
-      console.log('🔍 PaymentService - Buscando assinatura ativa...');
       const response = await enduranceApi.getActiveSubscription();
-      console.log('📊 PaymentService - Assinatura ativa recebida:', response);
       return response;
     } catch (error) {
       console.error('❌ PaymentService - Erro ao buscar assinatura ativa:', error);
@@ -392,19 +390,7 @@ class PaymentService {
 
   async getPaymentHistory(filters?: PaymentFilters): Promise<PaginatedResponse<Payment>> {
     try {
-      console.log('🔍 PaymentService - Buscando histórico de pagamentos...', filters);
       const response = await enduranceApi.getPayments(filters);
-      console.log('💳 PaymentService - Histórico de pagamentos recebido:', response);
-      
-      // Log adicional sobre o status dos pagamentos
-      if (response && 'data' in response) {
-        const payments = response.data;
-        const statusCounts = payments.reduce((acc, payment) => {
-          acc[payment.status] = (acc[payment.status] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        console.log('📊 PaymentService - Status dos pagamentos:', statusCounts);
-      }
       
       return response;
     } catch (error: any) {
@@ -412,13 +398,10 @@ class PaymentService {
       
       // Se a API não existe (404), tentar gerar dados baseados na assinatura
       if (error?.response?.status === 404) {
-        console.log('🔄 PaymentService - API de pagamentos não encontrada, tentando gerar dados baseados na assinatura...');
-        
         try {
           const subscription = await this.getActiveSubscription();
           if (subscription) {
             const mockPayments = this.generateMockPaymentsFromSubscription(subscription);
-            console.log('🧪 PaymentService - Dados mockados gerados baseados na assinatura:', mockPayments);
             
             return {
               data: mockPayments,

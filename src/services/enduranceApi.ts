@@ -251,6 +251,10 @@ export class EnduranceApiClient {
     return this.delete<any>(`/exams/${examId}/register`);
   }
 
+  async getUserExams(userId: string): Promise<PaginatedResponse<Exam>> {
+    return this.get<PaginatedResponse<Exam>>(`/exams/user/${userId}`);
+  }
+
   // TESTES
   async getAvailableTests(filters?: any): Promise<PaginatedResponse<AvailableTest>> {
     return this.get<PaginatedResponse<AvailableTest>>('/tests', filters);
@@ -266,6 +270,61 @@ export class EnduranceApiClient {
 
   async updateTest(id: string, data: Partial<AvailableTest>): Promise<AvailableTest> {
     return this.patch<AvailableTest>(`/tests/${id}`, data);
+  }
+
+  // Dashboard do Coach - Listar Solicitações de Teste
+  async getCoachTestRequests(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    testId?: string;
+    modalidadeId?: string;
+    attended?: boolean;
+  }): Promise<{
+    data: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    summary: {
+      total: number;
+      pending: number;
+      scheduled: number;
+      completed: number;
+      cancelled: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.testId) queryParams.append('testId', params.testId);
+    if (params?.modalidadeId) queryParams.append('modalidadeId', params.modalidadeId);
+    if (params?.attended !== undefined) queryParams.append('attended', params.attended.toString());
+    
+    const url = `/coaches/dashboard/test-appointments${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    return this.get<any>(url);
+  }
+
+  async updateTestRequestStatus(requestId: string, data: {
+    status: string;
+    scheduledAt?: string;
+    location?: string;
+    notes?: string;
+  }): Promise<any> {
+    return this.patch<any>(`/coaches/tests/requests/${requestId}/status`, data);
+  }
+
+  async addTestRequestResults(requestId: string, data: {
+    results: string;
+    notes?: string;
+  }): Promise<any> {
+    return this.post<any>(`/coaches/tests/requests/${requestId}/results`, data);
   }
 
   async deleteTest(id: string): Promise<void> {
@@ -433,12 +492,7 @@ export class EnduranceApiClient {
     });
   }
 
-  async getCoachEarnings(coachId: string, startDate: string, endDate: string): Promise<any> {
-    return this.get<any>(`/reports/coach/${coachId}/earnings`, {
-      startDate,
-      endDate,
-    });
-  }
+  // Método getCoachEarnings removido - usando novo método nos métodos específicos do coach
 
   // CARTEIRA (MOEDAS)
   async getWalletBalance(): Promise<WalletBalance> {
@@ -518,6 +572,324 @@ export class EnduranceApiClient {
     link.remove();
   }
 
+  // NOVOS ENDPOINTS PARA IA E DASHBOARD ADMINISTRATIVO
+
+  // Sistema de IA e Analytics
+  async getActivities(params?: {
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    userId?: string;
+    limit?: number;
+    page?: number;
+  }): Promise<any[]> {
+    return this.get<any[]>('/analytics/activities', params);
+  }
+
+  async getSystemHealth(): Promise<any> {
+    return this.get<any>('/analytics/system-health');
+  }
+
+  async getCriticalAlerts(): Promise<any[]> {
+    return this.get<any[]>('/analytics/alerts/critical');
+  }
+
+  async getUserSessions(userId: string): Promise<any> {
+    return this.get<any>(`/users/${userId}/sessions`);
+  }
+
+  async getPredictiveAnalysis(params?: {
+    period?: string;
+    modules?: string[];
+  }): Promise<any> {
+    return this.get<any>('/analytics/predictive', params);
+  }
+
+  // Dashboard KPIs
+  async getDashboardKPIs(params?: { period?: string }): Promise<any> {
+    return this.get<any>('/dashboard/kpis', params);
+  }
+
+  async getModuleStats(): Promise<any> {
+    return this.get<any>('/dashboard/module-stats');
+  }
+
+  async getRevenueChart(params?: {
+    period?: string;
+    granularity?: string;
+  }): Promise<any[]> {
+    return this.get<any[]>('/analytics/revenue-chart', params);
+  }
+
+  async getExecutiveInsights(params?: {
+    limit?: number;
+    priority?: string;
+  }): Promise<any[]> {
+    return this.get<any[]>('/dashboard/insights', params);
+  }
+
+  // Dados Financeiros Expandidos
+  async getFinancialSummaryNew(params?: {
+    startDate?: string;
+    endDate?: string;
+  }): Promise<any> {
+    return this.get<any>('/finance/summary', params);
+  }
+
+  async getFinancialRecordsNew(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    method?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+    coachId?: string;
+    planId?: string;
+  }): Promise<PaginatedResponse<any>> {
+    return this.get<PaginatedResponse<any>>('/finance/records', params);
+  }
+
+  async getRevenueReportNew(params?: {
+    period: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<any> {
+    return this.get<any>('/finance/revenue-report', params);
+  }
+
+  async exportFinanceReport(data: any): Promise<Blob> {
+    const response = await this.api.post('/finance/export-pdf', data, {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  // Estatísticas de Usuários
+  async getUserStats(params?: { period?: string }): Promise<any> {
+    return this.get<any>('/users/stats', params);
+  }
+
+  // Estatísticas de Coaches
+  async getCoachStats(): Promise<any> {
+    return this.get<any>('/coaches/stats');
+  }
+
+  async getCoachSubaccountStats(): Promise<any> {
+    return this.get<any>('/coaches/subaccount-stats');
+  }
+
+  // =============================================================================
+  // MÉTODOS ESPECÍFICOS DO DASHBOARD DO COACH
+  // =============================================================================
+
+  // Perfil do Treinador
+  async getCoachProfile(): Promise<any> {
+    return this.get<any>('/coaches/profile');
+  }
+
+  async updateCoachProfile(data: any): Promise<any> {
+    return this.put<any>('/coaches/profile', data);
+  }
+
+  // Gerenciamento de Alunos
+  async getCoachStudents(params?: { modalidadeId?: string; planId?: string; status?: string }): Promise<any> {
+    return this.get<any>('/coaches/students', params);
+  }
+
+  async updateCoachStudentStatus(studentId: string, data: { isActive: boolean }): Promise<any> {
+    return this.patch<any>(`/coaches/students/${studentId}/status`, data);
+  }
+
+  // Gerenciamento de Provas
+  async getCoachExams(params?: { page?: number; limit?: number }): Promise<any> {
+    return this.get<any>('/coaches/exams', params);
+  }
+
+  async createCoachExam(data: any): Promise<any> {
+    return this.post<any>('/coaches/exams', data);
+  }
+
+  async updateCoachExam(examId: string, data: any): Promise<any> {
+    return this.put<any>(`/coaches/exams/${examId}`, data);
+  }
+
+  async deleteCoachExam(examId: string): Promise<any> {
+    return this.delete<any>(`/coaches/exams/${examId}`);
+  }
+
+  // Dashboard do Coach - Listar Inscrições em Provas
+  async getCoachExamRegistrations(params?: {
+    page?: number;
+    limit?: number;
+    examId?: string;
+    modalidadeId?: string;
+    attended?: boolean;
+  }): Promise<{
+    data: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    summary: {
+      total: number;
+      attended: number;
+      pending: number;
+      upcomingExams: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.examId) queryParams.append('examId', params.examId);
+    if (params?.modalidadeId) queryParams.append('modalidadeId', params.modalidadeId);
+    if (params?.attended !== undefined) queryParams.append('attended', params.attended.toString());
+    
+    const url = `/coaches/dashboard/exam-registrations${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return this.get<any>(url);
+  }
+
+  // Dashboard do Coach - Confirmar Presença em Prova
+  async confirmExamAttendance(registrationId: string): Promise<any> {
+    return this.post<any>('/coaches/dashboard/confirm-attendance', { registrationId });
+  }
+
+  // Dashboard do Coach - Registrar Resultado de Teste
+  async recordTestResult(data: {
+    testId: string;
+    userId: string;
+    value: number;
+    unit?: string;
+    notes?: string;
+  }): Promise<any> {
+    return this.post<any>('/coaches/dashboard/record-test-result', data);
+  }
+
+  // Adicionar Resultados (método legado)
+  async addExamResult(examId: string, data: any): Promise<any> {
+    return this.post<any>(`/coaches/exams/${examId}/results`, data);
+  }
+
+  // Relatórios Financeiros
+  async getCoachEarnings(params?: { period?: 'monthly' | 'yearly' }): Promise<any> {
+    return this.get<any>('/coaches/financial/earnings', params);
+  }
+
+  // Analytics do Coach
+  async getCoachAnalytics(): Promise<any> {
+    return this.get<any>('/coaches/dashboard/analytics');
+  }
+
+  // Gerenciamento de Modalidades do Coach
+  async getCoachModalidades(): Promise<any> {
+    return this.get<any>('/coaches/modalidades');
+  }
+
+  async getCoachModalidadesAvailable(): Promise<any> {
+    return this.get<any>('/coaches/modalidades/available');
+  }
+
+  async linkCoachModalidade(modalidadeId: string): Promise<any> {
+    return this.post<any>('/coaches/modalidades', { modalidadeId });
+  }
+
+  async unlinkCoachModalidade(modalidadeId: string): Promise<any> {
+    return this.delete<any>(`/coaches/modalidades/${modalidadeId}`);
+  }
+
+  // Gerenciamento de Planos do Coach
+  async getCoachPlans(): Promise<any> {
+    return this.get<any>('/coaches/plans');
+  }
+
+  async getCoachPlansAvailable(): Promise<any> {
+    return this.get<any>('/coaches/plans/available');
+  }
+
+  async linkCoachPlan(planId: string): Promise<any> {
+    return this.post<any>('/coaches/plans', { planId });
+  }
+
+  async unlinkCoachPlan(planId: string): Promise<any> {
+    return this.delete<any>(`/coaches/plans/${planId}`);
+  }
+
+  // Estatísticas de Planos
+  async getPlanStats(): Promise<any> {
+    return this.get<any>('/plans/stats');
+  }
+
+  // Estatísticas de Eventos
+  async getEventStats(): Promise<any> {
+    return this.get<any>('/events/stats');
+  }
+
+  async getEventsWithFilters(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    modalidadeId?: string;
+    search?: string;
+  }): Promise<PaginatedResponse<any>> {
+    return this.get<PaginatedResponse<any>>('/events', params);
+  }
+
+  // Estatísticas de Testes
+  async getTestStats(): Promise<any> {
+    return this.get<any>('/tests/stats');
+  }
+
+  // Sistema de Notificações
+  async getNotificationsByModule(moduleId: string): Promise<any[]> {
+    return this.get<any[]>(`/notifications/by-module/${moduleId}`);
+  }
+
+  async getUserNotifications(userId: string, params?: {
+    unreadOnly?: boolean;
+    limit?: number;
+  }): Promise<any[]> {
+    return this.get<any[]>(`/notifications/user/${userId}`, params);
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<{ success: boolean }> {
+    return this.put<{ success: boolean }>(`/notifications/${notificationId}/read`);
+  }
+
+  // Estatísticas de Margens
+  async getMarginStats(): Promise<any> {
+    return this.get<any>('/margins/stats');
+  }
+
+  async getMarginsWithFilters(params?: {
+    page?: number;
+    limit?: number;
+    coachLevel?: string;
+    planId?: string;
+    isActive?: boolean;
+  }): Promise<PaginatedResponse<any>> {
+    return this.get<PaginatedResponse<any>>('/margins', params);
+  }
+
+  // Estatísticas de Solicitações
+  async getRequestStats(): Promise<any> {
+    return this.get<any>('/requests/stats');
+  }
+
+  async getRequestsWithFilters(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    type?: string;
+    search?: string;
+  }): Promise<PaginatedResponse<any>> {
+    return this.get<PaginatedResponse<any>>('/requests', params);
+  }
+
   // UTILITÁRIOS
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
     return this.get<{ status: string; timestamp: string }>('/health');
@@ -544,6 +916,99 @@ export class EnduranceApiClient {
 
   async retryWebhook(eventId: string): Promise<void> {
     return this.post<void>(`/admin/webhooks/${eventId}/retry`);
+  }
+  // Dashboard do Coach - Endpoints Financeiros
+  
+  // Listar Ganhos Financeiros com Filtros
+  async getCoachFinancialEarnings(params?: {
+    page?: number;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+    studentId?: string;
+    planId?: string;
+    modalidadeId?: string;
+    paymentStatus?: string;
+    subscriptionStatus?: string;
+  }): Promise<{
+    data: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    summary: {
+      totalCoachEarnings: number;
+      totalPlatformAmount: number;
+      totalAmount: number;
+      overallMarginPercentage: number;
+      transactionCount: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.studentId) queryParams.append('studentId', params.studentId);
+    if (params?.planId) queryParams.append('planId', params.planId);
+    if (params?.modalidadeId) queryParams.append('modalidadeId', params.modalidadeId);
+    if (params?.paymentStatus) queryParams.append('paymentStatus', params.paymentStatus);
+    if (params?.subscriptionStatus) queryParams.append('subscriptionStatus', params.subscriptionStatus);
+    
+    const url = `/coaches/financial/earnings${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return this.get<any>(url);
+  }
+
+  // Obter Totais por Período
+  async getCoachFinancialPeriodTotals(data: {
+    startDate: string;
+    endDate: string;
+    modalidadeId?: string;
+    planId?: string;
+    paymentStatus?: string;
+  }): Promise<{
+    period: {
+      startDate: string;
+      endDate: string;
+    };
+    totals: {
+      coachEarnings: number;
+      platformAmount: number;
+      totalAmount: number;
+      marginPercentage: number;
+      transactionCount: number;
+    };
+    breakdown: {
+      byPlan: Array<{
+        planName: string;
+        totalAmount: number;
+        transactionCount: number;
+      }>;
+      byModalidade: Array<{
+        modalidadeName: string;
+        totalAmount: number;
+        transactionCount: number;
+      }>;
+    };
+  }> {
+    return this.post<any>('/coaches/financial/period-totals', data);
+  }
+
+  // Resumo Financeiro
+  async getCoachFinancialSummary(): Promise<{
+    totalEarnings: number;
+    monthlyEarnings: number;
+    yearlyEarnings: number;
+    pendingPayments: number;
+    currentMonth: number;
+    currentYear: number;
+  }> {
+    return this.get<any>('/coaches/financial/summary');
   }
 }
 

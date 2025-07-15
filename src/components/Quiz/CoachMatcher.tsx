@@ -170,10 +170,6 @@ const questions: QuizQuestion[] = [
 ];
 
 const findBestCoach = (coaches: User[], answers: Record<string, any>): { coach: User; score: number; matchReasons: string[] } | null => {
-  console.log('🔍 Encontrando melhor treinador...');
-  console.log('📝 Respostas recebidas:', answers);
-  console.log('👥 Treinadores disponíveis:', coaches.length);
-
   if (!coaches.length) return null;
 
   // Algoritmo inteligente de matching baseado nas respostas
@@ -181,11 +177,8 @@ const findBestCoach = (coaches: User[], answers: Record<string, any>): { coach: 
     let score = 0;
     const matchReasons: string[] = [];
 
-    console.log(`⚖️ Avaliando ${coach.name}:`);
-
     // Filtro: apenas treinadores ativos
     if (!coach.isActive) {
-      console.log(`  ❌ Treinador inativo`);
       return { coach, score: -1, matchReasons }; // Pontuação -1 para desqualificar
     }
 
@@ -200,9 +193,6 @@ const findBestCoach = (coaches: User[], answers: Record<string, any>): { coach: 
       if (levelMatch[answers.tempo5k]?.includes(coach.coachLevel)) {
         score += 35;
         matchReasons.push(`Nível ideal para ${answers.tempo5k}`);
-        console.log(`  ✅ Nível compatível (+35): ${coach.coachLevel} para ${answers.tempo5k}`);
-      } else {
-        console.log(`  ⚠️ Nível não ideal: ${coach.coachLevel} para ${answers.tempo5k}`);
       }
     }
 
@@ -212,11 +202,9 @@ const findBestCoach = (coaches: User[], answers: Record<string, any>): { coach: 
       if (specialization.isSpecialist) {
         score += 25;
         matchReasons.push(`Especialista em ${answers.modalidade}`);
-        console.log(`  ✅ Especialização (+25): ${specialization.reason}`);
       } else {
         score += 10;
         matchReasons.push(`Atende modalidade ${answers.modalidade}`);
-        console.log(`  ✅ Modalidade compatível (+10): ${specialization.reason}`);
       }
     }
 
@@ -226,7 +214,6 @@ const findBestCoach = (coaches: User[], answers: Record<string, any>): { coach: 
       if (objectiveMatch.score > 0) {
         score += objectiveMatch.score;
         matchReasons.push(objectiveMatch.reason);
-        console.log(`  ✅ Objetivo compatível (+${objectiveMatch.score}): ${objectiveMatch.reason}`);
       }
     }
 
@@ -241,7 +228,6 @@ const findBestCoach = (coaches: User[], answers: Record<string, any>): { coach: 
       if (styleMatch[answers.estilo]?.includes(coach.coachLevel || '')) {
         score += 20;
         matchReasons.push(`Estilo de acompanhamento ideal`);
-        console.log(`  ✅ Estilo compatível (+20): ${answers.estilo}`);
       }
     }
 
@@ -249,15 +235,12 @@ const findBestCoach = (coaches: User[], answers: Record<string, any>): { coach: 
     if (coach.coachLevel === CoachLevel.ESPECIALISTA) {
       score += 15;
       matchReasons.push('Máxima experiência profissional');
-      console.log(`  ✅ Bonus especialista (+15)`);
     } else if (coach.coachLevel === CoachLevel.SENIOR) {
       score += 10;
       matchReasons.push('Alta experiência profissional');
-      console.log(`  ✅ Bonus senior (+10)`);
     } else if (coach.coachLevel === CoachLevel.PLENO) {
       score += 5;
       matchReasons.push('Experiência sólida');
-      console.log(`  ✅ Bonus pleno (+5)`);
     }
 
     // Score mínimo para evitar matches ruins
@@ -265,8 +248,6 @@ const findBestCoach = (coaches: User[], answers: Record<string, any>): { coach: 
       score = Math.max(score, 10); // Score mínimo para treinadores ativos
     }
 
-    console.log(`  📊 Score final: ${score}`);
-    console.log(`  📝 Motivos: ${matchReasons.join(', ')}`);
     return { coach, score, matchReasons };
   });
 
@@ -274,9 +255,6 @@ const findBestCoach = (coaches: User[], answers: Record<string, any>): { coach: 
   const sortedCoaches = scoredCoaches
     .filter(c => c.score >= 0)
     .sort((a, b) => b.score - a.score);
-
-  console.log('🏆 Ranking de treinadores:');
-  sortedCoaches.forEach(c => console.log(`  - ${c.coach.name}: ${c.score} pontos`));
 
   if (sortedCoaches.length > 0) {
     return sortedCoaches[0];
@@ -498,8 +476,6 @@ export default function CoachMatcher({ onComplete }: CoachMatcherProps) {
       const activeCoaches = response.data;
 
       if (!activeCoaches || activeCoaches.length === 0) {
-        console.warn('⚠️ Nenhum treinador ativo encontrado. Criando treinadores de fallback.');
-        
         const fallbackCoaches: User[] = [
           { id: 'coach-1', name: 'João da Corrida', email: 'joao@example.com', isActive: true, userType: UserType.COACH, coachLevel: CoachLevel.PLENO, bio: 'Focado em corrida de rua para todos os níveis.', image: `https://i.pravatar.cc/150?u=coach-1`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
           { id: 'coach-2', name: 'Maria do Triathlon', email: 'maria@example.com', isActive: true, userType: UserType.COACH, coachLevel: CoachLevel.SENIOR, bio: 'Especialista em preparação para provas de triathlon.', image: `https://i.pravatar.cc/150?u=coach-2`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
@@ -519,13 +495,11 @@ export default function CoachMatcher({ onComplete }: CoachMatcherProps) {
   };
 
   const handleComplete = (completedAnswers: Record<string, any>): QuizResult => {
-    console.log('🏁 Quiz concluído, processando resultado...');
     setAnswers(completedAnswers);
 
     const bestCoachResult = findBestCoach(coaches, completedAnswers);
     
     if (bestCoachResult && bestCoachResult.coach) {
-      console.log('🏆 Melhor treinador encontrado:', bestCoachResult.coach.name);
       setMatchResult({ ...bestCoachResult, answers: completedAnswers });
       return {
         id: 'coach-found',
@@ -533,7 +507,6 @@ export default function CoachMatcher({ onComplete }: CoachMatcherProps) {
         description: `Encontramos o treinador perfeito para você: ${bestCoachResult.coach.name}.`,
       };
     } else {
-      console.log('😞 Nenhum treinador encontrado.');
       return {
         id: 'no-coach-found',
         title: "Nenhum Treinador Encontrado",
@@ -543,7 +516,6 @@ export default function CoachMatcher({ onComplete }: CoachMatcherProps) {
   };
 
   const handleSelectCoach = (coach: User) => {
-    console.log('✅ Treinador selecionado:', coach);
     if (onComplete) {
       onComplete(coach);
     }

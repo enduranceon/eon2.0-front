@@ -70,23 +70,19 @@ const PlanSelectionScreen: React.FC<PlanSelectionScreenProps> = ({ onPlanSelecte
   const loadPlansAndModalidades = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
       const [plansResponse, modalidadesResponse] = await Promise.all([
         enduranceApi.getPlans(),
         enduranceApi.getModalidades()
       ]);
-
-      // Extrair dados do response
-      const plansData = plansResponse?.data || [];
-      const modalidadesData = modalidadesResponse?.data || [];
       
-      // Garantir que são arrays
+      const plansData = plansResponse?.data || plansResponse || [];
+      const modalidadesData = modalidadesResponse?.data || modalidadesResponse || [];
+      
       setPlans(Array.isArray(plansData) ? plansData : []);
       setModalidades(Array.isArray(modalidadesData) ? modalidadesData : []);
     } catch (err) {
       console.error('❌ Erro ao carregar planos:', err);
-      setError('Erro ao carregar planos. Tente novamente.');
+      setError('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
@@ -160,8 +156,6 @@ const PlanSelectionScreen: React.FC<PlanSelectionScreenProps> = ({ onPlanSelecte
       modalidadeType: selectedModalidade.name.toLowerCase().includes('triathlon') ? 'triathlon' : 'corrida',
     };
 
-    console.log('✅ Plano selecionado:', planData);
-    
     // Usar setTimeout para evitar setState durante render
     setTimeout(() => {
       onPlanSelected(planData);

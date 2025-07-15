@@ -6,6 +6,7 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ColorModeProvider } from '@/contexts/ThemeContext';
 import { LoadingProvider } from '@/contexts/LoadingContext';
+import { AINotificationProvider } from '@/contexts/AINotificationContext';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
 
@@ -55,19 +56,21 @@ export default function RootLayout({
         <AuthProvider>
           <ColorModeProvider>
             <LoadingProvider>
-              <NextTopLoader
-                color="#FF8012"
-                initialPosition={0.08}
-                crawlSpeed={200}
-                height={3}
-                crawl={true}
-                showSpinner={false}
-                easing="ease"
-                speed={200}
-                shadow="0 0 10px #FF8012,0 0 5px #FF8012"
-              />
-              {children}
-              <Toaster richColors position="top-right" />
+              <AINotificationProvider>
+                <NextTopLoader
+                  color="#FF8012"
+                  initialPosition={0.08}
+                  crawlSpeed={200}
+                  height={3}
+                  crawl={true}
+                  showSpinner={false}
+                  easing="ease"
+                  speed={200}
+                  shadow="0 0 10px #FF8012,0 0 5px #FF8012"
+                />
+                {children}
+                <Toaster richColors position="top-right" />
+              </AINotificationProvider>
             </LoadingProvider>
           </ColorModeProvider>
         </AuthProvider>

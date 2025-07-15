@@ -12,6 +12,7 @@ import {
   IconButton,
   Fade,
   Zoom,
+  CircularProgress,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -136,34 +137,25 @@ export default function QuizBase({
           mx: 'auto',
           p: 4,
           textAlign: 'center',
+          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
           color: 'white',
           position: 'relative',
           overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
-            zIndex: 0,
-          },
         }}
       >
-        <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+        <CardContent>
           {icon && (
-            <Box sx={{ fontSize: 80, mb: 2 }}>
+            <Box sx={{ fontSize: 80, mb: 2, color: 'white' }}>
               {icon}
             </Box>
           )}
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
+          <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ color: 'white' }}>
             {title}
           </Typography>
-          <Typography variant="h6" sx={{ mb: 3, opacity: 0.9 }}>
+          <Typography variant="h6" sx={{ mb: 3, color: 'rgba(255, 255, 255, 0.9)' }}>
             {subtitle}
           </Typography>
-          <Typography variant="body1" sx={{ mb: 4, opacity: 0.8 }}>
+          <Typography variant="body1" sx={{ mb: 4, color: 'rgba(255, 255, 255, 0.8)' }}>
             Leva apenas {Math.ceil(questions.length / 2)} minuto{questions.length > 2 ? 's' : ''}
           </Typography>
           <Button
@@ -175,12 +167,12 @@ export default function QuizBase({
               py: 1.5,
               fontSize: '1.1rem',
               fontWeight: 'bold',
-              background: 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
               backdropFilter: 'blur(10px)',
               border: '2px solid rgba(255, 255, 255, 0.3)',
               color: 'white',
               '&:hover': {
-                background: 'rgba(255, 255, 255, 0.3)',
+                backgroundColor: 'rgba(255, 255, 255, 0.3)',
                 transform: 'translateY(-2px)',
               },
             }}
@@ -231,6 +223,35 @@ export default function QuizBase({
     );
   }
 
+  // Verificar se há perguntas disponíveis
+  if (!questions || questions.length === 0) {
+    return (
+      <Card sx={{ maxWidth: 700, mx: 'auto', p: 4, textAlign: 'center' }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom color="text.primary">
+            Ops! Não há perguntas disponíveis
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Por favor, tente novamente mais tarde.
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!currentQuestion) {
+    return (
+      <Card sx={{ maxWidth: 700, mx: 'auto', p: 4, textAlign: 'center' }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom color="text.primary">
+            Carregando pergunta...
+          </Typography>
+          <CircularProgress sx={{ mt: 2 }} />
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Tela de pergunta
   return (
     <Card sx={{ maxWidth: 700, mx: 'auto' }}>
@@ -262,17 +283,17 @@ export default function QuizBase({
       <CardContent sx={{ p: 4 }}>
         <Fade in key={currentStep} timeout={300}>
           <Box>
-            <Typography variant="h5" fontWeight="bold" gutterBottom>
-              {currentQuestion.title}
+            <Typography variant="h5" fontWeight="bold" gutterBottom color="text.primary">
+              {currentQuestion?.title || 'Carregando pergunta...'}
             </Typography>
-            {currentQuestion.description && (
+            {currentQuestion?.description && (
               <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                 {currentQuestion.description}
               </Typography>
             )}
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
-              {currentQuestion.options.map((option) => (
+              {currentQuestion?.options?.map((option) => (
                 <Card
                   key={option.id}
                   onClick={() => handleAnswer(currentQuestion.id, option.value)}
@@ -282,13 +303,17 @@ export default function QuizBase({
                     border: 2,
                     borderColor: answers[currentQuestion.id] === option.value
                       ? 'primary.main'
-                      : 'transparent',
+                      : 'rgba(0, 0, 0, 0.12)',
                     backgroundColor: answers[currentQuestion.id] === option.value
-                      ? (theme) => `${theme.palette.primary.main}20` // 20 for ~12% opacity
-                      : 'background.paper',
+                      ? `${theme.palette.primary.main}15`
+                      : theme.palette.background.paper,
+                    boxShadow: answers[currentQuestion.id] === option.value
+                      ? theme.shadows[2]
+                      : theme.shadows[1],
                     '&:hover': {
                       borderColor: 'primary.light',
                       transform: 'translateY(-2px)',
+                      boxShadow: theme.shadows[4],
                     },
                   }}
                 >
@@ -300,7 +325,7 @@ export default function QuizBase({
                         </Box>
                       )}
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="h6" fontWeight="medium">
+                        <Typography variant="h6" fontWeight="medium" color="text.primary">
                           {option.label}
                         </Typography>
                         {option.description && (
@@ -321,6 +346,14 @@ export default function QuizBase({
                 startIcon={<ArrowBackIcon />}
                 onClick={handlePrevious}
                 disabled={currentStep === 0}
+                sx={{
+                  color: 'text.primary',
+                  borderColor: 'rgba(0, 0, 0, 0.23)',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  },
+                }}
               >
                 Anterior
               </Button>
@@ -333,6 +366,15 @@ export default function QuizBase({
                   disabled={!canGoNext}
                   sx={{
                     px: 4,
+                    backgroundColor: 'primary.main',
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: 'primary.dark',
+                    },
+                    '&:disabled': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.12)',
+                      color: 'rgba(0, 0, 0, 0.26)',
+                    },
                   }}
                 >
                   {isLastQuestion ? 'Finalizar' : 'Próximo'}
