@@ -24,8 +24,8 @@ export enum PlanPeriod {
   BIWEEKLY = 'BIWEEKLY',
   MONTHLY = 'MONTHLY',
   QUARTERLY = 'QUARTERLY',
-  SEMIANNUAL = 'SEMIANNUAL',
-  ANNUAL = 'ANNUAL',
+  SEMIANNUALLY = 'SEMIANNUALLY',
+  YEARLY = 'YEARLY',
 }
 
 export enum PaymentStatus {

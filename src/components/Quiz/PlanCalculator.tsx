@@ -417,7 +417,7 @@ const PlanResult = ({
   
   // Extrair preços da API
   const apiPrices = extractPricesFromAPI(plan);
-  const apiSemiannualPrice = apiPrices.semiannual || 0;
+  const apiSemiannualPrice = apiPrices.semiannually || 0;
   const apiMonthlyPrice = apiPrices.monthly || 0;
   
   // Normalizar tipo do plano
@@ -599,154 +599,6 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
     loadPlansAndModalidades();
   }, []);
 
-  // Função para criar planos de fallback
-  const createFallbackPlans = (): Plan[] => {
-    return [
-      {
-        id: 'essencial-corrida',
-        name: 'PLANO ESSENCIAL DE CORRIDA',
-        description: 'Plano ideal para corredores que buscam autonomia com suporte profissional.',
-        enrollmentFee: 0,
-        prices: [
-          { period: PlanPeriod.MONTHLY, price: 250 },
-          { period: PlanPeriod.QUARTERLY, price: 185 },
-          { period: PlanPeriod.SEMIANNUAL, price: 175 },
-          { period: PlanPeriod.ANNUAL, price: 165 },
-        ],
-        modalidades: [
-          {
-            modalidade: {
-              id: 'corrida-modal',
-              name: 'Corrida',
-              description: 'Modalidade focada em corrida de rua, montanha e pista.',
-              icon: '🏃‍♂️',
-              color: '#FF6B6B',
-              isActive: true,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          }
-        ],
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'essencial-triathlon',
-        name: 'PLANO ESSENCIAL DE TRIATHLON',
-        description: 'Plano ideal para triatletas que buscam autonomia com suporte nas três modalidades.',
-        enrollmentFee: 0,
-        prices: [
-          { period: PlanPeriod.MONTHLY, price: 320 },
-          { period: PlanPeriod.QUARTERLY, price: 250 },
-          { period: PlanPeriod.SEMIANNUAL, price: 240 },
-          { period: PlanPeriod.ANNUAL, price: 230 },
-        ],
-        modalidades: [
-          {
-            modalidade: {
-              id: 'triathlon-modal',
-              name: 'Triathlon',
-              description: 'Modalidade que combina natação, ciclismo e corrida.',
-              icon: '🏊‍♂️',
-              color: '#4ECDC4',
-              isActive: true,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          }
-        ],
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'premium-corrida',
-        name: 'PLANO PREMIUM DE CORRIDA',
-        description: 'Plano com acompanhamento próximo e análises detalhadas para alta performance.',
-        enrollmentFee: 0,
-        prices: [
-          { period: PlanPeriod.MONTHLY, price: 390 },
-          { period: PlanPeriod.QUARTERLY, price: 290 },
-          { period: PlanPeriod.SEMIANNUAL, price: 280 },
-          { period: PlanPeriod.ANNUAL, price: 270 },
-        ],
-        modalidades: [
-          {
-            modalidade: {
-              id: 'corrida-modal',
-              name: 'Corrida',
-              description: 'Modalidade focada em corrida de rua, montanha e pista.',
-              icon: '🏃‍♂️',
-              color: '#FF6B6B',
-              isActive: true,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          }
-        ],
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'premium-triathlon',
-        name: 'PLANO PREMIUM DE TRIATHLON',
-        description: 'Plano com acompanhamento próximo e análises detalhadas para alta performance no triathlon.',
-        enrollmentFee: 0,
-        prices: [
-          { period: PlanPeriod.MONTHLY, price: 560 },
-          { period: PlanPeriod.QUARTERLY, price: 420 },
-          { period: PlanPeriod.SEMIANNUAL, price: 410 },
-          { period: PlanPeriod.ANNUAL, price: 400 },
-        ],
-        modalidades: [
-          {
-            modalidade: {
-              id: 'triathlon-modal',
-              name: 'Triathlon',
-              description: 'Modalidade que combina natação, ciclismo e corrida.',
-              icon: '🏊‍♂️',
-              color: '#4ECDC4',
-              isActive: true,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          }
-        ],
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-  };
-
-  // Função para criar modalidades de fallback
-  const createFallbackModalidades = (): Modalidade[] => {
-    return [
-      {
-        id: 'corrida-modal',
-        name: 'Corrida',
-        description: 'Modalidade focada em corrida de rua, montanha e pista.',
-        icon: '🏃‍♂️',
-        color: '#FF6B6B',
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'triathlon-modal',
-        name: 'Triathlon',
-        description: 'Modalidade que combina natação, ciclismo e corrida.',
-        icon: '🏊‍♂️',
-        color: '#4ECDC4',
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-  };
-
   const loadPlansAndModalidades = async () => {
     try {
       setLoading(true);
@@ -770,24 +622,11 @@ export default function PlanCalculator({ onPlanSelected }: PlanCalculatorProps) 
       let finalPlans = plansData;
       let finalModalidades = modalidadesData;
 
-      // Só usar fallback se realmente não há dados da API
-      if (!Array.isArray(plansData) || plansData.length === 0) {
-        finalPlans = createFallbackPlans();
-      }
-
-      if (!Array.isArray(modalidadesData) || modalidadesData.length === 0) {
-        finalModalidades = createFallbackModalidades();
-      }
-
       setPlans(finalPlans);
       setModalidades(finalModalidades);
     } catch (err) {
       console.error('❌ Erro ao carregar planos e modalidades:', err);
-      
-      // Em caso de erro, usar dados de fallback
-      setPlans(createFallbackPlans());
-      setModalidades(createFallbackModalidades());
-      setError(null); // Limpar erro pois temos fallback
+      setError('Erro ao carregar planos e modalidades');
     } finally {
       setLoading(false);
     }

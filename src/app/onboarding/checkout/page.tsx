@@ -262,10 +262,12 @@ export default function CheckoutPage() {
   
   const getPeriodLabel = (p: PlanPeriod) => {
     switch (p) {
+      case PlanPeriod.WEEKLY: return 'Semanal';
+      case PlanPeriod.BIWEEKLY: return 'Quinzenal';
       case PlanPeriod.MONTHLY: return 'Mensal';
       case PlanPeriod.QUARTERLY: return 'Trimestral';
-      case PlanPeriod.SEMIANNUAL: return 'Semestral';
-      case PlanPeriod.ANNUAL: return 'Anual';
+      case PlanPeriod.SEMIANNUALLY: return 'Semestral';
+      case PlanPeriod.YEARLY: return 'Anual';
       default: return p;
     }
   };

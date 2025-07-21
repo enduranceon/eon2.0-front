@@ -39,6 +39,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { UserType } from '../../types/api';
 import { enduranceTheme } from '../../theme/enduranceTheme';
 import { geocodingService } from '../../services/geocodingService';
+import { validateAndFormatCpf } from '../../utils/cpfUtils';
+import { validateAndFormatEmail } from '../../utils/emailUtils';
 import toast from 'react-hot-toast';
 
 interface AddressData {
@@ -92,6 +94,19 @@ export default function RegisterPage() {
     message: '',
   });
   const [cepLoading, setCepLoading] = useState(false);
+  const [cpfValidation, setCpfValidation] = useState<{
+    isValid: boolean;
+    error?: string;
+  }>({
+    isValid: false,
+  });
+  
+  const [emailValidation, setEmailValidation] = useState<{
+    isValid: boolean;
+    error?: string;
+  }>({
+    isValid: false,
+  });
   
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -143,6 +158,32 @@ export default function RegisterPage() {
           message: '',
         });
       }
+    } else if (field === 'cpf') {
+      // Aplicar máscara e validação para CPF
+      const cpfResult = validateAndFormatCpf(value);
+      setFormData(prev => ({
+        ...prev,
+        [field]: cpfResult.formatted,
+      }));
+      
+      // Atualizar estado de validação do CPF
+      setCpfValidation({
+        isValid: cpfResult.isValid,
+        error: cpfResult.error,
+      });
+    } else if (field === 'email') {
+      // Validar e formatar e-mail
+      const emailResult = validateAndFormatEmail(value);
+      setFormData(prev => ({
+        ...prev,
+        [field]: emailResult.formatted,
+      }));
+      
+      // Atualizar estado de validação do e-mail
+      setEmailValidation({
+        isValid: emailResult.isValid,
+        error: emailResult.error,
+      });
     } else {
       setFormData(prev => ({
         ...prev,
@@ -250,7 +291,9 @@ export default function RegisterPage() {
           formData.confirmPassword &&
           formData.cpf &&
           formData.phone &&
-          formData.password === formData.confirmPassword
+          formData.password === formData.confirmPassword &&
+          cpfValidation.isValid &&
+          emailValidation.isValid
         );
       case 2:
         return !!(
@@ -269,7 +312,18 @@ export default function RegisterPage() {
 
   const handleNext = async () => {
     if (!validateStep(activeStep)) {
-      setError('Por favor, preencha todos os campos obrigatórios');
+      // Verificar se o erro é específico do CPF ou e-mail
+      if (activeStep === 1) {
+        if (formData.cpf && !cpfValidation.isValid) {
+          setError('Por favor, digite um CPF válido');
+        } else if (formData.email && !emailValidation.isValid) {
+          setError('Por favor, digite um e-mail válido');
+        } else {
+          setError('Por favor, preencha todos os campos obrigatórios');
+        }
+      } else {
+        setError('Por favor, preencha todos os campos obrigatórios');
+      }
       return;
     }
 
@@ -311,13 +365,13 @@ export default function RegisterPage() {
         return;
       }
 
-      if (!formData.email.includes('@')) {
-        setError('Por favor, digite um email válido');
+      if (!emailValidation.isValid) {
+        setError('Por favor, digite um e-mail válido');
         return;
       }
 
-      if (formData.cpf.length < 11) {
-        setError('CPF deve ter 11 dígitos');
+      if (!cpfValidation.isValid) {
+        setError('Por favor, digite um CPF válido');
         return;
       }
 
@@ -412,6 +466,9 @@ export default function RegisterPage() {
                   type="email"
                   value={formData.email}
                   onChange={handleChange('email')}
+                  error={!!emailValidation.error}
+                  helperText={emailValidation.error || 'Digite seu e-mail'}
+                  placeholder="seu@email.com"
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -429,6 +486,9 @@ export default function RegisterPage() {
                   label="CPF"
                   value={formData.cpf}
                   onChange={handleChange('cpf')}
+                  error={!!cpfValidation.error}
+                  helperText={cpfValidation.error || 'Digite apenas números'}
+                  placeholder="000.000.000-00"
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">

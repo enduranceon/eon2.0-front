@@ -34,6 +34,7 @@ import Image from 'next/image';
 import { enduranceApi } from '../../services/enduranceApi';
 import { getPendingPaymentData, clearPendingPaymentData } from '../../utils/paymentUtils';
 import { PaymentStatus } from '../../types/api';
+import { saveRememberMeData, getRememberMeData } from '../../utils/rememberMeUtils';
 import LogoSymbol from '@/assets/images/logo/logo_simbolo_preto.png';
 import NextLink from 'next/link';
 
@@ -51,6 +52,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loginStep, setLoginStep] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const emailInputRef = React.useRef<HTMLInputElement>(null);
 
   // Redirecionar se já autenticado
@@ -59,6 +61,18 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [auth.isAuthenticated, router]);
+
+  // Carregar dados de "Lembrar-me" ao montar o componente
+  React.useEffect(() => {
+    const savedData = getRememberMeData();
+    if (savedData) {
+      setFormData(prev => ({
+        ...prev,
+        email: savedData.email,
+      }));
+      setRememberMe(savedData.rememberMe);
+    }
+  }, []);
 
   // Prevenir reload durante submit
   React.useEffect(() => {
@@ -101,6 +115,9 @@ export default function LoginPage() {
         email: formData.email.toLowerCase().trim(),
         password: formData.password 
       });
+      
+      // Salvar dados de "Lembrar-me" se marcado
+      saveRememberMeData(formData.email.toLowerCase().trim(), rememberMe);
       
       // Redirecionar baseado no tipo de usuário
       if (response.user.userType === 'ADMIN') {
@@ -256,10 +273,31 @@ export default function LoginPage() {
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 3 }}>
               <FormControlLabel
-                control={<Checkbox name="remember" color="primary" />}
+                control={
+                  <Checkbox 
+                    name="remember" 
+                    color="primary"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    disabled={showGlobalLoading}
+                  />
+                }
                 label="Lembrar-me"
+                sx={{ 
+                  opacity: showGlobalLoading ? 0.7 : 1,
+                  transition: 'opacity 0.3s ease',
+                }}
               />
-              <Link component={NextLink} href="/forgot-password" variant="body2">
+              <Link 
+                component={NextLink} 
+                href="/forgot-password" 
+                variant="body2"
+                sx={{ 
+                  opacity: showGlobalLoading ? 0.7 : 1,
+                  transition: 'opacity 0.3s ease',
+                  pointerEvents: showGlobalLoading ? 'none' : 'auto',
+                }}
+              >
                 Esqueceu a senha?
               </Link>
             </Box>

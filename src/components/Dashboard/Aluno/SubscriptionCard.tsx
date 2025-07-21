@@ -28,10 +28,12 @@ import PauseSubscriptionModal from '../PauseSubscriptionModal';
 import CancelSubscriptionModal from '../CancelSubscriptionModal';
 
 const periodMapping: { [key in PlanPeriod]?: string } = {
+    [PlanPeriod.WEEKLY]: 'Semanal',
+    [PlanPeriod.BIWEEKLY]: 'Quinzenal',
     [PlanPeriod.MONTHLY]: 'Mensal',
     [PlanPeriod.QUARTERLY]: 'Trimestral',
-    [PlanPeriod.SEMIANNUAL]: 'Semestral',
-    [PlanPeriod.ANNUAL]: 'Anual',
+    [PlanPeriod.SEMIANNUALLY]: 'Semestral',
+    [PlanPeriod.YEARLY]: 'Anual'
 };
 
 interface SubscriptionCardProps {

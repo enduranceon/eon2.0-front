@@ -32,15 +32,17 @@ export default function DashboardPage() {
       const userProfile = await enduranceApi.getProfile();
       setUser(userProfile);
 
-      // Verificar se há pagamento pendente
-      try {
-        const hasPendingPayment = await checkUserHasPendingPayment(userProfile, enduranceApi);
-        if (hasPendingPayment) {
-          router.push('/payment-pending');
-          return;
+      // Verificar se há pagamento pendente (apenas para alunos)
+      if (userProfile.userType === UserType.FITNESS_STUDENT) {
+        try {
+          const hasPendingPayment = await checkUserHasPendingPayment(userProfile, enduranceApi);
+          if (hasPendingPayment) {
+            router.push('/payment-pending');
+            return;
+          }
+        } catch (error) {
+          console.error('Erro ao verificar pagamento pendente:', error);
         }
-      } catch (error) {
-        console.error('Erro ao verificar pagamento pendente:', error);
       }
       
       // Redirecionar para dashboard específico baseado no tipo de usuário
