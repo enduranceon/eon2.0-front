@@ -104,8 +104,8 @@ const getAdminModulesTemplate = () => [
   },
   {
     id: 'events',
-    title: 'Eventos',
-    description: 'Gerenciar provas e eventos',
+    title: 'Provas',
+    description: 'Gerenciar provas da plataforma',
     icon: EventIcon,
     color: '#f44336',
     bgColor: '#ffebee',
@@ -448,6 +448,294 @@ const InsightsPanel = () => {
   );
 };
 
+// Componente de Estatísticas dos Participantes
+const ParticipantStatsPanel = ({ stats, examStats }: { stats: any; examStats: any }) => {
+  // Dados mockados para demonstração (serão substituídos pelos dados reais da API)
+  const mockStats = {
+    totalInscritos: 10,
+    genderDistribution: {
+      male: 6,
+      female: 4,
+      other: 0
+    },
+    averageAge: 34,
+    byDistance: [
+      { distance: "5km", count: 5 },
+      { distance: "10km", count: 3 },
+      { distance: "750m", count: 1 }
+    ]
+  };
+
+  const data = stats || mockStats;
+  
+  
+  
+  // Verificações de segurança para evitar erros
+  const safeGenderDistribution = data?.genderDistribution || { male: 0, female: 0, other: 0 };
+  const safeDistanceDistribution = data?.byDistance || [];
+  const totalInscritos = data?.totalInscritos || 0;
+  const averageAge = data?.averageAge || 0;
+  
+  // Dados gerais das provas
+  const totalExams = examStats?.total || 13;
+  const activeExams = examStats?.active || 8;
+  const totalRegistrations = examStats?.totalRegistrations || 10;
+  const attendanceRate = examStats?.attendanceRate || 60;
+
+  return (
+    <Grid container spacing={3}>
+      {/* Estatísticas Gerais das Provas */}
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+              📊 Estatísticas Gerais das Provas
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center', p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                    {totalExams}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total de Provas
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center', p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                    {activeExams}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Provas Ativas
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center', p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'info.main' }}>
+                    {totalRegistrations}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total de Inscrições
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center', p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                    {attendanceRate}%
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Taxa de Presença
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Estatísticas dos Participantes */}
+      <Grid item xs={12} md={6}>
+        <Card sx={{ height: '100%' }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
+              👥 Estatísticas dos Participantes
+            </Typography>
+                          <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'primary.light', borderRadius: 2 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white' }}>
+                      {totalInscritos}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'white' }}>
+                      Total Inscritos
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'success.light', borderRadius: 2 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white' }}>
+                      {averageAge}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'white' }}>
+                      Idade Média (anos)
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Distribuição por Gênero */}
+      <Grid item xs={12} md={6}>
+        <Card sx={{ height: '100%' }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
+              👥 Distribuição por Gênero
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Box sx={{ flexGrow: 1, mr: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Homens</Typography>
+                  <Typography variant="body2" fontWeight="bold">{safeGenderDistribution.male}</Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={(safeGenderDistribution.male / (safeGenderDistribution.male + safeGenderDistribution.female + safeGenderDistribution.other)) * 100}
+                  sx={{ height: 8, borderRadius: 4, bgcolor: 'grey.200' }}
+                />
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Box sx={{ flexGrow: 1, mr: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Mulheres</Typography>
+                  <Typography variant="body2" fontWeight="bold">{safeGenderDistribution.female}</Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={(safeGenderDistribution.female / (safeGenderDistribution.male + safeGenderDistribution.female + safeGenderDistribution.other)) * 100}
+                  sx={{ height: 8, borderRadius: 4, bgcolor: 'grey.200' }}
+                />
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ flexGrow: 1, mr: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Outros</Typography>
+                  <Typography variant="body2" fontWeight="bold">{safeGenderDistribution.other}</Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={(safeGenderDistribution.other / (safeGenderDistribution.male + safeGenderDistribution.female + safeGenderDistribution.other)) * 100}
+                  sx={{ height: 8, borderRadius: 4, bgcolor: 'grey.200' }}
+                />
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Distribuição por Distância */}
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
+              🏃‍♂️ Distribuição por Distância
+            </Typography>
+            
+            {safeDistanceDistribution.length > 0 ? (
+              <>
+                {/* Resumo */}
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Total de participantes por distância:
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                    {safeDistanceDistribution.reduce((total: number, item: any) => total + (item.count || 0), 0)} participantes
+                  </Typography>
+                </Box>
+
+                {/* Lista de Distâncias */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {safeDistanceDistribution.map((item: any, index: number) => {
+                    const total = safeDistanceDistribution.reduce((sum: number, d: any) => sum + (d.count || 0), 0);
+                    const percentage = total > 0 ? ((item.count || 0) / total * 100).toFixed(1) : 0;
+                    
+                    return (
+                      <Box key={index} sx={{ 
+                        p: 2, 
+                        border: '1px solid', 
+                        borderColor: 'divider', 
+                        borderRadius: 2,
+                        bgcolor: 'background.paper',
+                        '&:hover': {
+                          bgcolor: 'action.hover',
+                          transform: 'translateY(-1px)',
+                          transition: 'all 0.2s ease-in-out'
+                        }
+                      }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                            {item.distance || 'N/A'}
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                              {item.count || 0}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              ({percentage}%)
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <LinearProgress 
+                          variant="determinate" 
+                          value={parseFloat(percentage.toString())}
+                          sx={{ 
+                            height: 8, 
+                            borderRadius: 4, 
+                            bgcolor: 'grey.200',
+                            '& .MuiLinearProgress-bar': {
+                              bgcolor: index % 2 === 0 ? 'primary.main' : 'secondary.main'
+                            }
+                          }}
+                        />
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          {item.count || 0} participante{item.count !== 1 ? 's' : ''} inscrito{item.count !== 1 ? 's' : ''} nesta distância
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+
+                {/* Ranking */}
+                <Box sx={{ mt: 3, p: 2, bgcolor: 'primary.50', borderRadius: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    🏆 Ranking por Popularidade:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {safeDistanceDistribution
+                      .sort((a: any, b: any) => (b.count || 0) - (a.count || 0))
+                      .map((item: any, index: number) => (
+                        <Chip 
+                          key={index}
+                          label={`${index + 1}º ${item.distance} (${item.count})`}
+                          color={index === 0 ? 'primary' : index === 1 ? 'secondary' : 'default'}
+                          variant={index < 3 ? 'filled' : 'outlined'}
+                          size="small"
+                        />
+                      ))}
+                  </Box>
+                </Box>
+              </>
+            ) : (
+              <Box sx={{ 
+                p: 4, 
+                textAlign: 'center',
+                border: '2px dashed',
+                borderColor: 'divider',
+                borderRadius: 2,
+                bgcolor: 'grey.50'
+              }}>
+                <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                  📊 Nenhuma distância registrada ainda
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Quando houver inscrições nas provas, as estatísticas por distância aparecerão aqui.
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+};
+
 // Componente de Gráfico Simples
 const SimpleChart = () => {
   const defaultChartData = [
@@ -506,15 +794,14 @@ const SimpleChart = () => {
 
 // Função para mapear dados do backend real para os módulos
 const mapBackendDataToModules = (backendData: any) => {
-  console.log('🔄 Processando dados do backend:', backendData);
+  
   const moduleMap: any = {};
   
   // Backend retorna array diretamente, não objeto com propriedade data
   if (Array.isArray(backendData)) {
-    console.log('📊 Array de dados encontrado:', backendData);
+    
     backendData.forEach((item: any) => {
       const moduleName = item.moduleName;
-      console.log('📝 Processando módulo:', moduleName, item);
       if (moduleName) {
         moduleMap[moduleName] = {
           total: item.totalRecords || 0,
@@ -528,10 +815,9 @@ const mapBackendDataToModules = (backendData: any) => {
     });
   } else if (backendData?.data && Array.isArray(backendData.data)) {
     // Fallback para estrutura com propriedade data
-    console.log('📊 Array de dados encontrado na propriedade data:', backendData.data);
+    
     backendData.data.forEach((item: any) => {
       const moduleName = item.moduleName;
-      console.log('📝 Processando módulo:', moduleName, item);
       if (moduleName) {
         moduleMap[moduleName] = {
           total: item.totalRecords || 0,
@@ -544,7 +830,7 @@ const mapBackendDataToModules = (backendData: any) => {
       }
     });
   } else {
-    console.log('⚠️ Estrutura de dados inesperada:', backendData);
+    
   }
   
   // Mapear nomes do backend para IDs dos módulos do frontend
@@ -565,12 +851,12 @@ const mapBackendDataToModules = (backendData: any) => {
   
   for (const [backendName, frontendId] of Object.entries(nameMapping)) {
     if (moduleMap[backendName]) {
-      console.log(`🔄 Mapeando ${backendName} -> ${frontendId}:`, moduleMap[backendName]);
+      
       mappedData[frontendId] = moduleMap[backendName];
     }
   }
   
-  console.log('✅ Dados mapeados finais:', mappedData);
+  
   return mappedData;
 };
 
@@ -580,7 +866,7 @@ const mapBackendDataToModules = (backendData: any) => {
     
     // Converter dados do backend para formato esperado
     const processedData = mapBackendDataToModules(moduleData);
-    console.log('📋 Dados processados pelo mapeamento:', processedData);
+    
     
     // Combinar template com dados reais do backend
     return template.map(module => {
@@ -611,6 +897,8 @@ export default function AdminDashboard() {
   const [moduleStats, setModuleStats] = useState<any>(null);
   const [executiveInsights, setExecutiveInsights] = useState<any[]>([]);
   const [revenueChart, setRevenueChart] = useState<any[]>([]);
+  const [participantStats, setParticipantStats] = useState<any>(null);
+const [examStats, setExamStats] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentTab, setCurrentTab] = useState(0);
   const [adminModules, setAdminModules] = useState<any[]>(() =>
@@ -629,13 +917,15 @@ export default function AdminDashboard() {
         kpisResponse, 
         moduleStatsResponse,
         insightsResponse,
-        chartResponse
+        chartResponse,
+        participantStatsResponse
       ] = await Promise.allSettled([
         enduranceApi.getDashboardStats(),
         enduranceApi.getDashboardKPIs(),
         enduranceApi.getModuleStats(),
         enduranceApi.getExecutiveInsights({ limit: 4 }),
-        enduranceApi.getRevenueChart({ period: '6m' })
+        enduranceApi.getRevenueChart({ period: '6m' }),
+        enduranceApi.getExamStats()
       ]);
       
       // Processar respostas
@@ -646,19 +936,19 @@ export default function AdminDashboard() {
       if (kpisResponse.status === 'fulfilled') {
         // Extrair KPIs da estrutura do backend real { success: true, data: {...} }
         const kpisData = kpisResponse.value?.data || kpisResponse.value;
-        console.log('✅ KPIs do backend recebidos:', kpisData);
+
         setDashboardKPIs(kpisData);
       }
       
               if (moduleStatsResponse.status === 'fulfilled') {
-          console.log('✅ Dados do backend module-stats recebidos:', moduleStatsResponse.value);
+  
           setModuleStats(moduleStatsResponse.value);
           // Criar módulos com dados reais do backend
           const modulesWithRealData = createAdminModulesWithRealData(moduleStatsResponse.value);
-          console.log('✅ Módulos processados:', modulesWithRealData);
+  
           setAdminModules(modulesWithRealData);
         } else {
-          console.log('❌ Erro ao carregar module-stats:', moduleStatsResponse.reason);
+  
           // Fallback para template sem dados reais
           setAdminModules(getAdminModulesTemplate());
         }
@@ -669,6 +959,17 @@ export default function AdminDashboard() {
       
       if (chartResponse.status === 'fulfilled') {
         setRevenueChart(chartResponse.value);
+      }
+      
+      if (participantStatsResponse.status === 'fulfilled') {
+
+        // A API retorna os dados dentro de data.participants
+        const statsData = participantStatsResponse.value?.data?.participants;
+        const fullStatsData = participantStatsResponse.value?.data;
+        setParticipantStats(statsData);
+        setExamStats(fullStatsData);
+      } else {
+
       }
       
     } catch (err) {
@@ -807,6 +1108,7 @@ export default function AdminDashboard() {
               <Tab label="🔮 Insights Executivos" />
               <Tab label="📈 Evolução da Receita" />
               <Tab label="📋 Resumo Executivo" />
+              <Tab label="👥 Estatísticas dos Participantes" />
             </Tabs>
 
             {/* Aba 1: Módulos Administrativos */}
@@ -955,6 +1257,14 @@ export default function AdminDashboard() {
                   </Grid>
                 </Grid>
               </Paper>
+            </TabPanel>
+
+            {/* Aba 6: Estatísticas dos Participantes */}
+            <TabPanel value={currentTab} index={5}>
+              <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3 }}>
+                👥 Estatísticas dos Participantes
+              </Typography>
+              <ParticipantStatsPanel stats={participantStats} examStats={examStats} />
             </TabPanel>
           </Box>
         </Container>

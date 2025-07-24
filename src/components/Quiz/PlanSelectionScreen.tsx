@@ -54,16 +54,16 @@ const PlanSelectionScreen: React.FC<PlanSelectionScreenProps> = ({ onPlanSelecte
     loadPlansAndModalidades();
   }, []);
 
-  // Log para debug quando os dados mudam
+  
   useEffect(() => {
     if (plans.length > 0) {
-      console.log('📊 Planos carregados:', plans);
+  
     }
   }, [plans]);
 
   useEffect(() => {
     if (modalidades.length > 0) {
-      console.log('🏃 Modalidades carregadas:', modalidades);
+  
     }
   }, [modalidades]);
 

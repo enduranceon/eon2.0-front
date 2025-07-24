@@ -643,7 +643,7 @@ export default function CoachDashboard() {
                 startIcon={<AddIcon />} 
                 onClick={() => {
                   // Implementar modal de criação de prova
-                  console.log('Criar nova prova');
+          
                 }}
                 sx={{ mr: 2 }}
               >
@@ -654,7 +654,7 @@ export default function CoachDashboard() {
                 startIcon={<ViewIcon />}
                 onClick={() => {
                   // Implementar navegação para lista completa
-                  console.log('Ver todas as provas');
+          
                 }}
               >
                 Ver Todas as Provas

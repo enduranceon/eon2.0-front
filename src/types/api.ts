@@ -295,7 +295,7 @@ export interface Subscription {
   planId: string;
   modalidadeId: string;
   coachId?: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'CANCELLED' | 'EXPIRED';
+  status: 'ACTIVE' | 'INACTIVE' | 'CANCELLED' | 'EXPIRED' | 'ON_LEAVE';
   period: PlanPeriod;
   startDate: string;
   endDate: string;
@@ -498,6 +498,35 @@ export interface UserTest {
   };
 }
 
+export interface ExamDistance {
+  id: string;
+  examId: string;
+  distance: number;
+  unit: string;
+  price: number;
+  maxParticipants: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExamRegistration {
+  id: string;
+  userId: string;
+  examId: string;
+  distanceId?: string;
+  distance?: ExamDistance;
+  attended: boolean;
+  attendanceConfirmedBy?: string;
+  attendanceConfirmedAt?: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
 export interface Exam {
   id: string;
   name: string;
@@ -506,14 +535,11 @@ export interface Exam {
   location: string;
   modalidadeId: string;
   modalidade: Modalidade;
+  price?: number;
+  maxParticipants?: number;
   isActive?: boolean;
-  registrations?: {
-    id: string;
-    userId: string;
-    examId: string;
-    status: string;
-    createdAt: string;
-  }[];
+  distances: ExamDistance[];
+  registrations?: ExamRegistration[];
   createdAt: string;
   updatedAt: string;
 }
@@ -627,33 +653,7 @@ export interface TestAppointment {
   };
 }
 
-export interface ExamRegistration {
-  id: string;
-  attended: boolean;
-  attendanceConfirmedBy?: string;
-  attendanceConfirmedAt?: string;
-  createdAt: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    age?: number;
-  };
-  exam: {
-    id: string;
-    name: string;
-    date: string;
-    location: string;
-    modalidade: {
-      id: string;
-      name: string;
-    };
-  };
-  confirmedBy?: {
-    id: string;
-    name: string;
-  };
-}
+
 
 export interface TestAppointmentsList {
   data: TestAppointment[];
@@ -690,6 +690,10 @@ export interface ExamRegistrationsList {
     pending: number;
     upcomingExams: number;
   };
+}
+
+export interface RegisterForExamRequest {
+  distanceId: string;
 }
 
 export interface ConfirmAttendanceRequest {
@@ -851,5 +855,52 @@ export interface FinancialFilters {
   planId?: string;
   modalidadeId?: string;
   paymentStatus?: PaymentStatus;
-  subscriptionStatus?: 'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | 'PENDING';
+  subscriptionStatus?: 'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | 'PENDING' | 'ON_LEAVE';
+}
+
+// Sistema de Licença Temporária
+export interface LeaveRequest {
+  leaveStartDate: string;
+  leaveDays: number;
+  leaveReason?: string;
+  pauseTraining: boolean;
+  pauseBilling: boolean;
+}
+
+export interface LeaveResponse {
+  message: string;
+  subscription: {
+    id: string;
+    status: string;
+    leaveStartDate?: string;
+    leaveEndDate?: string;
+    leaveDays?: number;
+    leaveReason?: string;
+    pauseTraining: boolean;
+    pauseBilling: boolean;
+  };
+}
+
+export interface LeaveSubscription {
+  id: string;
+  status: string;
+  leaveStartDate?: string;
+  leaveEndDate?: string;
+  leaveDays?: number;
+  leaveReason?: string;
+  pauseTraining: boolean;
+  pauseBilling: boolean;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  plan: {
+    id: string;
+    name: string;
+  };
+  modalidade: {
+    id: string;
+    name: string;
+  };
 } 

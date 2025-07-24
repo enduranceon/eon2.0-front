@@ -32,7 +32,7 @@ const MeuPlanoContent = () => {
             setError(null);
             
             try {
-                console.log('🔍 Carregando dados do plano para usuário:', user?.id);
+            
                 
                 const [subResult, paymentsResult] = await Promise.all([
                     paymentService.getActiveSubscription(),

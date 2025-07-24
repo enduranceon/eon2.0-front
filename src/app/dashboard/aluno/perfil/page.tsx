@@ -78,7 +78,7 @@ export default function StudentProfilePage() {
   const auth = useAuth();
   const router = useRouter();
   
-  // TODOS OS HOOKS DEVEM VIR PRIMEIRO - ANTES DE QUALQUER LÓGICA CONDICIONAL
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -118,7 +118,7 @@ export default function StudentProfilePage() {
     }
   }, [auth.user, auth.isLoading]);
 
-  // AGORA SIM PODEMOS TER EARLY RETURNS - APÓS TODOS OS HOOKS
+  
   if (auth.isLoading || !auth.user) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>

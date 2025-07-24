@@ -11,6 +11,8 @@ import {
   useTheme,
   Alert,
   Fade,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -20,6 +22,7 @@ import OnboardingStepper from '../../../components/Onboarding/OnboardingStepper'
 import { 
   DirectionsRun as RunIcon,
   ArrowForward as ArrowIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
 
 export default function QuizPlanoPage() {
@@ -62,6 +65,18 @@ export default function QuizPlanoPage() {
     router.push('/onboarding/quiz-treinador');
   };
 
+  const handleLogout = async () => {
+    try {
+      setLoading(true);
+      await auth.logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -73,7 +88,25 @@ export default function QuizPlanoPage() {
     >
       <Container maxWidth="lg">
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Box sx={{ textAlign: 'center', mb: 4, position: 'relative' }}>
+          {/* Botão de Logout */}
+          <Box sx={{ position: 'absolute', top: 0, right: 0 }}>
+            <Tooltip title="Sair">
+              <IconButton
+                onClick={handleLogout}
+                disabled={loading}
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': {
+                    color: 'error.main',
+                  },
+                }}
+              >
+                <LogoutIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
           <Box
             sx={{
               display: 'inline-flex',

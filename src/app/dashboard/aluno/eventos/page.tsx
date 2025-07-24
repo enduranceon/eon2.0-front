@@ -1,7 +1,7 @@
 'use client';
 
 /*
- * Página de Eventos do Aluno
+ * Página de Provas do Aluno
  * 
  * Funcionalidade de verificação de inscrições:
  * - Busca todos os exames disponíveis via GET /exams
@@ -58,6 +58,7 @@ import {
 } from '@mui/icons-material';
 import { enduranceApi } from '../../../../services/enduranceApi';
 import { handleApiError } from '../../../../utils/errors';
+import DistanceSelectionModal from '../../../../components/Dashboard/Aluno/DistanceSelectionModal';
 // import { enduranceApi } from '../../../../services/enduranceApi';
 // import dayjs from 'dayjs';
 
@@ -91,15 +92,7 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
     today.setHours(0, 0, 0, 0);
     const examDate = new Date(exam.date);
 
-    console.log(`DEBUG: Status do evento "${exam.name}" para usuário ${userId}:`, {
-      examId: exam.id,
-      isRegistered,
-      registrations: exam.registrations,
-      examDate: exam.date,
-      today: today.toISOString(),
-      isPastEvent: examDate < today,
-      isActive: exam.isActive
-    });
+    // Log removido para produção
 
     // Se o usuário está inscrito
     if (isRegistered) {
@@ -116,7 +109,7 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
       return 'DISPONÍVEL';
     }
 
-    // Fallback para eventos inativos futuros
+    // Fallback para provas inativas futuras
     return 'ENCERRADA';
   };
 
@@ -149,6 +142,28 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
                     <List dense>
                       <ListItem><ListItemIcon sx={{minWidth: 40}}><CategoryIcon color="action"/></ListItemIcon><ListItemText primary="Modalidade" secondary={exam.modalidade?.name || 'Não especificada'} /></ListItem>
                       <ListItem><ListItemIcon sx={{minWidth: 40}}><CalendarIcon color="action"/></ListItemIcon><ListItemText primary="Data" secondary={formatDate(exam.date)} /></ListItem>
+                      {exam.distances && exam.distances.length > 0 && (
+                        <ListItem>
+                          <ListItemIcon sx={{minWidth: 40}}><PlaceIcon color="action"/></ListItemIcon>
+                          <ListItemText 
+                            primary="Distâncias" 
+                            secondaryTypographyProps={{ component: 'div' }}
+                            secondary={
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                {exam.distances.map((distance: any, index: number) => (
+                                  <Chip
+                                    key={distance.id || index}
+                                    label={`${distance.distance}${distance.unit}`}
+                                    size="small"
+                                    variant="outlined"
+                                    color="primary"
+                                  />
+                                ))}
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                      )}
                     </List>
                   </Box>
                   <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -164,7 +179,7 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
                     >
                       {isProcessing ? 'Processando...' 
                        : status === 'INSCRITO' ? 'Ver Detalhes' 
-                       : status === 'DISPONÍVEL' ? 'Inscrever-se' 
+                       : status === 'DISPONÍVEL' ? 'Confirmar Presença' 
                        : 'Encerrada'}
                     </Button>
                   </Box>
@@ -194,7 +209,7 @@ const PastExams = ({ userExams }: any) => {
       const examDate = new Date(exam.date);
       const isPastEvent = examDate < today;
       
-      if (!isPastEvent) return false; // Só mostra eventos passados
+      if (!isPastEvent) return false; // Só mostra provas passadas
 
       const searchMatch = filters.search ? exam.name.toLowerCase().includes(filters.search.toLowerCase()) : true;
       const startDateMatch = filters.startDate ? examDate >= filters.startDate : true;
@@ -310,8 +325,12 @@ export default function EventsPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [isDistanceModalOpen, setIsDistanceModalOpen] = useState(false);
+  const [selectedExamForRegistration, setSelectedExamForRegistration] = useState<any>(null);
+  const [registrationLoading, setRegistrationLoading] = useState(false);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
 
-  // Todos os hooks devem ser chamados antes de qualquer return condicional
+  
   const loadExams = useCallback(async () => {
     if (!auth.user?.id) {
       setError('Usuário não autenticado');
@@ -323,7 +342,7 @@ export default function EventsPage() {
       setLoading(true);
       setError(null);
       
-      // Buscar todos os eventos e os eventos em que o usuário está inscrito
+      // Buscar todas as provas e as provas em que o usuário está inscrito
       const [allExamsResponse, userExamsResponse] = await Promise.all([
         enduranceApi.getExams({ page: 1, limit: 100 }),
         enduranceApi.getUserExams(auth.user.id)
@@ -344,14 +363,14 @@ export default function EventsPage() {
         userExamsData = [];
       }
       
-      console.log('📋 Dados dos exames do usuário processados:', userExamsData);
+      
       
       // Criar um mapa de exames em que o usuário está inscrito
       const userExamIds = new Set(userExamsData?.map((exam: any) => exam.id) || []);
       
       setUserRegistrations(userExamsData || []);
       
-      // Combinar dados de eventos com informações de inscrição
+      // Combinar dados de provas com informações de inscrição
       const examsWithRegistrations = allExamsData?.map((exam: any) => ({
         ...exam,
         registrations: userExamIds.has(exam.id) ? [{
@@ -364,9 +383,7 @@ export default function EventsPage() {
       })) || [];
 
       setAllExams(examsWithRegistrations);
-      console.log('DEBUG: Todos os exames disponíveis:', allExamsData);
-      console.log('DEBUG: Exames em que o usuário está inscrito:', userExamsData);
-      console.log('DEBUG: Exames com informações de inscrição:', examsWithRegistrations);
+      
     } catch (err) {
       console.error('Erro ao carregar provas:', err);
       setError('Erro ao carregar provas.');
@@ -410,15 +427,47 @@ export default function EventsPage() {
   const handleRegister = async (examId: string) => {
     if (!auth.user) return;
     
-    setProcessingId(examId);
-    toast.promise(enduranceApi.registerForExam(examId), {
-      loading: 'Realizando inscrição...',
-      success: () => { 
-        loadExams(); // Recarrega eventos e inscrições
-        return 'Inscrição realizada com sucesso!'; 
-      },
-      error: (err) => handleApiError(err),
-    }).finally(() => setProcessingId(null));
+    // Encontrar a prova selecionada
+    const exam = allExams.find(e => e.id === examId);
+    if (!exam) return;
+    
+    // Se a prova tem distâncias, abrir modal de seleção
+    if (exam.distances && exam.distances.length > 0) {
+      setSelectedExamForRegistration(exam);
+      setIsDistanceModalOpen(true);
+      setRegistrationError(null);
+    } else {
+      // Se não tem distâncias, registrar diretamente
+      setProcessingId(examId);
+      toast.promise(enduranceApi.registerForExam(examId), {
+        loading: 'Realizando inscrição...',
+        success: () => { 
+          loadExams();
+          return 'Inscrição realizada com sucesso!'; 
+        },
+        error: (err) => handleApiError(err),
+      }).finally(() => setProcessingId(null));
+    }
+  };
+
+  const handleRegisterWithDistance = async (distanceId: string) => {
+    if (!selectedExamForRegistration || !auth.user) return;
+    
+    setRegistrationLoading(true);
+    setRegistrationError(null);
+    
+    try {
+      await enduranceApi.registerForExam(selectedExamForRegistration.id, { distanceId });
+      toast.success('Inscrição realizada com sucesso!');
+      loadExams();
+      setIsDistanceModalOpen(false);
+      setSelectedExamForRegistration(null);
+    } catch (error: any) {
+      console.error('Erro ao registrar:', error);
+      setRegistrationError(error.response?.data?.message || 'Erro ao realizar inscrição');
+    } finally {
+      setRegistrationLoading(false);
+    }
   };
 
   const handleCancelRegistration = async () => {
@@ -429,7 +478,7 @@ export default function EventsPage() {
     toast.promise(enduranceApi.cancelExamRegistration(selectedExam.id), {
       loading: 'Cancelando inscrição...',
       success: () => { 
-        loadExams(); // Recarrega eventos e inscrições
+        loadExams(); // Recarrega provas e inscrições
         setIsDetailsModalOpen(false); 
         return 'Inscrição cancelada com sucesso!'; 
       },
@@ -454,7 +503,7 @@ export default function EventsPage() {
         
         <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} aria-label="abas de eventos">
+            <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} aria-label="abas de provas">
               <Tab label="Provas Disponíveis" id="tab-available" aria-controls="tabpanel-available" />
               <Tab label="Histórico de Provas" id="tab-history" aria-controls="tabpanel-history" />
             </Tabs>
@@ -520,6 +569,20 @@ export default function EventsPage() {
           <Button onClick={handleCancelRegistration} color="error" autoFocus>Sim, cancelar</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Modal de seleção de distância */}
+      <DistanceSelectionModal
+        open={isDistanceModalOpen}
+        onClose={() => {
+          setIsDistanceModalOpen(false);
+          setSelectedExamForRegistration(null);
+        }}
+        onConfirm={handleRegisterWithDistance}
+        examName={selectedExamForRegistration?.name || ''}
+        distances={selectedExamForRegistration?.distances || []}
+        loading={registrationLoading}
+        error={registrationError}
+      />
     </DashboardLayout>
   );
 } 

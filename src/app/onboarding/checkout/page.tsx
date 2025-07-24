@@ -27,6 +27,7 @@ import {
   ListItemText,
   CircularProgress,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -54,6 +55,7 @@ import {
   Receipt as BoletoIcon,
   ContentCopy as ContentCopyIcon,
   Security as SecurityIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import CountdownTimer from '../../../components/CountdownTimer';
@@ -293,6 +295,18 @@ export default function CheckoutPage() {
     clearStorageAndRedirectToLogin(router);
   };
 
+  const handleLogout = async () => {
+    try {
+      setLoading(true);
+      await auth.logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (paymentResult) {
     return (
       <Box
@@ -379,7 +393,25 @@ export default function CheckoutPage() {
     >
       <Container maxWidth="lg" sx={{ py: 4 }}>
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Box sx={{ textAlign: 'center', mb: 4, position: 'relative' }}>
+          {/* Botão de Logout */}
+          <Box sx={{ position: 'absolute', top: 0, right: 0 }}>
+            <Tooltip title="Sair">
+              <IconButton
+                onClick={handleLogout}
+                disabled={loading}
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': {
+                    color: 'error.main',
+                  },
+                }}
+              >
+                <LogoutIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
           <Box
             sx={{
               display: 'inline-flex',

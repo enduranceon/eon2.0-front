@@ -3,6 +3,7 @@ import {
   LoginRequest,
   LoginResponse,
   User,
+  UserType,
   Plan,
   Modalidade,
   Exam,
@@ -243,8 +244,8 @@ export class EnduranceApiClient {
     return this.delete<void>(`/exams/${id}`);
   }
 
-  async registerForExam(examId: string): Promise<any> {
-    return this.post<any>(`/exams/${examId}/register`);
+  async registerForExam(examId: string, data?: { distanceId?: string }): Promise<any> {
+    return this.post<any>(`/exams/${examId}/register`, data);
   }
 
   async cancelExamRegistration(examId: string): Promise<any> {
@@ -253,6 +254,10 @@ export class EnduranceApiClient {
 
   async getUserExams(userId: string): Promise<PaginatedResponse<Exam>> {
     return this.get<PaginatedResponse<Exam>>(`/exams/user/${userId}`);
+  }
+
+  async getExamStats(): Promise<any> {
+    return this.get<any>('/exams/stats');
   }
 
   // TESTES
@@ -694,7 +699,92 @@ export class EnduranceApiClient {
 
   // Gerenciamento de Alunos
   async getCoachStudents(params?: { modalidadeId?: string; planId?: string; status?: string }): Promise<any> {
-    return this.get<any>('/coaches/students', params);
+    console.log('🔄 Buscando alunos do treinador...');
+    
+    // Tentativa 1: Endpoint específico de alunos do coach
+    try {
+      console.log('📡 Tentativa 1: Endpoint /coaches/students');
+      const response = await this.get<any>('/coaches/students', params);
+      console.log('✅ Sucesso com endpoint específico:', response);
+      
+      // A API retorna { success: true, data: { total, displayed, students: [...] } }
+      if (response.success && response.data && response.data.students) {
+        return {
+          data: response.data.students,
+          pagination: {
+            page: 1,
+            limit: response.data.displayed || response.data.total,
+            total: response.data.total,
+            totalPages: 1,
+            hasNext: false,
+            hasPrev: false
+          }
+        };
+      }
+      
+      return response;
+    } catch (error) {
+      console.log('❌ Endpoint /coaches/students falhou:', error);
+      
+      // Tentativa 2: Buscar via assinaturas ativas
+      try {
+        console.log('📡 Tentativa 2: Buscar via assinaturas ativas');
+        const subscriptions = await this.getSubscriptions({ 
+          status: 'ACTIVE',
+          ...params 
+        });
+        
+        console.log('📊 Assinaturas encontradas:', subscriptions);
+        
+        // Extrair informações dos alunos das assinaturas
+        const students = subscriptions.data
+          .filter((subscription: any) => subscription.coach) // Filtrar apenas assinaturas com coach
+          .map((subscription: any) => ({
+            id: subscription.user.id,
+            name: subscription.user.name,
+            email: subscription.user.email,
+            image: subscription.user.image,
+            subscriptionId: subscription.id,
+            planName: subscription.plan.name,
+            modalidadeName: subscription.modalidade.name
+          }));
+        
+        console.log('👥 Alunos extraídos das assinaturas:', students);
+        
+        return {
+          data: students,
+          pagination: subscriptions.pagination
+        };
+      } catch (subscriptionError) {
+        console.log('❌ Busca via assinaturas falhou:', subscriptionError);
+        
+        // Tentativa 3: Buscar todos os usuários e filtrar por tipo
+        try {
+          console.log('📡 Tentativa 3: Buscar todos os usuários FITNESS_STUDENT');
+          const users = await this.getUsers({ 
+            userType: UserType.FITNESS_STUDENT,
+            isActive: true,
+            ...params 
+          });
+          
+          console.log('👥 Todos os alunos encontrados:', users);
+          
+          return {
+            data: users.data || users,
+            pagination: users.pagination || { page: 1, limit: users.data?.length || 0, total: users.data?.length || 0, totalPages: 1, hasNext: false, hasPrev: false }
+          };
+        } catch (usersError) {
+          console.log('❌ Busca via usuários falhou:', usersError);
+          
+          // Fallback: retornar array vazio
+          console.log('⚠️ Retornando array vazio como fallback');
+          return {
+            data: [],
+            pagination: { page: 1, limit: 0, total: 0, totalPages: 1, hasNext: false, hasPrev: false }
+          };
+        }
+      }
+    }
   }
 
   async updateCoachStudentStatus(studentId: string, data: { isActive: boolean }): Promise<any> {
@@ -768,6 +858,33 @@ export class EnduranceApiClient {
     notes?: string;
   }): Promise<any> {
     return this.post<any>('/coaches/dashboard/record-test-result', data);
+  }
+
+  // Sistema de Licença Temporária
+  async requestLeave(data: {
+    leaveStartDate: string;
+    leaveDays: number;
+    leaveReason?: string;
+    pauseTraining: boolean;
+    pauseBilling: boolean;
+  }): Promise<any> {
+    return this.post<any>('/subscriptions/request-leave', data);
+  }
+
+  async cancelLeave(): Promise<any> {
+    return this.patch<any>('/subscriptions/cancel-leave');
+  }
+
+  async getLeaves(): Promise<any> {
+    return this.get<any>('/subscriptions/leaves');
+  }
+
+  async approveLeave(requestId: string, adminNotes?: string): Promise<any> {
+    return this.patch<any>(`/subscriptions/leaves/${requestId}/approve`, { adminNotes });
+  }
+
+  async reactivateExpiredLeaves(): Promise<any> {
+    return this.post<any>('/subscriptions/leaves/reactivate-expired');
   }
 
   // Adicionar Resultados (método legado)

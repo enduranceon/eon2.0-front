@@ -85,8 +85,8 @@ export default function AdminExamsPage() {
       setExams(response.data);
       setPagination(response.pagination);
     } catch (err) {
-      console.error('Erro ao carregar eventos:', err);
-      setError('Não foi possível carregar os dados dos eventos.');
+      console.error('Erro ao carregar provas:', err);
+      setError('Não foi possível carregar os dados das provas.');
     } finally {
       setLoading(false);
     }
@@ -124,15 +124,21 @@ export default function AdminExamsPage() {
     setFormLoading(true);
     setFormError(null);
     try {
+      // Converter data do formato date para ISO
+      const processedData = {
+        ...data,
+        date: data.date + 'T00:00:00.000Z'
+      };
+
       if (editingExam) {
-        await enduranceApi.updateExam(editingExam.id, data);
+        await enduranceApi.updateExam(editingExam.id, processedData);
       } else {
-        await enduranceApi.createExam(data);
+        await enduranceApi.createExam(processedData);
       }
       handleCloseModal();
       loadExams();
     } catch (err: any) {
-      console.error('Erro ao salvar evento:', err);
+      console.error('Erro ao salvar prova:', err);
       setFormError(err.response?.data?.message || 'Não foi possível salvar os dados.');
     } finally {
       setFormLoading(false);
@@ -150,8 +156,8 @@ export default function AdminExamsPage() {
       setDeletingExam(null);
       loadExams();
     } catch (err) {
-      console.error('Erro ao deletar evento:', err);
-      setError('Não foi possível deletar o evento.');
+      console.error('Erro ao deletar prova:', err);
+      setError('Não foi possível deletar a prova.');
     }
   };
 
@@ -160,11 +166,11 @@ export default function AdminExamsPage() {
       <DashboardLayout user={user!} onLogout={logout}>
         <Container maxWidth="xl">
           <PageHeader
-            title="Gerenciar Eventos (Provas)"
-            description="Crie, edite e gerencie os eventos e provas da plataforma."
+            title="Gerenciar Provas"
+            description="Crie, edite e gerencie as provas da plataforma."
             actionComponent={
               <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
-                Novo Evento
+                Nova Prova
               </Button>
             }
           />
@@ -214,8 +220,9 @@ export default function AdminExamsPage() {
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Nome do Evento</TableCell>
+                        <TableCell>Nome da Prova</TableCell>
                         <TableCell>Modalidade</TableCell>
+                        <TableCell>Distâncias</TableCell>
                         <TableCell>Data</TableCell>
                         <TableCell>Local</TableCell>
                         <TableCell align="center">Ações</TableCell>
@@ -230,7 +237,20 @@ export default function AdminExamsPage() {
                           <TableCell>
                             <Chip label={exam.modalidade.name} size="small" />
                           </TableCell>
-                          <TableCell>{new Date(exam.date).toLocaleString('pt-BR')}</TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              {exam.distances?.map((distance, index) => (
+                                <Chip
+                                  key={distance.id || index}
+                                  label={`${distance.distance}${distance.unit} - R$ ${(distance.price && !isNaN(Number(distance.price)) ? Number(distance.price) : 0).toFixed(2)}`}
+                                  size="small"
+                                  variant="outlined"
+                                  color="primary"
+                                />
+                              )) || <Typography variant="caption" color="text.secondary">Sem distâncias</Typography>}
+                            </Box>
+                          </TableCell>
+                          <TableCell>{new Date(exam.date).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>{exam.location}</TableCell>
                           <TableCell align="center">
                             <IconButton size="small" onClick={() => handleOpenModal(exam)}><EditIcon /></IconButton>
@@ -270,7 +290,7 @@ export default function AdminExamsPage() {
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogContent>
               <DialogContentText>
-                Você tem certeza que deseja excluir o evento <strong>{deletingExam?.name}</strong>?
+                Você tem certeza que deseja excluir a prova <strong>{deletingExam?.name}</strong>?
               </DialogContentText>
             </DialogContent>
             <DialogActions>

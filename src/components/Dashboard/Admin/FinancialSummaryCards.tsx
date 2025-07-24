@@ -171,7 +171,7 @@ export default function FinancialSummaryCards({ onCardClick }: FinancialSummaryC
             return sum + value;
           }, 0);
           
-          console.log(`${config.label}: ${allData.length} registros, total: R$ ${total.toFixed(2)}`);
+  
           
           return { key: config.key, total };
         } catch (error) {

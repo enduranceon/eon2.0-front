@@ -166,7 +166,7 @@ export default function PersonalEarningsPage() {
         currentMonth: currentMonth.earnings,
         average: totalEarnings / monthlyData.length,
         growth,
-        activeClients: 0, // TODO: implementar contagem de alunos quando disponível na API
+        activeClients: 0,
         sessions: currentMonth.sessions
       });
 
@@ -313,7 +313,7 @@ export default function PersonalEarningsPage() {
         <Button
           startIcon={<DownloadIcon />}
           variant="outlined"
-          onClick={() => console.log('Download relatório')}
+                          onClick={() => {}}
         >
           Baixar Relatório
         </Button>

@@ -49,6 +49,7 @@ import DashboardLayout from '../../../components/Dashboard/DashboardLayout';
 import StatsCard from '../../../components/Dashboard/StatsCard';
 import { enduranceApi } from '../../../services/enduranceApi';
 
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -196,6 +197,8 @@ export default function StudentDashboard() {
             Bem-vindo(a) {auth.user?.name}! Aqui você encontra tudo sobre seu treinamento, provas, testes e muito mais.
           </Typography>
         </Box>
+
+        
 
         {/* Status da Assinatura */}
         {!subscription && (

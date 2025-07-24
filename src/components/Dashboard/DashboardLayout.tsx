@@ -51,6 +51,11 @@ import {
   Assessment as AssessmentIcon,
   SmartToy as AIIcon,
   Close as CloseIcon,
+  Group as GroupIcon,
+  Add as AddIcon,
+  Science as ScienceIcon,
+  CalendarToday as CalendarIcon,
+  Pause as PauseIcon,
 } from '@mui/icons-material';
 import NotificationCenter from './NotificationCenter';
 import AINotificationPanel from './AINotificationPanel';
@@ -136,7 +141,7 @@ const menuItems: MenuItemProps[] = [
   },
   {
     id: 'admin-events',
-    label: 'Eventos',
+    label: 'Provas',
     icon: <EventsIcon />,
     path: '/dashboard/admin/events',
     roles: [UserType.ADMIN],
@@ -176,6 +181,13 @@ const menuItems: MenuItemProps[] = [
     path: '/dashboard/admin/results',
     roles: [UserType.ADMIN],
   },
+  {
+    id: 'admin-licencas',
+    label: 'Licenças',
+    icon: <CalendarIcon />,
+    path: '/dashboard/admin/licencas',
+    roles: [UserType.ADMIN],
+  },
   
   // Coach
   {
@@ -213,11 +225,19 @@ const menuItems: MenuItemProps[] = [
     path: '/dashboard/coach/confirmar-presenca',
     roles: [UserType.COACH],
   },
+
+        {
+        id: 'coach-gerenciar-testes',
+        label: 'Gerenciar Testes',
+        icon: <ScienceIcon />,
+        path: '/dashboard/coach/gerenciar-testes',
+        roles: [UserType.COACH],
+      },
   {
-    id: 'coach-resultados-testes',
-    label: 'Resultados de Testes',
-    icon: <AssessmentIcon />,
-    path: '/dashboard/coach/resultados-testes',
+    id: 'coach-participantes',
+    label: 'Participantes',
+    icon: <GroupIcon />,
+    path: '/dashboard/coach/participantes',
     roles: [UserType.COACH],
   },
   
@@ -241,6 +261,13 @@ const menuItems: MenuItemProps[] = [
     label: 'Testes',
     icon: <TestIcon />,
     path: '/dashboard/aluno/testes',
+    roles: [UserType.FITNESS_STUDENT],
+  },
+  {
+    id: 'student-request-leave',
+    label: 'Solicitar Licença',
+    icon: <PauseIcon />,
+    path: '/dashboard/aluno/solicitar-licenca',
     roles: [UserType.FITNESS_STUDENT],
   },
   {

@@ -56,6 +56,14 @@ export default function DashboardPage() {
         // Verificar assinatura para alunos
         try {
           const subscription = await enduranceApi.getActiveSubscription();
+          
+          // Verificar se está em licença
+          if (subscription?.status === 'ON_LEAVE') {
+            // Aluno em licença - redirecionar para página de status da licença (fora do dashboard)
+            router.push('/licenca-status');
+            return;
+          }
+          
           if (!subscription?.isActive) {
             // Sem assinatura ativa - redirecionar para onboarding
             router.push('/onboarding/quiz-plano');

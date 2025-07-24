@@ -125,7 +125,7 @@ export default function ConfirmarPresencaPage() {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 Carregando inscrições em provas do coach...');
+      
       
       // Buscar inscrições em provas usando o novo endpoint
       const response = await enduranceApi.getCoachExamRegistrations({
@@ -133,13 +133,11 @@ export default function ConfirmarPresencaPage() {
         limit: 100 // Buscar todas as inscrições
       });
       
-      console.log('✅ Inscrições em provas carregadas:', response);
-      console.log('✅ Dados brutos da resposta:', response.data);
+      
       
       // Mapear os dados para o formato esperado pelo componente
       const mappedRegistrations: ExamRegistration[] = response.data.map((registration: any, index: number) => {
-        console.log(`📋 Mapeando registration ${index}:`, registration);
-        console.log(`📋 Registration ID: "${registration.id}" (tipo: ${typeof registration.id})`);
+        
         
         // Verificar se o ID é válido (UUID, CUID ou NanoID)
         let validId = registration.id;
@@ -147,7 +145,7 @@ export default function ConfirmarPresencaPage() {
           console.warn(`⚠️  ID inválido detectado: "${registration.id}". Gerando ID temporário.`);
           validId = `temp-${Date.now()}-${index}`; // ID temporário para desenvolvimento
         } else {
-          console.log(`✅ ID válido detectado: "${registration.id}"`);
+          
         }
         
         return {
@@ -186,9 +184,7 @@ export default function ConfirmarPresencaPage() {
 
   const handleConfirmAttendance = async (registrationId: string) => {
     try {
-      console.log('🔄 Confirmando presença para registrationId:', registrationId);
-      console.log('🔄 Tipo do registrationId:', typeof registrationId);
-      console.log('🔄 Registration selecionada:', selectedRegistration);
+      
       
       // Verificar se o registrationId é válido
       if (!registrationId || registrationId.trim() === '') {
@@ -203,7 +199,7 @@ export default function ConfirmarPresencaPage() {
         
         // Verificar se é um ID temporário ou se estamos em desenvolvimento
         if (registrationId.startsWith('temp-') || process.env.NODE_ENV === 'development') {
-          console.log('🔧 Modo desenvolvimento: simulando confirmação de presença');
+
           setRegistrations(prev => prev.map(reg => 
             reg.id === registrationId 
               ? { ...reg, attendanceConfirmed: true }
@@ -485,8 +481,7 @@ export default function ConfirmarPresencaPage() {
                           size="small"
                           startIcon={<CheckCircleIcon />}
                           onClick={() => {
-                            console.log('🔍 Selecionando registration para confirmar:', registration);
-                            console.log('🔍 ID da registration:', registration.id);
+                            
                             setSelectedRegistration(registration);
                             setConfirmDialogOpen(true);
                           }}
