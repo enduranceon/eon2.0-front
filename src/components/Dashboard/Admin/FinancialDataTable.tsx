@@ -22,7 +22,7 @@ import {
   IconButton,
   Typography
 } from '@mui/material';
-import { Refresh as RefreshIcon, PictureAsPdf as PdfIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon, PictureAsPdf as PdfIcon, TableChart as CsvIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -127,7 +127,7 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
     setPage(0);
   };
 
-  const handleExport = async () => {
+  const handleExportPdf = async () => {
     try {
       const params = {
         ...filters,
@@ -138,7 +138,105 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
       await enduranceApi.exportFinancialsToPdf(params);
       toast.success('Seu download começará em breve.');
     } catch (err) {
-      toast.error('Erro ao exportar o relatório.');
+      toast.error('Erro ao exportar o relatório PDF.');
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      toast.loading('Preparando exportação...', { id: 'export-csv' });
+      
+      // Buscar todos os dados em lotes para exportação
+      const allData: FinancialRecord[] = [];
+      let currentPage = 1;
+      const limit = 100; // Limite máximo permitido pelo backend
+      let hasMoreData = true;
+      
+      while (hasMoreData) {
+        const params = {
+          ...filters,
+          search: debouncedSearch || undefined,
+          startDate: filters.startDate ? format(filters.startDate, 'yyyy-MM-dd') : undefined,
+          endDate: filters.endDate ? format(filters.endDate, 'yyyy-MM-dd') : undefined,
+          limit,
+          page: currentPage,
+        };
+        
+        const response = await enduranceApi.getFinancialRecords(endpoint, params);
+        const pageData = response.data || [];
+        
+        if (pageData.length === 0) {
+          hasMoreData = false;
+        } else {
+          allData.push(...pageData);
+          currentPage++;
+          
+          // Verificar se há mais páginas
+          if (response.pagination && currentPage > response.pagination.totalPages) {
+            hasMoreData = false;
+          }
+          
+          // Limite de segurança para evitar loops infinitos
+          if (currentPage > 100) {
+            hasMoreData = false;
+          }
+        }
+      }
+      
+      if (allData.length === 0) {
+        toast.error('Nenhum dado encontrado para exportar.', { id: 'export-csv' });
+        return;
+      }
+
+      // Gerar CSV
+      const headers = [
+        'Aluno',
+        'Email do Aluno',
+        'Treinador',
+        'Email do Treinador',
+        'Plano',
+        'Valor (R$)',
+        'Split Treinador (R$)',
+        'Split Plataforma (R$)',
+        'Método de Pagamento',
+        'Próximo Pagamento',
+        'Status do Pagamento',
+        'Período'
+      ];
+
+      const csvContent = [
+        headers.join(','),
+        ...allData.map((row: FinancialRecord) => [
+          `"${row.student?.name || 'N/A'}"`,
+          `"${row.student?.email || 'N/A'}"`,
+          `"${row.coach?.name || 'N/A'}"`,
+          `"${row.coach?.email || 'N/A'}"`,
+          `"${row.plan?.name || 'N/A'}"`,
+          Number(row.amount || 0).toFixed(2),
+          Number(row.coachEarnings || 0).toFixed(2),
+          Number(row.platformEarnings || 0).toFixed(2),
+          `"${row.paymentMethod || 'N/A'}"`,
+          `"${row.nextPaymentDate ? format(new Date(row.nextPaymentDate), 'dd/MM/yyyy') : 'N/A'}"`,
+          `"${row.paymentStatus || 'N/A'}"`,
+          `"${row.period || 'N/A'}"`
+        ].join(','))
+      ].join('\n');
+
+      // Criar e baixar o arquivo
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `relatorio-financeiro-${tableTitle.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`Relatório CSV exportado com sucesso! ${allData.length} registros exportados.`, { id: 'export-csv' });
+    } catch (err) {
+      console.error('Erro ao exportar CSV:', err);
+      toast.error('Erro ao exportar o relatório CSV.', { id: 'export-csv' });
     }
   };
 
@@ -150,8 +248,11 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
         <Box p={2} display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="h6">{tableTitle}</Typography>
           <Box>
+            <Tooltip title="Exportar para CSV">
+              <IconButton onClick={handleExportCsv}><CsvIcon /></IconButton>
+            </Tooltip>
             <Tooltip title="Exportar para PDF">
-              <IconButton onClick={handleExport}><PdfIcon /></IconButton>
+              <IconButton onClick={handleExportPdf}><PdfIcon /></IconButton>
             </Tooltip>
             <Tooltip title="Recarregar dados">
               <IconButton onClick={loadData}><RefreshIcon /></IconButton>

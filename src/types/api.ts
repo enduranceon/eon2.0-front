@@ -456,6 +456,14 @@ export enum TestType {
   TECHNICAL = 'TECHNICAL',
 }
 
+export enum ExamCategory {
+  SPRINT = 'SPRINT',
+  SUPER_SPRINT = 'SUPER_SPRINT',
+  OLYMPIC = 'OLYMPIC',
+  HALF_DISTANCE = 'HALF_DISTANCE',
+  DUATHLON = 'DUATHLON',
+}
+
 export interface AvailableTest {
   id: string;
   name: string;
@@ -465,6 +473,28 @@ export interface AvailableTest {
   examId?: string;
   exam?: Exam;
   isActive: boolean;
+  // Novos campos para execução do teste
+  executionDate?: string;
+  status?: string;
+  studentId?: string;
+  coachId?: string;
+  // Campos legados (serão removidos em versão futura)
+  supportsDynamicResults?: boolean;
+  defaultResultFields?: DynamicTestResult[];
+  // Novos campos para campos dinâmicos
+  dynamicFields?: TestDynamicField[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Novo modelo para campos dinâmicos
+export interface TestDynamicField {
+  id: string;
+  testId: string;
+  fieldName: string;
+  value: string;
+  metric?: string;
+  description?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -505,6 +535,8 @@ export interface ExamDistance {
   unit: string;
   price: number;
   maxParticipants: number;
+  date?: string;
+  category?: ExamCategory;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -532,6 +564,8 @@ export interface Exam {
   name: string;
   description: string;
   date: string;
+  end_date?: string;
+  exam_url?: string;
   location: string;
   modalidadeId: string;
   modalidade: Modalidade;
@@ -539,6 +573,14 @@ export interface Exam {
   maxParticipants?: number;
   isActive?: boolean;
   distances: ExamDistance[];
+  categories?: Array<{
+    id: string;
+    name: string;
+    date: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   registrations?: ExamRegistration[];
   createdAt: string;
   updatedAt: string;
@@ -903,4 +945,237 @@ export interface LeaveSubscription {
     id: string;
     name: string;
   };
+} 
+
+export interface DynamicTestResult {
+  fieldName: string;        // Nome do campo (ex: "Tempo", "Sprint", "Velocidade")
+  value: string | number;   // Valor do resultado
+  unit?: string;           // Unidade de medida (ex: "s", "h", "km/h")
+  description?: string;    // Descrição adicional do campo
+}
+
+export interface TestResult {
+  id: string;
+  testId: string;
+  userId: string;
+  value: number;
+  unit?: string;
+  notes?: string;
+  recordedBy?: string;
+  recordedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Novos campos para resultados dinâmicos
+  dynamicResults?: DynamicTestResult[];  // Armazena múltiplos campos de resultado
+  resultType?: 'SINGLE' | 'MULTIPLE';   // Tipo do resultado (SINGLE, MULTIPLE)
+  
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  test: {
+    id: string;
+    name: string;
+    description?: string;
+    type: TestType;
+    exam?: {
+      id: string;
+      name: string;
+      modalidade: {
+        id: string;
+        name: string;
+      };
+    };
+  };
+  recorder?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface RecordDynamicTestResultRequest {
+  testId: string;
+  userId: string;
+  resultType: 'SINGLE' | 'MULTIPLE';
+  singleResult?: {
+    value: number;
+    unit?: string;
+    notes?: string;
+  };
+  multipleResults?: DynamicTestResult[];
+  notes?: string;
+} 
+
+export interface AdminTestResult {
+  id: string;
+  testId: string;
+  userId: string;
+  value?: number;
+  unit?: string;
+  notes?: string;
+  recordedBy?: string;
+  recordedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Novos campos para resultados dinâmicos
+  dynamicResults?: DynamicTestResult[];
+  resultType?: 'SINGLE' | 'MULTIPLE';
+  
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image?: string;
+    birthDate?: string;
+    gender?: string;
+  };
+  test: {
+    id: string;
+    name: string;
+    description?: string;
+    type: TestType;
+    exam?: {
+      id: string;
+      name: string;
+      modalidade: {
+        id: string;
+        name: string;
+      };
+    };
+  };
+  recorder?: {
+    id: string;
+    name: string;
+    image?: string;
+  };
+  coach?: {
+    id: string;
+    name: string;
+    image?: string;
+  };
+}
+
+export interface AdminAllResultsResponse {
+  data: AdminTestResult[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  summary: {
+    total: number;
+    singleResults: number;
+    multipleResults: number;
+    byTestType: Array<{
+      type: TestType;
+      count: number;
+    }>;
+    byModalidade: Array<{
+      modalidadeName: string;
+      count: number;
+    }>;
+  };
+} 
+
+export interface AdminExamRegistration {
+  id: string;
+  userId: string;
+  examId: string;
+  attended: boolean;
+  result?: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    birthDate?: string;
+    gender?: string;
+  };
+  exam: {
+    id: string;
+    name: string;
+    date: string;
+    modalidade: {
+      id: string;
+      name: string;
+    };
+  };
+  distance: {
+    distance: string;
+    unit: string;
+  };
+}
+
+export interface AdminExamRegistrationsResponse {
+  data: AdminExamRegistration[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  statistics: {
+    averageAge: number;
+    genderDistribution: {
+      male: number;
+      female: number;
+      other: number;
+    };
+    attendanceStats: {
+      attended: number;
+      notAttended: number;
+      total: number;
+    };
+    modalidadeDistribution: Record<string, number>;
+  };
+} 
+
+// Interfaces para Solicitações de Teste (Coach Dashboard)
+export interface TestRequest {
+  id: string;
+  test: {
+    id: string;
+    name: string;
+    description: string;
+    type: string;
+  };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image?: string;
+  };
+  status: 'PENDING' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  requestedAt: string;
+  scheduledAt?: string;
+  location?: string;
+  notes?: string;
+  results?: string;
+}
+
+export interface TestRequestsResponse {
+  data: TestRequest[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+export interface UpdateTestRequestStatusRequest {
+  status: 'PENDING' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  scheduledAt?: string;
+  location?: string;
+  notes?: string;
+  results?: string;
 } 

@@ -131,7 +131,15 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
                 opacity: isInactive ? 0.7 : 1,
               }}
             >
-              <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Card sx={{ 
+              background: (theme) => theme.palette.mode === 'dark' 
+                ? 'rgba(30, 30, 30, 0.98)' 
+                : 'rgba(255, 255, 255, 0.98)', 
+              backdropFilter: 'blur(10px)', 
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: 'column' 
+            }}>
                 <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}><EventIcon /></Avatar>
@@ -142,7 +150,7 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
                     <List dense>
                       <ListItem><ListItemIcon sx={{minWidth: 40}}><CategoryIcon color="action"/></ListItemIcon><ListItemText primary="Modalidade" secondary={exam.modalidade?.name || 'Não especificada'} /></ListItem>
                       <ListItem><ListItemIcon sx={{minWidth: 40}}><CalendarIcon color="action"/></ListItemIcon><ListItemText primary="Data" secondary={formatDate(exam.date)} /></ListItem>
-                      {exam.distances && exam.distances.length > 0 && (
+                      {exam.distances && exam.distances.length > 0 ? (
                         <ListItem>
                           <ListItemIcon sx={{minWidth: 40}}><PlaceIcon color="action"/></ListItemIcon>
                           <ListItemText 
@@ -163,7 +171,28 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
                             }
                           />
                         </ListItem>
-                      )}
+                      ) : exam.categories && exam.categories.length > 0 ? (
+                        <ListItem>
+                          <ListItemIcon sx={{minWidth: 40}}><CategoryIcon color="action"/></ListItemIcon>
+                          <ListItemText 
+                            primary="Categorias" 
+                            secondaryTypographyProps={{ component: 'div' }}
+                            secondary={
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                {exam.categories.map((category: any, index: number) => (
+                                  <Chip
+                                    key={category.id || index}
+                                    label={category.name}
+                                    size="small"
+                                    variant="outlined"
+                                    color="secondary"
+                                  />
+                                ))}
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                      ) : null}
                     </List>
                   </Box>
                   <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -431,13 +460,13 @@ export default function EventsPage() {
     const exam = allExams.find(e => e.id === examId);
     if (!exam) return;
     
-    // Se a prova tem distâncias, abrir modal de seleção
-    if (exam.distances && exam.distances.length > 0) {
+    // Se a prova tem distâncias ou categorias, abrir modal de seleção
+    if ((exam.distances && exam.distances.length > 0) || (exam.categories && exam.categories.length > 0)) {
       setSelectedExamForRegistration(exam);
       setIsDistanceModalOpen(true);
       setRegistrationError(null);
     } else {
-      // Se não tem distâncias, registrar diretamente
+      // Se não tem distâncias nem categorias, registrar diretamente
       setProcessingId(examId);
       toast.promise(enduranceApi.registerForExam(examId), {
         loading: 'Realizando inscrição...',
@@ -450,14 +479,25 @@ export default function EventsPage() {
     }
   };
 
-  const handleRegisterWithDistance = async (distanceId: string) => {
+  const handleRegisterWithDistance = async (selectedId: string) => {
     if (!selectedExamForRegistration || !auth.user) return;
     
     setRegistrationLoading(true);
     setRegistrationError(null);
     
     try {
-      await enduranceApi.registerForExam(selectedExamForRegistration.id, { distanceId });
+      // Determinar se é uma prova de distância ou categoria
+      const isDistanceRegistration = selectedExamForRegistration.distances && 
+        selectedExamForRegistration.distances.length > 0;
+      
+      // Preparar payload baseado no tipo de prova
+      const payload = isDistanceRegistration 
+        ? { distanceId: selectedId }
+        : { categoryId: selectedId };
+      
+
+      
+      await enduranceApi.registerForExam(selectedExamForRegistration.id, payload);
       toast.success('Inscrição realizada com sucesso!');
       loadExams();
       setIsDistanceModalOpen(false);
@@ -570,7 +610,7 @@ export default function EventsPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Modal de seleção de distância */}
+      {/* Modal de seleção de distância/categoria */}
       <DistanceSelectionModal
         open={isDistanceModalOpen}
         onClose={() => {
@@ -580,6 +620,7 @@ export default function EventsPage() {
         onConfirm={handleRegisterWithDistance}
         examName={selectedExamForRegistration?.name || ''}
         distances={selectedExamForRegistration?.distances || []}
+        categories={selectedExamForRegistration?.categories || []}
         loading={registrationLoading}
         error={registrationError}
       />

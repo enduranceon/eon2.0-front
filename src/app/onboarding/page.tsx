@@ -25,7 +25,16 @@ export default function OnboardingPage() {
 
     // Verificar se já completou onboarding
     if (auth.user.onboardingCompleted) {
-      router.push('/dashboard');
+      // Redirecionar para dashboard específico baseado no tipo de usuário
+      if (auth.user.userType === UserType.ADMIN) {
+        router.push('/dashboard/admin');
+      } else if (auth.user.userType === UserType.COACH) {
+        router.push('/dashboard/coach');
+      } else if (auth.user.userType === UserType.FITNESS_STUDENT) {
+        router.push('/dashboard/aluno');
+      } else {
+        router.push('/login');
+      }
       return;
     }
 

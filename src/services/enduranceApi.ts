@@ -39,6 +39,17 @@ import {
   WalletBalance,
   Payment,
   CoachLevel,
+  RecordDynamicTestResultRequest,
+  TestResult,
+  TestDynamicField,
+  RecordTestResultRequest,
+  AdminTestResult,
+  AdminAllResultsResponse,
+  AdminExamRegistration,
+  AdminExamRegistrationsResponse,
+  TestRequest,
+  TestRequestsResponse,
+  UpdateTestRequestStatusRequest,
 } from '../types/api';
 
 export class EnduranceApiClient {
@@ -53,6 +64,14 @@ export class EnduranceApiClient {
         'Content-Type': 'application/json',
       },
     });
+
+    // Carregar token do localStorage durante a inicialização
+    if (typeof window !== 'undefined') {
+      const savedToken = localStorage.getItem('endurance_token');
+      if (savedToken) {
+        this.token = savedToken;
+      }
+    }
 
     // Interceptador para adicionar token automaticamente
     this.api.interceptors.request.use(
@@ -74,7 +93,29 @@ export class EnduranceApiClient {
         if (error.response?.status === 401) {
           // Token expirado ou inválido
           this.clearToken();
-          window.location.href = '/login';
+          
+          // Não redirecionar automaticamente durante a inicialização
+          // Deixar o AuthContext lidar com o redirecionamento
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            // Só redirecionar se não estiver já na página de login
+            // e se não for durante a inicialização do AuthContext
+            const isInitializing = !localStorage.getItem('auth_initialized');
+            const isAuthRoute = window.location.pathname.includes('/login') || 
+                               window.location.pathname.includes('/register') || 
+                               window.location.pathname.includes('/forgot-password') ||
+                               window.location.pathname.includes('/reset-password') ||
+                               window.location.pathname.includes('/verify-email') ||
+                               window.location.pathname.includes('/2fa');
+            
+            if (!isInitializing && !isAuthRoute) {
+              // Aguardar um pouco antes de redirecionar para evitar loops
+              setTimeout(() => {
+                if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+                  window.location.href = '/login';
+                }
+              }, 100);
+            }
+          }
         }
         return Promise.reject(error);
       }
@@ -107,6 +148,7 @@ export class EnduranceApiClient {
   // Métodos HTTP Auxiliares
   async get<T>(url: string, params?: any): Promise<T> {
     const response: AxiosResponse<ApiResponse<T>> = await this.api.get(url, { params });
+    
     // Se a resposta tem a estrutura ApiResponse, extrair os dados
     if (response.data && typeof response.data === 'object' && 'success' in response.data && 'data' in response.data) {
       return response.data.data;
@@ -244,7 +286,7 @@ export class EnduranceApiClient {
     return this.delete<void>(`/exams/${id}`);
   }
 
-  async registerForExam(examId: string, data?: { distanceId?: string }): Promise<any> {
+  async registerForExam(examId: string, data?: { distanceId?: string; categoryId?: string }): Promise<any> {
     return this.post<any>(`/exams/${examId}/register`, data);
   }
 
@@ -277,6 +319,72 @@ export class EnduranceApiClient {
     return this.patch<AvailableTest>(`/tests/${id}`, data);
   }
 
+  async deleteTest(id: string): Promise<void> {
+    return this.delete<void>(`/tests/${id}`);
+  }
+
+  // RESULTADOS DINÂMICOS DE TESTE
+  async recordDynamicTestResult(data: RecordDynamicTestResultRequest): Promise<TestResult> {
+    return this.post<TestResult>('/tests/dynamic-results/record', data);
+  }
+
+  async recordCoachDynamicTestResult(data: RecordDynamicTestResultRequest): Promise<TestResult> {
+    return this.post<TestResult>('/coaches/dashboard/record-dynamic-test-result', data);
+  }
+
+  // Gerenciamento de Campos Dinâmicos
+  async addTestDynamicField(testId: string, data: {
+    fieldName: string;
+    value: string;
+    metric?: string;
+  }): Promise<TestDynamicField> {
+    return this.post<TestDynamicField>(`/tests/${testId}/dynamic-fields`, data);
+  }
+
+  async getTestDynamicFields(testId: string): Promise<TestDynamicField[]> {
+    return this.get<TestDynamicField[]>(`/tests/${testId}/dynamic-fields`);
+  }
+
+  async updateTestDynamicField(testId: string, fieldId: string, data: {
+    fieldName?: string;
+    value?: string;
+    metric?: string;
+  }): Promise<TestDynamicField> {
+    return this.patch<TestDynamicField>(`/tests/${testId}/dynamic-fields/${fieldId}`, data);
+  }
+
+  async deleteTestDynamicField(testId: string, fieldId: string): Promise<void> {
+    return this.delete<void>(`/tests/${testId}/dynamic-fields/${fieldId}`);
+  }
+
+  // Registrar Resultado Simples (Global)
+  async recordTestResult(data: RecordTestResultRequest): Promise<TestResult> {
+    return this.post<TestResult>('/tests/record-result', data);
+  }
+
+  // Registrar Resultado Dinâmico (Global)
+  async recordDynamicResult(data: RecordDynamicTestResultRequest): Promise<TestResult> {
+    return this.post<TestResult>('/tests/record-dynamic-result', data);
+  }
+
+  async getTestResults(testId: string, filters?: {
+    page?: number;
+    limit?: number;
+    userId?: string;
+    resultType?: 'SINGLE' | 'MULTIPLE';
+  }): Promise<PaginatedResponse<TestResult>> {
+    return this.get<PaginatedResponse<TestResult>>(`/tests/${testId}/results`, filters);
+  }
+
+  async getUserTestResults(userId: string, filters?: {
+    page?: number;
+    limit?: number;
+    testId?: string;
+    resultType?: 'SINGLE' | 'MULTIPLE';
+  }): Promise<PaginatedResponse<TestResult>> {
+    return this.get<PaginatedResponse<TestResult>>(`/tests/user/${userId}/results`, filters);
+  }
+
   // Dashboard do Coach - Listar Solicitações de Teste
   async getCoachTestRequests(params?: {
     page?: number;
@@ -285,6 +393,10 @@ export class EnduranceApiClient {
     testId?: string;
     modalidadeId?: string;
     attended?: boolean;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+    userId?: string;
   }): Promise<{
     data: any[];
     pagination: {
@@ -304,25 +416,96 @@ export class EnduranceApiClient {
     };
   }> {
     const queryParams = new URLSearchParams();
-    
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.status) queryParams.append('status', params.status);
     if (params?.testId) queryParams.append('testId', params.testId);
     if (params?.modalidadeId) queryParams.append('modalidadeId', params.modalidadeId);
     if (params?.attended !== undefined) queryParams.append('attended', params.attended.toString());
-    
-    const url = `/coaches/dashboard/test-appointments${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.userId) queryParams.append('userId', params.userId);
+    const url = `/coaches/dashboard/all-student-tests${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return this.get<any>(url);
   }
 
-  async updateTestRequestStatus(requestId: string, data: {
-    status: string;
-    scheduledAt?: string;
-    location?: string;
-    notes?: string;
-  }): Promise<any> {
-    return this.patch<any>(`/coaches/tests/requests/${requestId}/status`, data);
+  // Dashboard do Coach - Listar Todos os Testes dos Alunos (Agendamentos + Resultados)
+  async getAllStudentTests(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    testId?: string;
+    userId?: string;
+    modalidadeId?: string;
+    attended?: boolean;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  }): Promise<{
+    data: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    summary: {
+      total: number;
+      appointments: number;
+      results: number;
+      pending: number;
+      scheduled: number;
+      completed: number;
+      cancelled: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.testId) queryParams.append('testId', params.testId);
+    if (params?.userId) queryParams.append('userId', params.userId);
+    if (params?.modalidadeId) queryParams.append('modalidadeId', params.modalidadeId);
+    if (params?.attended !== undefined) queryParams.append('attended', params.attended.toString());
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.search) queryParams.append('search', params.search);
+    
+    const url = `/coaches/dashboard/all-student-tests${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    return this.get<any>(url);
+  }
+
+  async updateTestRequestStatus(requestId: string, data: UpdateTestRequestStatusRequest): Promise<TestRequest> {
+    return this.patch<TestRequest>(`/coaches/tests/requests/${requestId}/status`, data);
+  }
+
+  async getTestRequests(filters?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    userId?: string;
+    testId?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  }): Promise<TestRequestsResponse> {
+    const queryParams = new URLSearchParams();
+
+    if (filters?.page) queryParams.append('page', filters.page.toString());
+    if (filters?.limit) queryParams.append('limit', filters.limit.toString());
+    if (filters?.status) queryParams.append('status', filters.status);
+    if (filters?.userId) queryParams.append('userId', filters.userId);
+    if (filters?.testId) queryParams.append('testId', filters.testId);
+    if (filters?.startDate) queryParams.append('startDate', filters.startDate);
+    if (filters?.endDate) queryParams.append('endDate', filters.endDate);
+    if (filters?.search) queryParams.append('search', filters.search);
+
+    const url = `/coaches/tests/requests${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    return this.get<TestRequestsResponse>(url);
   }
 
   async addTestRequestResults(requestId: string, data: {
@@ -330,10 +513,6 @@ export class EnduranceApiClient {
     notes?: string;
   }): Promise<any> {
     return this.post<any>(`/coaches/tests/requests/${requestId}/results`, data);
-  }
-
-  async deleteTest(id: string): Promise<void> {
-    return this.delete<void>(`/tests/${id}`);
   }
 
   async getTestAppointments(userId: string): Promise<PaginatedResponse<UserTest>> {
@@ -348,8 +527,39 @@ export class EnduranceApiClient {
     return this.post<UserTest>(`/tests/${testId}/request`, { notes });
   }
 
-  async getUserTests(userId: string): Promise<PaginatedResponse<UserTest> | UserTest[]> {
-    return this.get<PaginatedResponse<UserTest> | UserTest[]>(`/tests/user/${userId}`);
+  // Dashboard do Aluno - Histórico de Testes
+  async getUserTests(filters?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    testId?: string;
+  }): Promise<{
+    data: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    summary: {
+      total: number;
+      results: number;
+      appointments: number;
+      completed: number;
+      pending: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    
+    if (filters?.page) queryParams.append('page', filters.page.toString());
+    if (filters?.limit) queryParams.append('limit', filters.limit.toString());
+    if (filters?.status) queryParams.append('status', filters.status);
+    if (filters?.testId) queryParams.append('testId', filters.testId);
+    
+    const url = `/users/dashboard/my-tests${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    return this.get<any>(url);
   }
 
   // CHECKOUT E PAGAMENTOS
@@ -576,6 +786,8 @@ export class EnduranceApiClient {
     link.click();
     link.remove();
   }
+
+
 
   // NOVOS ENDPOINTS PARA IA E DASHBOARD ADMINISTRATIVO
 
@@ -849,8 +1061,16 @@ export class EnduranceApiClient {
     return this.post<any>('/coaches/dashboard/confirm-attendance', { registrationId });
   }
 
-  // Dashboard do Coach - Registrar Resultado de Teste
-  async recordTestResult(data: {
+  // Dashboard do Coach - Atualizar Registro de Prova (Presença + Resultado)
+  async updateExamRegistration(registrationId: string, data: {
+    result?: string;
+    attended?: boolean;
+  }): Promise<any> {
+    return this.patch<any>(`/exams/registration/${registrationId}`, data);
+  }
+
+  // Dashboard do Coach - Registrar Resultado de Teste (Legado)
+  async recordCoachTestResult(data: {
     testId: string;
     userId: string;
     value: number;
@@ -959,6 +1179,68 @@ export class EnduranceApiClient {
   // Estatísticas de Testes
   async getTestStats(): Promise<any> {
     return this.get<any>('/tests/stats');
+  }
+
+  // Resultados de Testes - Admin
+  async getAdminAllResults(filters?: {
+    page?: number;
+    limit?: number;
+    testId?: string;
+    userId?: string;
+    testType?: string;
+    modalidadeId?: string;
+    resultType?: 'SINGLE' | 'MULTIPLE';
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  }): Promise<AdminAllResultsResponse> {
+    const queryParams = new URLSearchParams();
+    
+    if (filters?.page) queryParams.append('page', filters.page.toString());
+    if (filters?.limit) queryParams.append('limit', filters.limit.toString());
+    if (filters?.testId) queryParams.append('testId', filters.testId);
+    if (filters?.userId) queryParams.append('userId', filters.userId);
+    if (filters?.testType) queryParams.append('testType', filters.testType);
+    if (filters?.modalidadeId) queryParams.append('modalidadeId', filters.modalidadeId);
+    if (filters?.resultType) queryParams.append('resultType', filters.resultType);
+    if (filters?.startDate) queryParams.append('startDate', filters.startDate);
+    if (filters?.endDate) queryParams.append('endDate', filters.endDate);
+    if (filters?.search) queryParams.append('search', filters.search);
+    
+    const url = `/tests/admin/all-results${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    return this.get<AdminAllResultsResponse>(url);
+  }
+
+  // Registros de Provas - Admin
+  async getAdminAllExamRegistrations(filters?: {
+    page?: number;
+    limit?: number;
+    examId?: string;
+    userId?: string;
+    modalidadeId?: string;
+    attended?: boolean;
+    startDate?: string;
+    endDate?: string;
+    minAge?: number;
+    maxAge?: number;
+    gender?: string;
+  }): Promise<AdminExamRegistrationsResponse> {
+    const queryParams = new URLSearchParams();
+    
+    if (filters?.page) queryParams.append('page', filters.page.toString());
+    if (filters?.limit) queryParams.append('limit', filters.limit.toString());
+    if (filters?.examId) queryParams.append('examId', filters.examId);
+    if (filters?.userId) queryParams.append('userId', filters.userId);
+    if (filters?.modalidadeId) queryParams.append('modalidadeId', filters.modalidadeId);
+    if (filters?.attended !== undefined) queryParams.append('attended', filters.attended.toString());
+    if (filters?.startDate) queryParams.append('startDate', filters.startDate);
+    if (filters?.endDate) queryParams.append('endDate', filters.endDate);
+    if (filters?.minAge) queryParams.append('minAge', filters.minAge.toString());
+    if (filters?.maxAge) queryParams.append('maxAge', filters.maxAge.toString());
+    if (filters?.gender) queryParams.append('gender', filters.gender);
+    
+    const url = `/exams/admin/all-registrations${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    return this.get<AdminExamRegistrationsResponse>(url);
   }
 
   // Sistema de Notificações
@@ -1125,8 +1407,10 @@ export class EnduranceApiClient {
     currentMonth: number;
     currentYear: number;
   }> {
-    return this.get<any>('/coaches/financial/summary');
+    return this.get('/coaches/financial/summary');
   }
+
+
 }
 
 // Instância singleton

@@ -11,12 +11,9 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --watchAll=false",
-    "test:clear": "jest --clearCache",
-    "test:debug": "jest --detectOpenHandles --verbose"
+    "clean": "rm -rf .next .swc node_modules/.cache",
+    "build:prod": "npm run clean && next build",
+    "start:prod": "next start -p 3000"
   },
   "dependencies": {
     "@emotion/cache": "^11.11.0",
@@ -58,10 +55,6 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/jest": "^30.0.0",
     "@types/js-cookie": "^3.0.6",
     "@types/jsonwebtoken": "^9.0.5",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
@@ -70,8 +63,6 @@
     "eslint-config-next": "^14.0.4",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.0",
-    "jest": "^30.0.4",
-    "jest-environment-jsdom": "^30.0.4",
     "prettier": "^3.1.1"
   },
   "engines": {

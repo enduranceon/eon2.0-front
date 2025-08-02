@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -61,7 +61,8 @@ import {
   Assignment as AssignmentIcon,
   Science as ScienceIcon,
   History as HistoryIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -74,41 +75,74 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/Dashboard/DashboardLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import PageHeader from '@/components/Dashboard/PageHeader';
-import { AvailableTest, UserTest, TestType } from '@/types/api';
+import { AvailableTest, UserTest, TestType, DynamicTestResult, RecordDynamicTestResultRequest, TestDynamicField } from '@/types/api';
 import toast, { Toaster } from 'react-hot-toast';
 
 // Função para obter URL absoluta da imagem
 const getAbsoluteImageUrl = (url: string | undefined | null): string | undefined => {
-  if (!url) return undefined;
+  if (!url || url.trim() === '') return undefined;
+  
+  try {
   if (url.startsWith('http') || url.startsWith('blob:')) {
     return url;
   }
+    
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   const origin = new URL(apiUrl).origin;
   const path = url.startsWith('/api') ? url.substring(4) : url;
   return `${origin}/api${path.startsWith('/') ? '' : '/'}${path}`;
+  } catch (error) {
+    console.warn('Erro ao processar URL da imagem:', url, error);
+    return undefined;
+  }
 };
 
-interface TestRequest {
+
+
+interface AllStudentTest {
   id: string;
-  test: {
-    id: string;
-    name: string;
-    description: string;
+  testId: string;
+  userId: string;
+  value?: string;
+  unit?: string;
+  notes?: string;
+  recordedAt?: string;
+  recordedBy?: string;
+  dynamicResults?: {
+    date: string;
     type: string;
+    notes?: string;
+    location?: string;
+    multipleResults?: Array<{
+      unit: string;
+      value: string;
+      fieldName: string;
+      description: string;
+    }>;
   };
+  resultType?: string;
   user: {
     id: string;
     name: string;
     email: string;
     image?: string;
+    birthDate?: string;
+    gender?: string;
+    age: number;
   };
-  status: 'PENDING' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
-  requestedAt: string;
-  scheduledAt?: string;
-  location?: string;
-  notes?: string;
-  results?: string;
+  test: {
+    id: string;
+    name: string;
+    type: string;
+    description?: string;
+    supportsDynamicResults?: boolean;
+    defaultResultFields?: any;
+  };
+  recorder: {
+    id: string;
+    name: string;
+    image?: string;
+  };
 }
 
 const getTestIcon = (type: TestType) => {
@@ -124,76 +158,190 @@ const getTestIcon = (type: TestType) => {
   }
 };
 
-const Test3Plus9Form = ({ testData, setTestData }: { testData: any, setTestData: (data: any) => void }) => {
-  const [distance3min, setDistance3min] = useState('');
-  const [distance9min, setDistance9min] = useState('');
+// Função para calcular idade
+const calculateAge = (birthDate: string | Date): number => {
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
 
+// Função para formatar gênero
+const formatGender = (gender: string): string => {
+  switch (gender?.toUpperCase()) {
+    case 'MALE':
+    case 'M':
+      return 'Masculino';
+    case 'FEMALE':
+    case 'F':
+      return 'Feminino';
+    case 'OTHER':
+    case 'O':
+      return 'Outro';
+    default:
+      return 'Não informado';
+  }
+};
+
+const DynamicTestForm = ({ testData, setTestData, selectedTest }: { 
+  testData: any, 
+  setTestData: (data: any) => void,
+  selectedTest?: AvailableTest
+}) => {
+  const [dynamicFields, setDynamicFields] = useState<TestDynamicField[]>([]);
+  const [loadingFields, setLoadingFields] = useState(false);
+
+  // Carregar campos dinâmicos do teste selecionado
   useEffect(() => {
-    if (distance3min && distance9min) {
-      const result = (parseFloat(distance9min) - parseFloat(distance3min)) / 6;
-      setTestData({
-        ...testData,
-        distance3min: parseFloat(distance3min),
-        distance9min: parseFloat(distance9min),
-        value: result,
-        unit: 'ml/kg/min'
-      });
+    if (selectedTest?.id) {
+      loadDynamicFields();
     }
-  }, [distance3min, distance9min, setTestData, testData]);
+  }, [selectedTest?.id]);
+
+  const loadDynamicFields = async () => {
+    if (!selectedTest?.id) return;
+    
+    setLoadingFields(true);
+    try {
+      const fields = await enduranceApi.getTestDynamicFields(selectedTest.id);
+      setDynamicFields(fields);
+      
+      // Inicializar testData com os campos dinâmicos
+      const initialData = fields.map(field => ({
+        fieldName: field.fieldName,
+        value: '',
+        unit: field.metric || '',
+        description: ''
+      }));
+      setTestData({ dynamicResults: initialData });
+    } catch (error) {
+      console.error('Erro ao carregar campos dinâmicos:', error);
+      toast.error('Erro ao carregar campos do teste');
+    } finally {
+      setLoadingFields(false);
+    }
+  };
+
+  const updateField = (index: number, field: keyof DynamicTestResult, value: string) => {
+    setTestData((prevData: any) => {
+      const newDynamicResults = [...(prevData.dynamicResults || [])];
+      newDynamicResults[index] = { ...newDynamicResults[index], [field]: value };
+      return { ...prevData, dynamicResults: newDynamicResults };
+    });
+  };
+
+  const isValidField = (result: DynamicTestResult) => {
+    return result.fieldName && result.value && result.value.toString().trim() !== '';
+  };
+
+  const isValidForm = () => {
+    const results = testData.dynamicResults || [];
+    return results.length > 0 && results.every(isValidField);
+  };
+
+  if (loadingFields) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <Grid container spacing={2}>
-      <Grid item xs={12} sm={6}>
+    <Box>
+      <Typography variant="h6" gutterBottom>
+        Campos de Resultado
+      </Typography>
+      
+      {dynamicFields.length === 0 ? (
+        <Alert severity="info">
+          Este teste não possui campos dinâmicos configurados.
+        </Alert>
+      ) : (
+        <Box sx={{ mt: 2 }}>
+          {(testData.dynamicResults || []).map((result: DynamicTestResult, index: number) => (
+            <Card key={index} sx={{ mb: 2, p: 2 }}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={4}>
         <TextField
           fullWidth
-          label="Distância 3 minutos (metros)"
-          type="number"
-          value={distance3min}
-          onChange={(e) => setDistance3min(e.target.value)}
+                    label="Campo"
+                    value={result.fieldName || ''}
+                    disabled
+                    variant="outlined"
+                    size="small"
         />
       </Grid>
-      <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={3}>
         <TextField
           fullWidth
-          label="Distância 9 minutos (metros)"
-          type="number"
-          value={distance9min}
-          onChange={(e) => setDistance9min(e.target.value)}
+                    label="Valor"
+                    value={result.value || ''}
+                    onChange={(e) => updateField(index, 'value', e.target.value)}
+                    variant="outlined"
+                    size="small"
+                    required
+                    error={!result.value || result.value.toString().trim() === ''}
+                    helperText={!result.value || result.value.toString().trim() === '' ? 'Campo obrigatório' : ''}
         />
       </Grid>
-      {testData.value && (
-        <Grid item xs={12}>
-          <Alert severity="info">
-            Resultado calculado: {testData.value.toFixed(2)} ml/kg/min
-          </Alert>
+                <Grid item xs={12} sm={3}>
+                  <TextField
+                    fullWidth
+                    label="Unidade"
+                    value={result.unit || ''}
+                    disabled
+                    variant="outlined"
+                    size="small"
+                  />
         </Grid>
+                <Grid item xs={12} sm={2}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                    {isValidField(result) && (
+                      <CheckIcon color="success" />
       )}
+                  </Box>
     </Grid>
+              </Grid>
+            </Card>
+          ))}
+          
+          <Alert severity={isValidForm() ? "success" : "warning"} sx={{ mt: 2 }}>
+            {isValidForm() 
+              ? "Todos os campos obrigatórios foram preenchidos corretamente."
+              : "Preencha todos os campos obrigatórios para continuar."
+            }
+          </Alert>
+        </Box>
+      )}
+    </Box>
   );
 };
 
-const GenericTestForm = ({ testData, setTestData }: { testData: any, setTestData: (data: any) => void }) => {
+
+
+// Componente Avatar seguro que trata erros de carregamento
+const SafeAvatar = ({ src, children, ...props }: { src?: string; children?: React.ReactNode; [key: string]: any }) => {
+  const [imageError, setImageError] = useState(false);
+  
+  const handleImageError = () => {
+    setImageError(true);
+  };
+  
   return (
-    <Grid container spacing={2}>
-      <Grid item xs={12} sm={6}>
-        <TextField
-          fullWidth
-          label="Valor do teste"
-          type="number"
-          value={testData.value || ''}
-          onChange={(e) => setTestData({ ...testData, value: e.target.value })}
-        />
-      </Grid>
-      <Grid item xs={12} sm={6}>
-        <TextField
-          fullWidth
-          label="Unidade"
-          value={testData.unit || ''}
-          onChange={(e) => setTestData({ ...testData, unit: e.target.value })}
-          placeholder="ex: metros, segundos, repetições"
-        />
-      </Grid>
-    </Grid>
+    <Avatar 
+      src={!imageError && src ? src : undefined} 
+      onError={handleImageError}
+      {...props}
+    >
+      {children}
+    </Avatar>
   );
 };
 
@@ -217,48 +365,131 @@ export default function GerenciarTestesPage() {
   const [testData, setTestData] = useState<any>({});
   const [studentSearchTerm, setStudentSearchTerm] = useState<string>('');
 
-  // Estados para resultados de testes
-  const [testRequests, setTestRequests] = useState<TestRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<TestRequest[]>([]);
-  const [loadingRequests, setLoadingRequests] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [selectedRequest, setSelectedRequest] = useState<TestRequest | null>(null);
-  const [resultDialogOpen, setResultDialogOpen] = useState(false);
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
-  const [resultData, setResultData] = useState({
-    results: '',
-    notes: ''
+  // Estados para infinity scroll dos testes
+  const [testsLoading, setTestsLoading] = useState(false);
+  const [testsPage, setTestsPage] = useState(1);
+  const [testsHasMore, setTestsHasMore] = useState(true);
+  const [testsTotal, setTestsTotal] = useState(0);
+
+
+
+  // Estados para todos os testes dos alunos (nova funcionalidade)
+  const [allStudentTests, setAllStudentTests] = useState<any[]>([]);
+  const [loadingAllTests, setLoadingAllTests] = useState(false);
+  const [allTestsPage, setAllTestsPage] = useState(1);
+  const [allTestsHasMore, setAllTestsHasMore] = useState(true);
+  const [allTestsTotal, setAllTestsTotal] = useState(0);
+  const [allTestsSummary, setAllTestsSummary] = useState({
+    total: 0,
+    appointments: 0,
+    results: 0,
+    pending: 0,
+    scheduled: 0,
+    completed: 0,
+    cancelled: 0
   });
-  const [scheduleData, setScheduleData] = useState({
-    scheduledAt: new Date(),
-    location: '',
-    notes: ''
-  });
+  const [allTestsSearchTerm, setAllTestsSearchTerm] = useState('');
+  const [allTestsStatusFilter, setAllTestsStatusFilter] = useState<string>('ALL');
+  const [allTestsStartDate, setAllTestsStartDate] = useState<Date | null>(null);
+  const [allTestsEndDate, setAllTestsEndDate] = useState<Date | null>(null);
+  const [allTestsTestIdFilter, setAllTestsTestIdFilter] = useState<string>('');
+  const [allTestsUserIdFilter, setAllTestsUserIdFilter] = useState<string>('');
+
+  // Estados para modal de registro de teste para aluno específico
+  const [selectedStudentForTest, setSelectedStudentForTest] = useState<any>(null);
+  const [studentTestDialogOpen, setStudentTestDialogOpen] = useState(false);
+  const [studentTestData, setStudentTestData] = useState<any>({});
+  const [studentTestDate, setStudentTestDate] = useState<Date | null>(new Date());
+  const [studentTestLocation, setStudentTestLocation] = useState('');
+  const [studentTestNotes, setStudentTestNotes] = useState('');
+  const [studentTestSelectedTest, setStudentTestSelectedTest] = useState<string>('');
+  const [isSubmittingStudentTest, setIsSubmittingStudentTest] = useState(false);
+
+  // Estados para modal de detalhes do teste
+  const [testDetailsDialogOpen, setTestDetailsDialogOpen] = useState(false);
+  const [selectedTestForDetails, setSelectedTestForDetails] = useState<AllStudentTest | null>(null);
+
+
+
+  // Função estabilizada para setTestData
+  const handleSetTestData = useCallback((data: any) => {
+    setTestData(data);
+  }, []);
+
+  // Função estabilizada para setStudentTestData
+  const handleSetStudentTestData = useCallback((data: any) => {
+    setStudentTestData(data);
+  }, []);
+
+  // Função para carregar testes com paginação
+  const loadTests = useCallback(async (page: number = 1, append: boolean = false) => {
+    try {
+      setTestsLoading(true);
+      const response = await enduranceApi.getAvailableTests({ 
+        page, 
+        limit: 10 
+      });
+      
+      const testsData = response.data || [];
+      
+      if (append) {
+        setAvailableTests(prev => [...prev, ...testsData]);
+      } else {
+        setAvailableTests(testsData);
+      }
+      
+      setTestsHasMore(response.pagination.hasNext);
+      setTestsTotal(response.pagination.total);
+      setTestsPage(page);
+    } catch (err) {
+      console.error('Erro ao carregar testes:', err);
+      setError('Erro ao carregar testes disponíveis.');
+    } finally {
+      setTestsLoading(false);
+    }
+  }, []);
+
+  // Função para carregar mais testes (infinity scroll)
+  const loadMoreTests = useCallback(() => {
+    if (!testsLoading && testsHasMore) {
+      loadTests(testsPage + 1, true);
+    }
+  }, [testsLoading, testsHasMore, testsPage, loadTests]);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (currentTab === 1) {
+      fetchAllStudentTests(1, false);
+    }
+  }, [currentTab]);
+
+
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      
-      
-      const [testsResponse, studentsResponse] = await Promise.all([
-        enduranceApi.getAvailableTests(),
+      const [studentsResponse] = await Promise.all([
         enduranceApi.getCoachStudents()
       ]);
       
-      const testsData = Array.isArray(testsResponse) ? testsResponse : testsResponse.data;
       const studentsData = Array.isArray(studentsResponse) ? studentsResponse : studentsResponse.students;
       
+      // Remover duplicatas baseado em ID e email
+      const uniqueStudents = studentsData ? studentsData.filter((student, index, self) => 
+        index === self.findIndex(s => 
+          s.user.id === student.user.id && s.user.email === student.user.email
+        )
+      ) : [];
       
+      setStudents(uniqueStudents || []);
       
-      setAvailableTests(testsData || []);
-      setStudents(studentsData || []);
+      // Carregar primeira página de testes
+      await loadTests(1, false);
       
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
@@ -293,15 +524,40 @@ export default function GerenciarTestesPage() {
     const test = getSelectedTest();
     if (!test) return null;
 
-    if (test.name.toLowerCase().includes('3') && test.name.toLowerCase().includes('9')) {
-      return <Test3Plus9Form testData={testData} setTestData={setTestData} />;
-    }
-
-    return <GenericTestForm testData={testData} setTestData={setTestData} />;
+    // Usar sempre o DynamicTestForm conforme a nova estrutura
+    return (
+      <DynamicTestForm 
+        testData={testData} 
+        setTestData={handleSetTestData}
+        selectedTest={test}
+      />
+    );
   };
 
   const handleSubmit = async () => {
-    if (!selectedStudent || !selectedTest || !testData.value) {
+    if (!selectedStudent || !selectedTest) {
+      toast.error('Selecione um aluno e um teste para continuar.');
+      return;
+    }
+
+    const test = getSelectedTest();
+    if (!test) {
+      toast.error('Teste não encontrado.');
+      return;
+    }
+
+    // Sempre usar resultados dinâmicos conforme a nova estrutura
+    if (!testData.dynamicResults || testData.dynamicResults.length === 0) {
+      toast.error('Adicione pelo menos um campo de resultado.');
+      return;
+    }
+
+    // Validar se todos os campos obrigatórios estão preenchidos
+    const hasInvalidFields = testData.dynamicResults.some(
+      (result: DynamicTestResult) => !result.fieldName || !result.value
+    );
+    
+    if (hasInvalidFields) {
       toast.error('Preencha todos os campos obrigatórios.');
       return;
     }
@@ -309,25 +565,22 @@ export default function GerenciarTestesPage() {
     try {
       setIsSubmitting(true);
       
-      const test = getSelectedTest();
       const student = students.find(s => s.user.id === selectedStudent);
       
-      if (!test || !student) {
-        toast.error('Dados inválidos.');
+      if (!student) {
+        toast.error('Aluno não encontrado.');
         return;
       }
 
-      const resultData = {
+      const dynamicResultData: RecordDynamicTestResultRequest = {
         testId: selectedTest,
         userId: selectedStudent,
-        value: parseFloat(testData.value),
-        unit: testData.unit || '',
-        notes: notes,
-        date: testDate?.toISOString() || new Date().toISOString(),
-        location: location
+        resultType: 'MULTIPLE',
+        multipleResults: testData.dynamicResults,
+        notes: notes
       };
 
-      await enduranceApi.recordTestResult(resultData);
+      await enduranceApi.recordCoachDynamicTestResult(dynamicResultData);
       
       toast.success('Teste registrado com sucesso!');
       handleCloseDialog();
@@ -343,103 +596,187 @@ export default function GerenciarTestesPage() {
     }
   };
 
-  // Funções para resultados de testes
-  const fetchTestRequests = async () => {
+
+
+
+
+  // Função para buscar todos os testes dos alunos
+  const fetchAllStudentTests = useCallback(async (page: number = 1, append: boolean = false) => {
     try {
-      setLoadingRequests(true);
-      const response = await enduranceApi.getCoachTestRequests();
-      setTestRequests(response.data || []);
-      setFilteredRequests(response.data || []);
+      setLoadingAllTests(true);
+      
+      const params: any = {
+        page,
+        limit: 10
+      };
+      
+      if (allTestsStatusFilter !== 'ALL') {
+        params.status = allTestsStatusFilter;
+      }
+      
+      if (allTestsSearchTerm) {
+        params.search = allTestsSearchTerm;
+      }
+      
+      if (allTestsStartDate) {
+        params.startDate = allTestsStartDate.toISOString();
+      }
+      
+      if (allTestsEndDate) {
+        params.endDate = allTestsEndDate.toISOString();
+      }
+      
+      if (allTestsTestIdFilter) {
+        params.testId = allTestsTestIdFilter;
+      }
+      
+      if (allTestsUserIdFilter) {
+        params.userId = allTestsUserIdFilter;
+      }
+      
+      const response = await enduranceApi.getAllStudentTests(params);
+      
+      if (append) {
+        setAllStudentTests(prev => [...prev, ...(response.data || [])]);
+      } else {
+        setAllStudentTests(response.data || []);
+      }
+      
+      setAllTestsHasMore(response.pagination?.hasNext || false);
+      setAllTestsTotal(response.pagination?.total || 0);
+      setAllTestsPage(page);
+      
+      if (response.summary) {
+        setAllTestsSummary(response.summary);
+      }
+      
     } catch (error) {
-      console.error('Erro ao carregar solicitações de teste:', error);
+      console.error('Erro ao carregar todos os testes dos alunos:', error);
+      toast.error('Erro ao carregar todos os testes dos alunos.');
     } finally {
-      setLoadingRequests(false);
+      setLoadingAllTests(false);
     }
+  }, [
+    allTestsStatusFilter,
+    allTestsSearchTerm,
+    allTestsStartDate,
+    allTestsEndDate,
+    allTestsTestIdFilter,
+    allTestsUserIdFilter
+  ]);
+
+  // useEffect para carregar dados iniciais quando as dependências mudarem
+  useEffect(() => {
+    fetchAllStudentTests(1, false);
+  }, [fetchAllStudentTests]);
+
+  // Função para carregar mais testes dos alunos
+  const loadMoreAllTests = useCallback(() => {
+    if (!loadingAllTests && allTestsHasMore) {
+      fetchAllStudentTests(allTestsPage + 1, true);
+    }
+  }, [loadingAllTests, allTestsHasMore, allTestsPage, fetchAllStudentTests]);
+
+  // Removido: filtro agora é feito no servidor
+
+
+
+  // Função para abrir modal de registro de teste para aluno específico
+  const openStudentTestDialog = (student: any) => {
+    setSelectedStudentForTest(student);
+    setStudentTestDialogOpen(true);
+    setStudentTestData({});
+    setStudentTestDate(new Date());
+    setStudentTestLocation('');
+    setStudentTestNotes('');
+    setStudentTestSelectedTest('');
   };
 
-  useEffect(() => {
-    fetchTestRequests();
-  }, []);
+  // Função para fechar modal de registro de teste para aluno específico
+  const closeStudentTestDialog = () => {
+    setStudentTestDialogOpen(false);
+    setSelectedStudentForTest(null);
+    setStudentTestData({});
+    setStudentTestDate(new Date());
+    setStudentTestLocation('');
+    setStudentTestNotes('');
+    setStudentTestSelectedTest('');
+  };
 
-  useEffect(() => {
-    let filtered = testRequests;
-    
-    if (searchTerm) {
-      filtered = filtered.filter(request => 
-        request.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.test.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter(request => request.status === statusFilter);
-    }
-    
-    setFilteredRequests(filtered);
-  }, [testRequests, searchTerm, statusFilter]);
+  // Função para obter teste selecionado para aluno específico
+  const getSelectedStudentTest = () => {
+    return availableTests.find(test => test.id === studentTestSelectedTest);
+  };
 
-  const handleAddResult = async () => {
-    if (!selectedRequest || !resultData.results) {
-      toast.error('Preencha os resultados.');
+  // Função para renderizar formulário de teste para aluno específico
+  const renderStudentTestForm = () => {
+    const selectedTest = getSelectedStudentTest();
+    
+    if (!selectedTest) return null;
+
+    // Usar sempre o DynamicTestForm conforme a nova estrutura
+    return (
+      <DynamicTestForm
+        testData={studentTestData}
+        setTestData={handleSetStudentTestData}
+        selectedTest={selectedTest}
+      />
+    );
+  };
+
+  // Função para submeter teste de aluno específico
+  const handleSubmitStudentTest = async () => {
+    if (!selectedStudentForTest || !studentTestSelectedTest) {
+      toast.error('Selecione um aluno e um teste');
       return;
     }
 
+    setIsSubmittingStudentTest(true);
     try {
-      await enduranceApi.addTestRequestResults(selectedRequest.id, {
-        results: resultData.results,
-        notes: resultData.notes
-      });
+      const selectedTest = getSelectedStudentTest();
+      
+      if (!selectedTest) {
+        toast.error('Teste não encontrado');
+        return;
+      }
 
-      await enduranceApi.updateTestRequestStatus(selectedRequest.id, {
-        status: 'COMPLETED'
-      });
+      const testData = {
+        userId: selectedStudentForTest.user.id,
+        testId: studentTestSelectedTest,
+        date: studentTestDate,
+        location: studentTestLocation,
+        notes: studentTestNotes,
+        ...studentTestData
+      };
 
-      toast.success('Resultado adicionado com sucesso!');
-      setResultDialogOpen(false);
-      setResultData({ results: '', notes: '' });
-      fetchTestRequests();
+      // Sempre usar resultados dinâmicos conforme a nova estrutura
+      await enduranceApi.recordCoachDynamicTestResult(testData as RecordDynamicTestResultRequest);
+
+      toast.success('Teste registrado com sucesso!');
+      closeStudentTestDialog();
+      
+      // Recarregar dados se necessário
+      if (currentTab === 1) {
+        fetchAllStudentTests(1, false);
+      }
     } catch (error) {
-      console.error('Erro ao adicionar resultado:', error);
-      toast.error('Erro ao adicionar resultado.');
+      console.error('Erro ao registrar teste:', error);
+      toast.error('Erro ao registrar teste. Tente novamente.');
+    } finally {
+      setIsSubmittingStudentTest(false);
     }
   };
 
-  const handleScheduleTest = async () => {
-    if (!selectedRequest || !scheduleData.location) {
-      toast.error('Preencha a localização.');
-      return;
-    }
-
-    try {
-      await enduranceApi.updateTestRequestStatus(selectedRequest.id, {
-        status: 'SCHEDULED',
-        scheduledAt: scheduleData.scheduledAt.toISOString(),
-        location: scheduleData.location,
-        notes: scheduleData.notes
-      });
-
-      toast.success('Teste agendado com sucesso!');
-      setScheduleDialogOpen(false);
-      setScheduleData({
-        scheduledAt: new Date(),
-        location: '',
-        notes: ''
-      });
-      fetchTestRequests();
-    } catch (error) {
-      console.error('Erro ao agendar teste:', error);
-      toast.error('Erro ao agendar teste.');
-    }
+  // Função para abrir modal de detalhes do teste
+  const openTestDetailsDialog = (test: AllStudentTest) => {
+    setSelectedTestForDetails(test);
+    setTestDetailsDialogOpen(true);
   };
 
-  const openResultDialog = (request: TestRequest) => {
-    setSelectedRequest(request);
-    setResultDialogOpen(true);
-  };
-
-  const openScheduleDialog = (request: TestRequest) => {
-    setSelectedRequest(request);
-    setScheduleDialogOpen(true);
+  // Função para fechar modal de detalhes do teste
+  const closeTestDetailsDialog = () => {
+    setTestDetailsDialogOpen(false);
+    setSelectedTestForDetails(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -462,6 +799,33 @@ export default function GerenciarTestesPage() {
     }
   };
 
+  const getTestTypeLabel = (type: string) => {
+    switch (type) {
+      case 'APPOINTMENT': return 'Agendamento';
+      case 'RESULT': return 'Resultado';
+      default: return type;
+    }
+  };
+
+  const getTestTypeColor = (type: string) => {
+    switch (type) {
+      case 'APPOINTMENT': return 'primary';
+      case 'RESULT': return 'success';
+      default: return 'default';
+    }
+  };
+
+  const clearAllTestsFilters = () => {
+    setAllTestsSearchTerm('');
+    setAllTestsStatusFilter('ALL');
+    setAllTestsStartDate(null);
+    setAllTestsEndDate(null);
+    setAllTestsTestIdFilter('');
+    setAllTestsUserIdFilter('');
+  };
+
+
+
   if (!auth.user) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -476,13 +840,13 @@ export default function GerenciarTestesPage() {
         <Container maxWidth={false} sx={{ mt: 4, mb: 4 }}>
           <PageHeader
             title="Gerenciar Testes"
-            description="Registre novos testes e gerencie resultados dos seus alunos."
+            description="Gerencie seus alunos e visualize o histórico de testes realizados."
           />
           
           <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)} sx={{ mb: 3 }}>
             <Tab 
-              icon={<AddIcon />} 
-              label="Registrar Teste" 
+              icon={<PersonIcon />} 
+              label="Meus Alunos" 
               iconPosition="start"
             />
             <Tab 
@@ -493,7 +857,7 @@ export default function GerenciarTestesPage() {
           </Tabs>
 
           {currentTab === 0 && (
-            // Aba de Registrar Teste
+            // Aba de Meus Alunos
             <>
               {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -502,40 +866,18 @@ export default function GerenciarTestesPage() {
               ) : error ? (
                 <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
               ) : (
-                <Grid container spacing={3}>
-                  {/* Seleção de Aluno */}
-                  <Grid item xs={12} md={6}>
-                    <Card>
+                <>
+                  {/* Filtro de busca */}
+                  <Card sx={{ mb: 3 }}>
                       <CardContent>
-                        <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                          <PersonIcon sx={{ mr: 1 }} />
-                          Selecionar Aluno
-                        </Typography>
-                        
-                        {students.length === 0 ? (
-                          <Alert severity="info">
-                            Nenhum aluno encontrado. Os alunos aparecerão aqui quando se inscreverem em seus planos.
-                          </Alert>
-                        ) : (
-                          <Autocomplete
-                            fullWidth
-                            options={students}
-                            getOptionLabel={(option) => `${option.user.name} (${option.user.email})`}
-                            value={students.find(student => student.user.id === selectedStudent) || null}
-                            onChange={(event, newValue) => {
-                              setSelectedStudent(newValue ? newValue.user.id : '');
-                            }}
-                            inputValue={studentSearchTerm}
-                            onInputChange={(event, newInputValue) => {
-                              setStudentSearchTerm(newInputValue);
-                            }}
-                            renderInput={(params) => (
+                      <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={12} sm={6} md={4}>
                               <TextField
-                                {...params}
-                                label="Buscar aluno por nome ou email"
-                                placeholder="Digite o nome ou email do aluno..."
+                            fullWidth
+                            placeholder="Buscar aluno por nome ou email..."
+                            value={studentSearchTerm}
+                            onChange={(e) => setStudentSearchTerm(e.target.value)}
                                 InputProps={{
-                                  ...params.InputProps,
                                   startAdornment: (
                                     <InputAdornment position="start">
                                       <SearchIcon />
@@ -543,96 +885,109 @@ export default function GerenciarTestesPage() {
                                   ),
                                 }}
                               />
-                            )}
-                            renderOption={(props, option) => (
-                              <Box component="li" {...props}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                  <Avatar src={option.user.image} sx={{ mr: 2, width: 32, height: 32 }}>
-                                    <PersonIcon />
-                                  </Avatar>
-                                  <Box sx={{ flexGrow: 1 }}>
-                                    <Typography variant="body2">{option.user.name}</Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                      {option.user.email}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                              </Box>
-                            )}
-                            filterOptions={(options, { inputValue }) => {
-                              const searchTerm = inputValue.toLowerCase();
-                              return options.filter(option =>
-                                option.user.name.toLowerCase().includes(searchTerm) ||
-                                option.user.email.toLowerCase().includes(searchTerm)
-                              );
-                            }}
-                            noOptionsText="Nenhum aluno encontrado"
-                            loading={loading}
-                            loadingText="Carregando alunos..."
-                          />
-                        )}
+                        </Grid>
+                      </Grid>
                       </CardContent>
                     </Card>
-                  </Grid>
 
-                  {/* Seleção de Teste */}
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                          <ScienceIcon sx={{ mr: 1 }} />
-                          Selecionar Teste
-                        </Typography>
-                        
-                        {availableTests.length === 0 ? (
-                          <Alert severity="info">
-                            Nenhum teste disponível no momento.
-                          </Alert>
-                        ) : (
-                          <FormControl fullWidth>
-                            <InputLabel>Teste</InputLabel>
-                            <Select
-                              value={selectedTest}
-                              onChange={(e) => setSelectedTest(e.target.value)}
-                              label="Teste"
-                            >
-                              {availableTests.map((test) => (
-                                <MenuItem key={test.id} value={test.id}>
+                  {/* Lista de Alunos */}
+                  <TableContainer component={Paper}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Aluno</TableCell>
+                          <TableCell>Email</TableCell>
+                          <TableCell>Gênero</TableCell>
+                          <TableCell>Idade</TableCell>
+                          <TableCell align="center">Ações</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {students
+                          .filter(student => 
+                            student && 
+                            student.user && 
+                            student.user.id && 
+                            student.user.name && 
+                            student.user.email
+                          )
+                          .filter(student => {
+                            if (!studentSearchTerm) return true;
+                            const searchTerm = studentSearchTerm.toLowerCase();
+                            return (
+                              student.user.name.toLowerCase().includes(searchTerm) ||
+                              student.user.email.toLowerCase().includes(searchTerm)
+                            );
+                          })
+                          .map((student) => (
+                            <TableRow key={student.user.id} hover>
+                              <TableCell>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
-                                      {getTestIcon(test.type)}
-                                    </Avatar>
-                                    <Box>
-                                      <Typography variant="body2">{test.name}</Typography>
-                                      <Typography variant="caption" color="text.secondary">
-                                        {test.type}
+                                  <SafeAvatar 
+                                    src={student.user.image ? getAbsoluteImageUrl(student.user.image) : undefined} 
+                                    sx={{ mr: 2, width: 40, height: 40 }}
+                                  >
+                                    <PersonIcon />
+                                  </SafeAvatar>
+                                  <Typography variant="body1" fontWeight="medium">
+                                    {student.user.name}
                                       </Typography>
                                     </Box>
-                                  </Box>
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  {/* Botão de Registro */}
-                  <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2" color="text.secondary">
+                                  {student.user.email}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Chip 
+                                  label={formatGender(student.user.gender || '')} 
+                                  size="small" 
+                                  color="primary" 
+                                  variant="outlined"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2">
+                                  {calculateAge(student.user.birthDate || new Date())} anos
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="center">
                       <Button
                         variant="contained"
-                        size="large"
+                                  size="small"
                         startIcon={<AddIcon />}
-                        onClick={handleOpenDialog}
-                        disabled={!selectedStudent || !selectedTest}
+                                  onClick={() => openStudentTestDialog(student)}
                       >
                         Registrar Teste
                       </Button>
-                    </Box>
-                  </Grid>
-                </Grid>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  {students.filter(student => 
+                    student && 
+                    student.user && 
+                    student.user.id && 
+                    student.user.name && 
+                    student.user.email
+                  ).length === 0 && (
+                    <Card>
+                      <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                        <PersonIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                        <Typography variant="h6" color="text.secondary" gutterBottom>
+                          Nenhum aluno encontrado
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Os alunos aparecerão aqui quando se inscreverem em seus planos.
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
               )}
 
               {/* Dialog de Registro */}
@@ -652,6 +1007,14 @@ export default function GerenciarTestesPage() {
                       <Typography variant="body2" color="text.secondary" gutterBottom>
                         {getSelectedTest()?.description}
                       </Typography>
+                      {getSelectedTest()?.supportsDynamicResults && (
+                        <Alert severity="info" sx={{ mt: 1 }}>
+                          <Typography variant="body2">
+                            Este teste suporta múltiplos campos de resultado. 
+                            Adicione os campos específicos necessários para este teste.
+                          </Typography>
+                        </Alert>
+                      )}
                     </Grid>
 
                     <Grid item xs={12}>
@@ -703,10 +1066,170 @@ export default function GerenciarTestesPage() {
                   <Button 
                     onClick={handleSubmit} 
                     variant="contained" 
-                    disabled={isSubmitting || !testData.value}
+                    disabled={isSubmitting || (!testData.dynamicResults || testData.dynamicResults.length === 0)}
                     startIcon={isSubmitting ? <CircularProgress size={20} /> : <SaveIcon />}
                   >
                     {isSubmitting ? 'Registrando...' : 'Registrar Teste'}
+                  </Button>
+                </DialogActions>
+              </Dialog>
+
+              {/* Dialog de Registro de Teste para Aluno Específico */}
+              <Dialog open={studentTestDialogOpen} onClose={closeStudentTestDialog} maxWidth="md" fullWidth>
+                <DialogTitle>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <ScienceIcon sx={{ mr: 1 }} />
+                    Registrar Teste para {selectedStudentForTest?.user?.name}
+                  </Box>
+                </DialogTitle>
+                <DialogContent>
+                  <Grid container spacing={3} sx={{ mt: 1 }}>
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <SafeAvatar 
+                          src={selectedStudentForTest?.user?.image ? getAbsoluteImageUrl(selectedStudentForTest.user.image) : undefined} 
+                          sx={{ mr: 2, width: 48, height: 48 }}
+                        >
+                          <PersonIcon />
+                        </SafeAvatar>
+                        <Box>
+                          <Typography variant="h6">{selectedStudentForTest?.user?.name}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {selectedStudentForTest?.user?.email}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <FormControl fullWidth>
+                        <InputLabel>Selecionar Teste</InputLabel>
+                        <Select
+                          value={studentTestSelectedTest}
+                          onChange={(e) => setStudentTestSelectedTest(e.target.value)}
+                          label="Selecionar Teste"
+                          MenuProps={{
+                            PaperProps: {
+                              style: {
+                                maxHeight: 300,
+                              },
+                              onScroll: (event) => {
+                                const target = event.target as HTMLDivElement;
+                                if (target.scrollTop + target.clientHeight >= target.scrollHeight - 20) {
+                                  loadMoreTests();
+                                }
+                              },
+                            },
+                          }}
+                        >
+                          {availableTests.map((test) => (
+                            <MenuItem key={test.id} value={test.id}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
+                                  {getTestIcon(test.type)}
+                                </Avatar>
+                                <Box>
+                                  <Typography variant="body2">{test.name}</Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {test.type}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </MenuItem>
+                          ))}
+                          {testsLoading && (
+                            <MenuItem disabled>
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                                <CircularProgress size={20} sx={{ mr: 1 }} />
+                                <Typography variant="body2">Carregando mais testes...</Typography>
+                              </Box>
+                            </MenuItem>
+                          )}
+                          {!testsHasMore && availableTests.length > 0 && (
+                            <MenuItem disabled>
+                              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', width: '100%' }}>
+                                Todos os {testsTotal} testes carregados
+                              </Typography>
+                            </MenuItem>
+                          )}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+
+                    {studentTestSelectedTest && (
+                      <>
+                        <Grid item xs={12}>
+                          <Typography variant="h6" gutterBottom>
+                            {getSelectedStudentTest()?.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            {getSelectedStudentTest()?.description}
+                          </Typography>
+                          {getSelectedStudentTest()?.supportsDynamicResults && (
+                            <Alert severity="info" sx={{ mt: 1 }}>
+                              <Typography variant="body2">
+                                Este teste suporta múltiplos campos de resultado. 
+                                Adicione os campos específicos necessários para este teste.
+                              </Typography>
+                            </Alert>
+                          )}
+                        </Grid>
+
+                        <Grid item xs={12}>
+                          {renderStudentTestForm()}
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                          <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
+                            <DatePicker
+                              label="Data do Teste"
+                              value={studentTestDate}
+                              onChange={(newValue) => setStudentTestDate(newValue)}
+                              slotProps={{
+                                textField: {
+                                  fullWidth: true
+                                }
+                              }}
+                            />
+                          </LocalizationProvider>
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Local"
+                            value={studentTestLocation}
+                            onChange={(e) => setStudentTestLocation(e.target.value)}
+                            placeholder="ex: Academia, Parque, Pista"
+                          />
+                        </Grid>
+
+                        <Grid item xs={12}>
+                          <TextField
+                            fullWidth
+                            label="Observações"
+                            multiline
+                            rows={3}
+                            value={studentTestNotes}
+                            onChange={(e) => setStudentTestNotes(e.target.value)}
+                            placeholder="Observações adicionais sobre o teste..."
+                          />
+                        </Grid>
+                      </>
+                    )}
+                  </Grid>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={closeStudentTestDialog} disabled={isSubmittingStudentTest}>
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={handleSubmitStudentTest} 
+                    variant="contained" 
+                                          disabled={isSubmittingStudentTest || !studentTestSelectedTest || (!studentTestData.dynamicResults || studentTestData.dynamicResults.length === 0)}
+                    startIcon={isSubmittingStudentTest ? <CircularProgress size={20} /> : <SaveIcon />}
+                  >
+                    {isSubmittingStudentTest ? 'Registrando...' : 'Registrar Teste'}
                   </Button>
                 </DialogActions>
               </Dialog>
@@ -714,18 +1237,62 @@ export default function GerenciarTestesPage() {
           )}
 
           {currentTab === 1 && (
-            // Aba de Histórico de Testes
+            // Aba de Histórico de Testes dos Alunos
             <>
+              {/* Estatísticas */}
+              <Grid container spacing={3} sx={{ mb: 3 }}>
+                <Grid item xs={12} sm={6} md={2}>
+                  <Card sx={{ textAlign: 'center', bgcolor: 'primary.light', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4">{allTestsSummary.total}</Typography>
+                      <Typography variant="body2">Total</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <Card sx={{ textAlign: 'center', bgcolor: 'warning.light', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4">{allTestsSummary.pending}</Typography>
+                      <Typography variant="body2">Pendentes</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <Card sx={{ textAlign: 'center', bgcolor: 'info.light', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4">{allTestsSummary.scheduled}</Typography>
+                      <Typography variant="body2">Agendados</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <Card sx={{ textAlign: 'center', bgcolor: 'success.light', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4">{allTestsSummary.completed}</Typography>
+                      <Typography variant="body2">Concluídos</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <Card sx={{ textAlign: 'center', bgcolor: 'error.light', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4">{allTestsSummary.cancelled}</Typography>
+                      <Typography variant="body2">Cancelados</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
               {/* Filtros */}
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={6} md={3}>
                       <TextField
                         fullWidth
                         placeholder="Buscar por aluno ou teste..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        value={allTestsSearchTerm}
+                        onChange={(e) => setAllTestsSearchTerm(e.target.value)}
                         InputProps={{
                           startAdornment: (
                             <InputAdornment position="start">
@@ -735,12 +1302,12 @@ export default function GerenciarTestesPage() {
                         }}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={3}>
+                    <Grid item xs={12} sm={6} md={2}>
                       <FormControl fullWidth>
                         <InputLabel>Status</InputLabel>
                         <Select
-                          value={statusFilter}
-                          onChange={(e) => setStatusFilter(e.target.value)}
+                          value={allTestsStatusFilter}
+                          onChange={(e) => setAllTestsStatusFilter(e.target.value)}
                           label="Status"
                         >
                           <MenuItem value="ALL">Todos</MenuItem>
@@ -751,16 +1318,61 @@ export default function GerenciarTestesPage() {
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={12} sm={3}>
+                    <Grid item xs={12} sm={6} md={2}>
+                      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
+                        <DatePicker
+                          label="Data Inicial"
+                          value={allTestsStartDate}
+                          onChange={(newValue) => setAllTestsStartDate(newValue)}
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              size: "small"
+                            }
+                          }}
+                        />
+                      </LocalizationProvider>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={2}>
+                      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
+                        <DatePicker
+                          label="Data Final"
+                          value={allTestsEndDate}
+                          onChange={(newValue) => setAllTestsEndDate(newValue)}
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              size: "small"
+                            }
+                          }}
+                        />
+                      </LocalizationProvider>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={2}>
+                      <FormControl fullWidth>
+                        <InputLabel>Teste</InputLabel>
+                        <Select
+                          value={allTestsTestIdFilter}
+                          onChange={(e) => setAllTestsTestIdFilter(e.target.value)}
+                          label="Teste"
+                        >
+                          <MenuItem value="">Todos os testes</MenuItem>
+                          {availableTests.map((test) => (
+                            <MenuItem key={test.id} value={test.id}>
+                              {test.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={1}>
                       <Button
                         variant="outlined"
                         startIcon={<FilterListIcon />}
-                        onClick={() => {
-                          setSearchTerm('');
-                          setStatusFilter('ALL');
-                        }}
+                        onClick={clearAllTestsFilters}
+                        fullWidth
                       >
-                        Limpar Filtros
+                        Limpar
                       </Button>
                     </Grid>
                   </Grid>
@@ -768,7 +1380,7 @@ export default function GerenciarTestesPage() {
               </Card>
 
               {/* Lista de Testes */}
-              {loadingRequests ? (
+              {loadingAllTests && allStudentTests.length === 0 ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                   <CircularProgress />
                 </Box>
@@ -776,10 +1388,10 @@ export default function GerenciarTestesPage() {
                 <Card>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
-                      Histórico de Testes ({filteredRequests.length})
+                      Histórico de Testes ({allStudentTests.length})
                     </Typography>
                     
-                    {filteredRequests.length === 0 ? (
+                    {allStudentTests.length === 0 ? (
                       <Alert severity="info">
                         Nenhum teste encontrado com os filtros aplicados.
                       </Alert>
@@ -791,112 +1403,125 @@ export default function GerenciarTestesPage() {
                               <TableCell>Aluno</TableCell>
                               <TableCell>Teste</TableCell>
                               <TableCell>Status</TableCell>
-                              <TableCell>Data</TableCell>
-                              <TableCell>Local</TableCell>
+                              <TableCell>Data de Realização</TableCell>
+                              <TableCell>Resultados</TableCell>
                               <TableCell>Ações</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {filteredRequests.map((request) => (
-                              <TableRow key={request.id}>
+                            {allStudentTests.map((test) => (
+                              <TableRow key={test.id}>
                                 <TableCell>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Avatar 
-                                      src={getAbsoluteImageUrl(request.user.image)} 
+                                    <SafeAvatar 
+                                      src={test.user.image ? getAbsoluteImageUrl(test.user.image) : undefined} 
                                       sx={{ mr: 2, width: 32, height: 32 }}
                                     >
                                       <PersonIcon />
-                                    </Avatar>
+                                    </SafeAvatar>
                                     <Box>
-                                      <Typography variant="body2">{request.user.name}</Typography>
+                                      <Typography variant="body2">{test.user.name}</Typography>
                                       <Typography variant="caption" color="text.secondary">
-                                        {request.user.email}
+                                        {test.user.email}
                                       </Typography>
                                     </Box>
                                   </Box>
                                 </TableCell>
                                 <TableCell>
                                   <Box>
-                                    <Typography variant="body2">{request.test.name}</Typography>
+                                    <Typography variant="body2">{test.test.name}</Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                      {request.test.type}
+                                      {test.test.type}
                                     </Typography>
                                   </Box>
                                 </TableCell>
                                 <TableCell>
                                   <Chip
-                                    label={getStatusLabel(request.status)}
-                                    color={getStatusColor(request.status) as any}
+                                    label={getStatusLabel(test.status)}
+                                    color={getStatusColor(test.status) as any}
                                     size="small"
                                   />
                                 </TableCell>
                                 <TableCell>
                                   <Typography variant="body2">
-                                    {request.requestedAt ? 
-                                      format(new Date(request.requestedAt), 'dd/MM/yyyy', { locale: ptBR }) : 
+                                    {test.recordedAt ? 
+                                      format(new Date(test.recordedAt), 'dd/MM/yyyy', { locale: ptBR }) : 
                                       'Data não informada'
                                     }
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    {request.requestedAt ? 
-                                      format(new Date(request.requestedAt), 'HH:mm', { locale: ptBR }) : 
+                                    {test.recordedAt ? 
+                                      format(new Date(test.recordedAt), 'HH:mm', { locale: ptBR }) : 
                                       ''
                                     }
                                   </Typography>
                                 </TableCell>
                                 <TableCell>
-                                  {request.location || '-'}
+                                  {test.dynamicResults ? (
+                                    <Box>
+                                      {test.dynamicResults.multipleResults?.map((result, index) => (
+                                        <Typography key={index} variant="body2">
+                                          {result.fieldName}: {result.value} {result.unit}
+                                        </Typography>
+                                      ))}
+                                    </Box>
+                                  ) : test.value ? (
+                                    <Typography variant="body2">
+                                      {test.value} {test.unit}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      Sem resultado
+                                    </Typography>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   <Box sx={{ display: 'flex', gap: 1 }}>
-                                    {request.status === 'PENDING' && (
-                                      <>
-                                        <Tooltip title="Agendar">
+                                    <Tooltip title="Ver Detalhes">
                                           <IconButton
                                             size="small"
-                                            onClick={() => openScheduleDialog(request)}
-                                            color="primary"
-                                          >
-                                            <ScheduleIcon />
-                                          </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Adicionar Resultado">
-                                          <IconButton
-                                            size="small"
-                                            onClick={() => openResultDialog(request)}
-                                            color="success"
-                                          >
-                                            <CheckIcon />
-                                          </IconButton>
-                                        </Tooltip>
-                                      </>
-                                    )}
-                                    {request.status === 'SCHEDULED' && (
-                                      <Tooltip title="Adicionar Resultado">
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => openResultDialog(request)}
-                                          color="success"
-                                        >
-                                          <CheckIcon />
-                                        </IconButton>
-                                      </Tooltip>
-                                    )}
-                                    {request.status === 'COMPLETED' && (
-                                      <Tooltip title="Ver Resultado">
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => openResultDialog(request)}
+                                        onClick={() => openTestDetailsDialog(test)}
                                           color="info"
                                         >
-                                          <AssessmentIcon />
+                                        <VisibilityIcon />
                                         </IconButton>
                                       </Tooltip>
-                                    )}
                                   </Box>
                                 </TableCell>
                               </TableRow>
                             ))}
+                            {loadingAllTests && allStudentTests.length > 0 && (
+                              <TableRow>
+                                <TableCell colSpan={6} align="center">
+                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 2 }}>
+                                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                                    <Typography variant="body2">Carregando testes...</Typography>
+                                  </Box>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                            {allTestsHasMore && !loadingAllTests && (
+                              <TableRow>
+                                <TableCell colSpan={6} align="center">
+                                  <Button
+                                    variant="outlined"
+                                    onClick={loadMoreAllTests}
+                                    sx={{ mt: 2 }}
+                                  >
+                                    Carregar Mais Testes
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                            {!allTestsHasMore && allStudentTests.length > 0 && (
+                              <TableRow>
+                                <TableCell colSpan={6} align="center">
+                                  <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                                    Todas as {allTestsTotal} solicitações foram carregadas
+                                  </Typography>
+                                </TableCell>
+                              </TableRow>
+                            )}
                           </TableBody>
                         </Table>
                       </TableContainer>
@@ -905,140 +1530,127 @@ export default function GerenciarTestesPage() {
                 </Card>
               )}
 
-              {/* Dialog de Resultado */}
-              <Dialog open={resultDialogOpen} onClose={() => setResultDialogOpen(false)} maxWidth="md" fullWidth>
+
+            </>
+          )}
+
+
+
+          {/* Modal de Detalhes do Teste */}
+          <Dialog open={testDetailsDialogOpen} onClose={closeTestDetailsDialog} maxWidth="md" fullWidth>
                 <DialogTitle>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <AssessmentIcon sx={{ mr: 1 }} />
-                    {selectedRequest?.status === 'COMPLETED' ? 'Ver Resultado' : 'Adicionar Resultado'}
+                Detalhes do Teste
                   </Box>
                 </DialogTitle>
                 <DialogContent>
+              {selectedTestForDetails && (
                   <Grid container spacing={3} sx={{ mt: 1 }}>
                     <Grid item xs={12}>
-                      <Typography variant="h6" gutterBottom>
-                        {selectedRequest?.test.name}
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <SafeAvatar 
+                        src={selectedTestForDetails.user?.image ? getAbsoluteImageUrl(selectedTestForDetails.user.image) : undefined} 
+                        sx={{ mr: 2, width: 48, height: 48 }}
+                      >
+                        <PersonIcon />
+                      </SafeAvatar>
+                      <Box>
+                        <Typography variant="h6">{selectedTestForDetails.user?.name}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {selectedTestForDetails.user?.email}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Aluno: {selectedRequest?.user.name}
-                      </Typography>
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Resultados"
-                        multiline
-                        rows={4}
-                        value={resultData.results}
-                        onChange={(e) => setResultData({ ...resultData, results: e.target.value })}
-                        placeholder="Descreva os resultados do teste..."
-                        disabled={selectedRequest?.status === 'COMPLETED'}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Observações"
-                        multiline
-                        rows={3}
-                        value={resultData.notes}
-                        onChange={(e) => setResultData({ ...resultData, notes: e.target.value })}
-                        placeholder="Observações adicionais..."
-                        disabled={selectedRequest?.status === 'COMPLETED'}
-                      />
-                    </Grid>
+                      </Box>
+                    </Box>
                   </Grid>
-                </DialogContent>
-                <DialogActions>
-                  <Button onClick={() => setResultDialogOpen(false)}>
-                    Fechar
-                  </Button>
-                  {selectedRequest?.status !== 'COMPLETED' && (
-                    <Button 
-                      onClick={handleAddResult} 
-                      variant="contained"
-                      disabled={!resultData.results}
-                    >
-                      Adicionar Resultado
-                    </Button>
+
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Teste</Typography>
+                    <Typography variant="body1" gutterBottom>
+                      {selectedTestForDetails.test?.name}
+                      </Typography>
+                    </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Tipo</Typography>
+                    <Chip 
+                      label={getTestTypeLabel(selectedTestForDetails.test?.type || '')} 
+                      color={getTestTypeColor(selectedTestForDetails.test?.type || '') as any} 
+                      size="small"
+                      />
+                    </Grid>
+
+                  {selectedTestForDetails.recordedAt && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Data de Realização</Typography>
+                      <Typography variant="body2">
+                        {format(new Date(selectedTestForDetails.recordedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      </Typography>
+                    </Grid>
                   )}
-                </DialogActions>
-              </Dialog>
 
-              {/* Dialog de Agendamento */}
-              <Dialog open={scheduleDialogOpen} onClose={() => setScheduleDialogOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <ScheduleIcon sx={{ mr: 1 }} />
-                    Agendar Teste
-                  </Box>
-                </DialogTitle>
-                <DialogContent>
-                  <Grid container spacing={3} sx={{ mt: 1 }}>
+                  {selectedTestForDetails.dynamicResults?.location && (
                     <Grid item xs={12}>
-                      <Typography variant="h6" gutterBottom>
-                        {selectedRequest?.test.name}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Aluno: {selectedRequest?.user.name}
+                      <Typography variant="subtitle2" color="text.secondary">Local</Typography>
+                      <Typography variant="body2" gutterBottom>
+                        {selectedTestForDetails.dynamicResults.location}
                       </Typography>
                     </Grid>
+                  )}
 
-                    <Grid item xs={12} sm={6}>
-                      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
-                        <DatePicker
-                          label="Data e Hora"
-                          value={scheduleData.scheduledAt}
-                          onChange={(newValue) => setScheduleData({ ...scheduleData, scheduledAt: newValue || new Date() })}
-                          slotProps={{
-                            textField: {
-                              fullWidth: true
-                            }
-                          }}
-                        />
-                      </LocalizationProvider>
-                    </Grid>
-
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="Local"
-                        value={scheduleData.location}
-                        onChange={(e) => setScheduleData({ ...scheduleData, location: e.target.value })}
-                        placeholder="ex: Academia, Parque, Pista"
-                      />
-                    </Grid>
-
+                  {selectedTestForDetails.notes && (
                     <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Observações"
-                        multiline
-                        rows={3}
-                        value={scheduleData.notes}
-                        onChange={(e) => setScheduleData({ ...scheduleData, notes: e.target.value })}
-                        placeholder="Observações sobre o agendamento..."
-                      />
+                      <Typography variant="subtitle2" color="text.secondary">Observações</Typography>
+                      <Typography variant="body2" gutterBottom>
+                        {selectedTestForDetails.notes}
+                      </Typography>
                     </Grid>
+                  )}
+
+                  {selectedTestForDetails.dynamicResults?.multipleResults && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">Resultados</Typography>
+                      <Box sx={{ 
+                        bgcolor: 'grey.50', 
+                        p: 2, 
+                        borderRadius: 1, 
+                        border: '1px solid',
+                        borderColor: 'grey.200'
+                      }}>
+                        {selectedTestForDetails.dynamicResults.multipleResults.map((result, index) => (
+                          <Typography key={index} variant="body2" sx={{ mb: 1 }}>
+                            <strong>{result.fieldName}:</strong> {result.value} {result.unit}
+                          </Typography>
+                        ))}
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {selectedTestForDetails.value && !selectedTestForDetails.dynamicResults && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">Resultado</Typography>
+                      <Box sx={{ 
+                        bgcolor: 'grey.50', 
+                        p: 2, 
+                        borderRadius: 1, 
+                        border: '1px solid',
+                        borderColor: 'grey.200'
+                      }}>
+                        <Typography variant="body2">
+                          {selectedTestForDetails.value} {selectedTestForDetails.unit}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  )}
                   </Grid>
+              )}
                 </DialogContent>
                 <DialogActions>
-                  <Button onClick={() => setScheduleDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={handleScheduleTest} 
-                    variant="contained"
-                    disabled={!scheduleData.location}
-                  >
-                    Agendar Teste
+              <Button onClick={closeTestDetailsDialog}>
+                Fechar
                   </Button>
                 </DialogActions>
               </Dialog>
-            </>
-          )}
         </Container>
         <Toaster position="top-right" />
       </DashboardLayout>

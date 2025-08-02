@@ -65,13 +65,20 @@ export default function CoachProfilePage() {
     }
 
     if (auth.user.userType !== UserType.COACH) {
-      router.push('/dashboard');
+      // Redirecionar para dashboard específico baseado no tipo de usuário
+      if (auth.user.userType === UserType.ADMIN) {
+        router.push('/dashboard/admin');
+      } else if (auth.user.userType === UserType.FITNESS_STUDENT) {
+        router.push('/dashboard/aluno');
+      } else {
+        router.push('/login');
+      }
       return;
     }
 
     // Se já completou onboarding, redirecionar
     if (auth.user.onboardingCompleted) {
-      router.push('/dashboard');
+      router.push('/dashboard/coach');
       return;
     }
 
@@ -105,7 +112,7 @@ export default function CoachProfilePage() {
       localStorage.setItem('onboarding_completed', 'true');
       
       // Redirecionar para dashboard
-      router.push('/dashboard?welcome=true');
+      router.push('/dashboard/coach?welcome=true');
       
     } catch (error) {
       console.error('Erro ao salvar perfil:', error);

@@ -133,15 +133,22 @@ export default function AdminCoachesPage() {
     setFormLoading(true);
     setFormError(null);
     try {
-      const payload = {
+      // Remover máscaras dos campos antes de enviar para a API
+      const cleanData = {
         ...data,
+        cpfCnpj: data.cpfCnpj ? data.cpfCnpj.replace(/\D/g, '') : '',
+        phone: data.phone ? data.phone.replace(/\D/g, '') : '',
         certifications: data.certifications ? data.certifications.split(',').map((c: string) => c.trim()) : [],
+        address: data.address ? {
+          ...data.address,
+          zipCode: data.address.zipCode ? data.address.zipCode.replace(/\D/g, '') : '',
+        } : undefined,
       };
 
       if (editingCoach) {
-        await enduranceApi.updateUser(editingCoach.id, payload);
+        await enduranceApi.updateUser(editingCoach.id, cleanData);
       } else {
-        await enduranceApi.createUser({ ...payload, userType: UserType.COACH });
+        await enduranceApi.createUser({ ...cleanData, userType: UserType.COACH });
       }
       handleCloseModal();
       loadCoaches();

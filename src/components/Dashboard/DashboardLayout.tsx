@@ -96,11 +96,18 @@ const menuItems: MenuItemProps[] = [
     roles: [UserType.ADMIN],
   },
   {
-    id: 'dashboard-others',
+    id: 'dashboard-coach',
     label: 'Dashboard',
     icon: <DashboardIcon />,
-    path: '/dashboard',
-    roles: [UserType.COACH, UserType.FITNESS_STUDENT],
+    path: '/dashboard/coach',
+    roles: [UserType.COACH],
+  },
+  {
+    id: 'dashboard-student',
+    label: 'Dashboard',
+    icon: <DashboardIcon />,
+    path: '/dashboard/aluno',
+    roles: [UserType.FITNESS_STUDENT],
   },
 
   // Admin Menu
@@ -289,13 +296,6 @@ const menuItems: MenuItemProps[] = [
     label: 'Pagamentos',
     icon: <PaymentIcon />,
     path: '/dashboard/aluno/pagamentos',
-    roles: [UserType.FITNESS_STUDENT],
-  },
-  {
-    id: 'student-profile',
-    label: 'Meu Perfil',
-    icon: <AccountCircleIcon />,
-    path: '/dashboard/aluno/perfil',
     roles: [UserType.FITNESS_STUDENT],
   },
 ];
@@ -640,7 +640,7 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
           )}
           {isMobile && (
             <Box>
-              <Image src={LogoSimboloPreto} alt="EnduranceOn Symbol" width={60} />
+              <Image src={LogoSimboloPreto} alt="EnduranceOn Symbol" width={60} priority />
             </Box>
           )}
           <Box sx={{ flexGrow: 1 }} />
@@ -756,7 +756,12 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
+          ModalProps={{ 
+            keepMounted: true,
+            disableAutoFocus: true,
+            disableEnforceFocus: true,
+            disableRestoreFocus: true
+          }}
           sx={{
             display: { xs: 'block', lg: 'none' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
@@ -797,6 +802,11 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
         anchor="right"
         open={aiDrawerOpen}
         onClose={handleAIDrawerToggle}
+        ModalProps={{
+          disableAutoFocus: true,
+          disableEnforceFocus: true,
+          disableRestoreFocus: true
+        }}
         sx={{
           '& .MuiDrawer-paper': {
             width: { xs: '90vw', sm: '400px', md: '450px' },

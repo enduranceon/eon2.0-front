@@ -100,8 +100,16 @@ const MeuPlanoContent = () => {
             <Grid container spacing={4}>
                 <Grid item xs={12}>
                     <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
-                        <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <SubscriptionCard 
+                        <Card sx={{ 
+                          background: (theme) => theme.palette.mode === 'dark' 
+                            ? 'rgba(30, 30, 30, 0.98)' 
+                            : 'rgba(255, 255, 255, 0.98)', 
+                          backdropFilter: 'blur(10px)', 
+                          height: '100%', 
+                          display: 'flex', 
+                          flexDirection: 'column' 
+                        }}>
+                            <SubscriptionCard
                                 subscription={subscription} 
                                 onSubscriptionUpdate={() => {
                                     // Recarregar dados da assinatura
@@ -135,7 +143,15 @@ const MeuPlanoContent = () => {
                 
                 <Grid item xs={12}>
                     <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
-                        <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <Card sx={{ 
+                          background: (theme) => theme.palette.mode === 'dark' 
+                            ? 'rgba(30, 30, 30, 0.98)' 
+                            : 'rgba(255, 255, 255, 0.98)', 
+                          backdropFilter: 'blur(10px)', 
+                          height: '100%', 
+                          display: 'flex', 
+                          flexDirection: 'column' 
+                        }}>
                             <PaymentHistory payments={payments} />
                         </Card>
                     </Paper>

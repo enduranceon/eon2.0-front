@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
+import { UserType } from '../../types/api';
 import { enduranceTheme } from '../../theme/enduranceTheme';
 
 type VerificationStatus = 'loading' | 'success' | 'error' | 'expired' | 'pending';
@@ -70,7 +71,16 @@ function VerifyEmailContent() {
       // Redirecionar após 2 segundos
       setTimeout(() => {
         if (auth.user) {
-          router.push('/dashboard');
+          // Redirecionar para dashboard específico baseado no tipo de usuário
+          if (auth.user.userType === UserType.ADMIN) {
+            router.push('/dashboard/admin');
+          } else if (auth.user.userType === UserType.COACH) {
+            router.push('/dashboard/coach');
+          } else if (auth.user.userType === UserType.FITNESS_STUDENT) {
+            router.push('/dashboard/aluno');
+          } else {
+            router.push('/login');
+          }
         } else {
           router.push('/login');
         }

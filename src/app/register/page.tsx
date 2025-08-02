@@ -130,10 +130,19 @@ export default function RegisterPage() {
 
   // Redirecionar se já autenticado
   React.useEffect(() => {
-    if (auth.isAuthenticated) {
-      router.push('/dashboard');
+    if (auth.isAuthenticated && auth.user) {
+      // Redirecionar para dashboard específico baseado no tipo de usuário
+      if (auth.user.userType === UserType.ADMIN) {
+        router.push('/dashboard/admin');
+      } else if (auth.user.userType === UserType.COACH) {
+        router.push('/dashboard/coach');
+      } else if (auth.user.userType === UserType.FITNESS_STUDENT) {
+        router.push('/dashboard/aluno');
+      } else {
+        router.push('/login');
+      }
     }
-  }, [auth.isAuthenticated, router]);
+  }, [auth.isAuthenticated, auth.user, router]);
 
   const handleChange = (field: keyof FormData | string) => (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any

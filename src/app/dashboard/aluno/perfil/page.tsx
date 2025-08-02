@@ -346,23 +346,27 @@ export default function StudentProfilePage() {
                   />
                   <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                     <Tooltip title="Alterar foto">
-                      <IconButton
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploading}
-                        color="primary"
-                      >
-                        <PhotoCameraIcon />
-                      </IconButton>
+                      <span>
+                        <IconButton
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploading}
+                          color="primary"
+                        >
+                          <PhotoCameraIcon />
+                        </IconButton>
+                      </span>
                     </Tooltip>
                     {(profile.image || profile.avatar) && (
                       <Tooltip title="Remover foto">
-                        <IconButton
-                          onClick={handleRemovePhoto}
-                          disabled={isUploading}
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                        <span>
+                          <IconButton
+                            onClick={handleRemovePhoto}
+                            disabled={isUploading}
+                            color="error"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </span>
                       </Tooltip>
                     )}
                   </Box>

@@ -26,11 +26,11 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Badge,
 } from '@mui/material';
 import {
   Person as PersonIcon,
   Star as StarIcon,
-  TrendingUp as TrendingUpIcon,
   Edit as EditIcon,
   Add as AddIcon,
   CheckCircle as CheckIcon,
@@ -42,13 +42,22 @@ import {
   Phone as PhoneIcon,
   DirectionsRun as RunIcon,
   ChatBubble as ChatIcon,
+  Event as EventIcon,
+  Assessment as TestIcon,
+  School as CoachIcon,
+  CalendarToday as CalendarIcon,
+  EmojiEvents as TrophyIcon,
+  Speed as PerformanceIcon,
+  Notifications as NotificationIcon,
+  AttachMoney as MoneyIcon,
+  Schedule as ScheduleIcon,
+  FitnessCenter as TrainingIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import DashboardLayout from '../../../components/Dashboard/DashboardLayout';
 import StatsCard from '../../../components/Dashboard/StatsCard';
 import { enduranceApi } from '../../../services/enduranceApi';
-
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -78,8 +87,14 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [stats, setStats] = useState<any>(null);
+  // Estados para dados do dashboard
   const [subscription, setSubscription] = useState<any>(null);
+  const [userTests, setUserTests] = useState<any>(null);
+  const [userExams, setUserExams] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [walletBalance, setWalletBalance] = useState<any>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [userCoach, setUserCoach] = useState<any>(null);
 
   // Redirecionar para login se usuário não estiver autenticado
   useEffect(() => {
@@ -99,26 +114,58 @@ export default function StudentDashboard() {
       setLoading(true);
       setError(null);
 
+      // Carregar todos os dados relevantes para o aluno
       const [
         activeSubscription,
+        userTestsData,
+        userExamsData,
+        userProfileData,
+        walletBalanceData,
+        eventsData
       ] = await Promise.all([
-        enduranceApi.getActiveSubscription(),
+        enduranceApi.getActiveSubscription().catch(err => {
+          console.warn('Erro ao carregar assinatura:', err);
+          return null;
+        }),
+        enduranceApi.getUserTests().catch(err => {
+          console.warn('Erro ao carregar testes do usuário:', err);
+          return { data: [], summary: { total: 0, completed: 0, pending: 0 } };
+        }),
+        enduranceApi.getUserExams(auth.user.id).catch(err => {
+          console.warn('Erro ao carregar provas do usuário:', err);
+          return { data: [], pagination: { total: 0 } };
+        }),
+        enduranceApi.getProfile().catch(err => {
+          console.warn('Erro ao carregar perfil do usuário:', err);
+          return auth.user;
+        }),
+        enduranceApi.getWalletBalance().catch(err => {
+          console.warn('Erro ao carregar saldo da carteira:', err);
+          return { balance: 0, currency: 'BRL' };
+        }),
+        enduranceApi.getExams({ status: 'ACTIVE', limit: 5 }).catch(err => {
+          console.warn('Erro ao carregar eventos:', err);
+          return { data: [] };
+        })
       ]);
 
-      // Dados básicos para o dashboard do aluno (não precisamos dos stats de admin)
-      const studentStats = {
-        tests: {
-          completed: 0,
-          total: 0,
-          completionRate: 0
-        },
-        events: {
-          upcoming: 0
+      // Buscar informações do treinador se a assinatura tiver coachId
+      let coachData = null;
+      if (activeSubscription?.coachId) {
+        try {
+          coachData = await enduranceApi.getCoach(activeSubscription.coachId);
+        } catch (err) {
+          console.warn('Erro ao carregar dados do treinador:', err);
         }
-      };
+      }
 
-      setStats(studentStats);
       setSubscription(activeSubscription);
+      setUserTests(userTestsData);
+      setUserExams(userExamsData);
+      setUserProfile(userProfileData);
+      setWalletBalance(walletBalanceData);
+      setUpcomingEvents(eventsData.data || []);
+      setUserCoach(coachData);
 
     } catch (err) {
       console.error('Erro ao carregar dados do aluno:', err);
@@ -139,6 +186,20 @@ export default function StudentDashboard() {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
+  };
+
+  const getTestCompletionRate = () => {
+    if (!userTests?.summary) return 0;
+    const { total, completed } = userTests.summary;
+    return total > 0 ? Math.round((completed / total) * 100) : 0;
+  };
+
+  const getUpcomingExamsCount = () => {
+    if (!userExams?.data) return 0;
+    const now = new Date();
+    return userExams.data.filter((exam: any) => 
+      new Date(exam.examDate) > now && exam.status === 'REGISTERED'
+    ).length;
   };
 
   // Verificação simples de autenticação (substitui ProtectedRoute)
@@ -198,19 +259,21 @@ export default function StudentDashboard() {
           </Typography>
         </Box>
 
-        
-
         {/* Status da Assinatura */}
         {!subscription && (
           <Alert severity="warning" sx={{ mb: 3 }}>
             Você não possui uma assinatura ativa. Escolha um plano para começar seu treinamento.
-            <Button variant="outlined" sx={{ ml: 2 }}>
+            <Button 
+              variant="outlined" 
+              sx={{ ml: 2 }}
+              onClick={() => router.push('/onboarding')}
+            >
               Ver Planos
             </Button>
           </Alert>
         )}
 
-        {/* Cards de Estatísticas - Resumo */}
+        {/* Cards de Estatísticas Principais */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
             <StatsCard
@@ -219,38 +282,234 @@ export default function StudentDashboard() {
               subtitle="Seu plano de treinamento"
               icon={<PlanIcon />}
               color="primary"
+              action={
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  onClick={() => router.push('/dashboard/aluno/meu-plano')}
+                >
+                  Ver Detalhes
+                </Button>
+              }
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatsCard
-              title="Status"
+              title="Status da Assinatura"
               value={subscription?.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
-              subtitle="Situação da conta"
+              subtitle={subscription?.status === 'ACTIVE' ? 'Treinamento ativo' : 'Assinatura pausada'}
               icon={<CheckIcon />}
-              color="success"
+              color={subscription?.status === 'ACTIVE' ? 'success' : 'warning'}
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatsCard
               title="Testes Realizados"
-              value={`${stats?.tests?.completed || 0} de ${stats?.tests?.total || 0}`}
-              subtitle={`Conclusão: ${stats?.tests?.completionRate || 0}%`}
-              icon={<TrendingUpIcon />}
+              value={`${userTests?.summary?.completed || 0} de ${userTests?.summary?.total || 0}`}
+              subtitle={`Taxa de conclusão: ${getTestCompletionRate()}%`}
+              icon={<TestIcon />}
               color="info"
+              action={
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  onClick={() => router.push('/dashboard/aluno/testes')}
+                >
+                  Ver Testes
+                </Button>
+              }
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatsCard
-              title="Provas Futuras"
-              value={stats?.events?.upcoming || 0}
+              title="Provas Inscritas"
+              value={getUpcomingExamsCount()}
               subtitle="Competições no calendário"
-              icon={<StarIcon />}
+              icon={<EventIcon />}
               color="warning"
+              action={
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  onClick={() => router.push('/dashboard/aluno/eventos')}
+                >
+                  Ver Eventos
+                </Button>
+              }
             />
           </Grid>
         </Grid>
 
-        {/* (Seções detalhadas migradas para páginas específicas) */}
+        {/* Segunda Linha de Cards */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              title="Saldo da Carteira"
+              value={formatCurrency(walletBalance?.balance || 0)}
+              subtitle="Moedas disponíveis"
+              icon={<CoinIcon />}
+              color="success"
+              action={
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  onClick={() => router.push('/dashboard/aluno/moedas')}
+                >
+                  Ver Histórico
+                </Button>
+              }
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              title="Meu Treinador"
+              value={subscription?.coach?.name || userCoach?.name || 'Não atribuído'}
+              subtitle="Treinador responsável"
+              icon={<CoachIcon />}
+              color="secondary"
+              action={
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  onClick={() => router.push('/dashboard/aluno/treinador')}
+                >
+                  Ver Perfil
+                </Button>
+              }
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              title="Próximo Pagamento"
+              value={subscription?.nextBillingDate ? formatDate(subscription.nextBillingDate) : 'N/A'}
+              subtitle={subscription?.nextBillingDate ? 'Data do próximo débito' : 'Sem assinatura ativa'}
+              icon={<PaymentIcon />}
+              color="info"
+              action={
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  onClick={() => router.push('/dashboard/aluno/pagamentos')}
+                >
+                  Ver Pagamentos
+                </Button>
+              }
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              title="Progresso Geral"
+              value={`${getTestCompletionRate()}%`}
+              subtitle="Taxa de conclusão geral"
+              icon={<PerformanceIcon />}
+              color="primary"
+              action={
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  onClick={() => router.push('/dashboard/aluno/testes')}
+                >
+                  Ver Detalhes
+                </Button>
+              }
+            />
+          </Grid>
+
+        </Grid>
+
+        {/* Seção de Ações Rápidas */}
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              Ações Rápidas
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<TestIcon />}
+                  onClick={() => router.push('/dashboard/aluno/testes')}
+                  sx={{ py: 2 }}
+                >
+                  Solicitar Teste
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<EventIcon />}
+                  onClick={() => router.push('/dashboard/aluno/eventos')}
+                  sx={{ py: 2 }}
+                >
+                  Ver Eventos
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<ChatIcon />}
+                  onClick={() => router.push('/dashboard/aluno/treinador')}
+                  sx={{ py: 2 }}
+                >
+                  Falar com Treinador
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={() => router.push('/dashboard/aluno/perfil')}
+                  sx={{ py: 2 }}
+                >
+                  Editar Perfil
+                </Button>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        {/* Seção de Próximos Eventos */}
+        {upcomingEvents.length > 0 && (
+          <Card sx={{ mb: 4 }}>
+            <CardContent>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>
+                Próximos Eventos
+              </Typography>
+              <List>
+                {upcomingEvents.slice(0, 3).map((event: any, index: number) => (
+                  <ListItem key={event.id} divider={index < 2}>
+                    <ListItemIcon>
+                      <EventIcon color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={event.name}
+                      secondary={`${formatDate(event.examDate)} • ${event.location}`}
+                    />
+                    <Chip 
+                      label={event.status} 
+                      color={event.status === 'ACTIVE' ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </ListItem>
+                ))}
+              </List>
+              <Box sx={{ mt: 2, textAlign: 'center' }}>
+                <Button 
+                  variant="outlined"
+                  onClick={() => router.push('/dashboard/aluno/eventos')}
+                >
+                  Ver Todos os Eventos
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+
+        
       </Container>
     </DashboardLayout>
   );

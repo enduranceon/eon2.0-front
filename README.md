@@ -1,87 +1,125 @@
-# 🏃‍♂️ Endurance On - Dashboard Frontend
+# 🏃‍♂️ Endurance On 2.0 - Plataforma Completa de Assessoria Esportiva
 
-Dashboard moderno e ultra realista para a plataforma de assessoria esportiva Endurance On, desenvolvido com Next.js 14, Material-UI e TypeScript.
+Plataforma moderna e robusta para assessoria esportiva especializada em corrida e triathlon, desenvolvida com Next.js 14, TypeScript e Material-UI.
 
-## ✨ Características
+## 📊 **ESTATÍSTICAS DA APLICAÇÃO**
 
-- **Design Moderno**: Interface inspirada na identidade visual da Endurance On
-- **Texturas e Profundidade**: Componentes com efeitos visuais avançados, gradientes e sombras
-- **Responsivo**: Adaptável para desktop, tablet e mobile
-- **Tema Customizado**: Cores primárias, secundárias e terciárias da marca
-- **Animações Fluidas**: Transições suaves e micro-interações
-- **TypeScript**: Tipagem completa para melhor desenvolvimento
-- **Componentes Reutilizáveis**: Arquitetura modular e escalável
+- **📄 Total de Páginas:** 52 páginas
+- **🔌 Endpoints API:** 13 rotas
+- **🧩 Componentes React:** 40 componentes
+- **👥 Tipos de Usuário:** 3 (Aluno, Treinador, Administrador)
+- **⚙️ Funcionalidades Principais:** 10 módulos
+- **🔄 Fluxos de Navegação:** 5 fluxos principais
 
-## 🎨 Identidade Visual
+---
+
+## ✨ **CARACTERÍSTICAS PRINCIPAIS**
+
+- **🎨 Design Moderno**: Interface inspirada na identidade visual da Endurance On
+- **📱 Totalmente Responsivo**: Adaptável para desktop, tablet e mobile
+- **🔐 Autenticação Completa**: Sistema de login, 2FA e controle de acesso por roles
+- **💳 Sistema de Pagamentos**: Integração completa com Asaas
+- **📊 Analytics Avançados**: Dashboards com KPIs em tempo real
+- **🧮 Calculadoras Inteligentes**: Quiz para matching de planos e treinadores
+- **📈 Gestão de Performance**: Testes, resultados e relatórios detalhados
+- **🎯 Sistema de Matching**: Algoritmo inteligente para conectar alunos e treinadores
+
+## 🎨 **IDENTIDADE VISUAL**
 
 Baseado no site oficial da [Endurance On](https://www.enduranceon.com.br/):
 
-- **Azul Principal**: `#1976d2` - Confiança e estabilidade
-- **Verde Endurance**: `#2e7d32` - Energia e crescimento  
-- **Laranja Energia**: `#f57c00` - Motivação e dinamismo
-- **Gradientes**: Efeitos visuais modernos com transições suaves
-- **Profundidade**: Sombras e elevações para hierarquia visual
+- **🔵 Azul Principal**: `#1976d2` - Confiança e estabilidade
+- **🟢 Verde Endurance**: `#2e7d32` - Energia e crescimento  
+- **🟠 Laranja Energia**: `#f57c00` - Motivação e dinamismo
+- **✨ Gradientes**: Efeitos visuais modernos com transições suaves
+- **🌊 Profundidade**: Sombras e elevações para hierarquia visual
 
-## 🚀 Tecnologias
+## 🚀 **TECNOLOGIAS**
 
+### **Frontend**
 - **Next.js 14** - Framework React com App Router
-- **Material-UI 5** - Biblioteca de componentes
+- **React 18** - Biblioteca de interface
 - **TypeScript** - Tipagem estática
-- **Recharts** - Gráficos e visualizações
+- **Material-UI 5** - Biblioteca de componentes
+- **Emotion** - CSS-in-JS
+
+### **Gráficos e Visualizações**
+- **Recharts** - Gráficos interativos
+- **Chart.js** - Visualizações avançadas
+
+### **Formulários e Validação**
 - **React Hook Form** - Gerenciamento de formulários
+- **Yup** - Validação de schemas
+
+### **HTTP e Estado**
 - **Axios** - Cliente HTTP
-- **React Query** - Estado do servidor
-- **Zustand** - Gerenciamento de estado global
+- **React Context** - Gerenciamento de estado global
+- **React Hooks** - Hooks customizados
+
+### **Notificações e UX**
 - **React Hot Toast** - Notificações
+- **React Loading Skeleton** - Estados de loading
 
-## 📁 Estrutura do Projeto
+---
+
+## 📁 **ESTRUTURA COMPLETA DO PROJETO**
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── dashboard/         # Páginas do dashboard
-│   │   ├── page.tsx      # Dashboard principal
-│   │   ├── admin/        # Área administrativa
-│   │   ├── my-clients/   # Clientes do treinador
-│   │   └── personal-earnings/ # Ganhos pessoais
-│   ├── layout.tsx        # Layout raiz
-│   └── globals.css       # Estilos globais
-├── components/            # Componentes reutilizáveis
-│   └── Dashboard/        # Componentes do dashboard
-│       ├── DashboardLayout.tsx    # Layout principal
-│       ├── DashboardOverview.tsx  # Visão geral
-│       └── StatsCard.tsx         # Card de estatísticas
-├── services/             # Serviços e APIs
-│   └── enduranceApi.ts  # Cliente da API
-├── theme/               # Configuração do tema
-│   └── enduranceTheme.ts # Tema customizado
-├── types/              # Definições TypeScript
-│   └── api.ts         # Tipos da API
-├── contexts/          # Contextos React
-└── providers/        # Providers globais
+eon2.0-front/
+├── src/
+│   ├── app/                          # Next.js App Router (52 páginas)
+│   │   ├── page.tsx                  # Landing Page
+│   │   ├── login/                    # Autenticação
+│   │   ├── register/                 # Registro
+│   │   ├── onboarding/               # Fluxo de Onboarding (4 páginas)
+│   │   ├── dashboard/
+│   │   │   ├── aluno/                # Dashboard do Aluno (10 páginas)
+│   │   │   ├── coach/                # Dashboard do Treinador (10 páginas)
+│   │   │   ├── admin/                # Dashboard Administrativo (16 páginas)
+│   │   │   ├── calculadoras/         # Ferramentas de Cálculo
+│   │   │   ├── my-clients/           # Clientes do Treinador
+│   │   │   ├── personal-earnings/    # Relatórios de Ganhos
+│   │   │   └── settings/             # Configurações
+│   │   ├── payment-pending/          # Status de Pagamento
+│   │   ├── subscription/             # Gestão de Assinaturas
+│   │   └── api/                      # Endpoints API (13 rotas)
+│   ├── components/                   # Componentes React (40 arquivos)
+│   │   ├── Dashboard/                # Componentes do Dashboard
+│   │   ├── Forms/                    # Formulários
+│   │   ├── Quiz/                     # Sistema de Quiz
+│   │   └── Analytics/                # Componentes de Analytics
+│   ├── contexts/                     # Contextos React (4 contextos)
+│   ├── hooks/                        # Hooks Customizados (2 hooks)
+│   ├── services/                     # Serviços (9 serviços)
+│   ├── types/                        # Tipos TypeScript (50+ interfaces)
+│   ├── utils/                        # Utilitários (6 utilitários)
+│   └── theme/                        # Configuração do Tema
+├── public/                           # Assets Estáticos
+└── package.json                      # Dependências
 ```
 
-## 🔧 Instalação e Execução
+---
 
-### Pré-requisitos
+## 🔧 **INSTALAÇÃO E EXECUÇÃO**
 
+### **Pré-requisitos**
 - Node.js 18+ 
 - npm 8+
 
-### Instalação
+### **Instalação**
 
 ```bash
 # Clone o repositório
-git clone https://github.com/enduranceon/front-endurance.git
+git clone https://github.com/enduranceon/eon2.0-front.git
 
 # Entre no diretório
-cd front-endurance
+cd eon2.0-front
 
 # Instale as dependências
 npm install
 ```
 
-### Configuração
+### **Configuração**
 
 1. Configure as variáveis de ambiente:
 ```bash
@@ -90,11 +128,12 @@ cp .env.example .env.local
 
 2. Edite o arquivo `.env.local`:
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_ENVIRONMENT=development
+NEXT_PUBLIC_ASAAS_API_KEY=sua_chave_api_asaas
 ```
 
-### Execução
+### **Execução**
 
 ```bash
 # Desenvolvimento
@@ -113,38 +152,173 @@ npm run lint
 npm run format
 ```
 
-O dashboard estará disponível em `http://localhost:3000/dashboard`
+A aplicação estará disponível em `http://localhost:3000`
 
-## 📊 Funcionalidades
+---
 
-### Dashboard Principal
-- **Visão Geral**: Estatísticas gerais da plataforma
-- **Gráficos Interativos**: Receita, usuários, performance
-- **Cards de Métricas**: KPIs em tempo real
-- **Filtros e Períodos**: Análise customizável
+## 📊 **FUNCIONALIDADES DETALHADAS**
 
-### 🧮 Calculadoras Inteligentes
-- **Plano Ideal**: Quiz interativo com 7 perguntas para recomendar o plano perfeito
-- **Match de Treinador**: Sistema de compatibilidade com 6 critérios de matching
-- **Interface Fluida**: Progressão visual, animações e resultados detalhados
-- **Baseado no Site Oficial**: Perguntas e lógica idênticas ao [enduranceon.com.br](https://www.enduranceon.com.br/)
-- **Algoritmo Inteligente**: Scoring automático para recomendações precisas
+### **🔐 1. SISTEMA DE AUTENTICAÇÃO E AUTORIZAÇÃO**
+- ✅ Login/Logout com múltiplos tipos de usuário
+- ✅ Verificação de email e 2FA
+- ✅ Controle de acesso baseado em roles
+- ✅ Proteção de rotas
+- ✅ Sistema de "Lembrar-me"
+- ✅ Redirecionamento automático por tipo de usuário
 
-### Área do Treinador
-- **Meus Clientes**: Gestão de alunos
-- **Ganhos Pessoais**: Comissões e pagamentos
-- **Análise de Performance**: Métricas detalhadas
-- **Histórico Financeiro**: Transações e comprovantes
+### **💳 2. GESTÃO DE ASSINATURAS**
+- ✅ Planos personalizados
+- ✅ Sistema de pagamentos integrado (Asaas)
+- ✅ Gestão de licenças
+- ✅ Status de assinatura em tempo real
+- ✅ Pausa e retomada de assinaturas
+- ✅ Histórico de pagamentos
 
-### Área Administrativa
-- **Gestão de Usuários**: CRUD completo
-- **Sistema de Pagamentos**: Integração Asaas
-- **Subcontas**: Gestão de treinadores
-- **Relatórios**: Analytics avançados
+### **🧮 3. SISTEMA DE MATCHING**
+- ✅ Quiz inteligente para planos (7 perguntas)
+- ✅ Algoritmo de matching com treinadores (6 critérios)
+- ✅ Recomendações personalizadas
+- ✅ Baseado no site oficial enduranceon.com.br
+- ✅ Interface fluida com progressão visual
 
-## 🎯 Componentes Principais
+### **📈 4. GESTÃO DE TESTES**
+- ✅ Criação e aplicação de testes
+- ✅ Registro de resultados
+- ✅ Análise de performance
+- ✅ Histórico de testes
+- ✅ Relatórios de progresso
+- ✅ Gráficos de evolução
 
-### StatsCard
+### **💰 5. SISTEMA FINANCEIRO**
+- ✅ Gestão de pagamentos
+- ✅ Relatórios de ganhos
+- ✅ Comissões de treinadores
+- ✅ Analytics financeiro
+- ✅ Integração com Asaas
+- ✅ Comprovantes e extratos
+
+### **🏃‍♂️ 6. GESTÃO DE EVENTOS**
+- ✅ Cadastro de eventos/provas
+- ✅ Inscrições
+- ✅ Controle de presença
+- ✅ Resultados
+- ✅ Certificados
+- ✅ Galeria de fotos
+
+### **📊 7. ANALYTICS E RELATÓRIOS**
+- ✅ Dashboard com KPIs em tempo real
+- ✅ Gráficos interativos (Recharts)
+- ✅ Relatórios personalizados
+- ✅ Métricas de performance
+- ✅ Exportação de dados
+- ✅ Filtros avançados
+
+### **🔔 8. SISTEMA DE NOTIFICAÇÕES**
+- ✅ Notificações em tempo real
+- ✅ Alertas de sistema
+- ✅ Comunicação entre usuários
+- ✅ Notificações push
+- ✅ Central de notificações
+
+### **👤 9. GESTÃO DE PERFIS**
+- ✅ Perfis de usuários completos
+- ✅ Configurações personalizadas
+- ✅ Upload de imagens
+- ✅ Dados de contato
+- ✅ Especialidades e certificações
+- ✅ Histórico de atividades
+
+### **🔌 10. API E INTEGRAÇÕES**
+- ✅ 13 endpoints de API
+- ✅ Integração com sistemas externos
+- ✅ Serviços de geocoding
+- ✅ Sistema de pagamentos
+- ✅ Webhooks
+- ✅ Rate limiting
+
+---
+
+## 👥 **TIPOS DE USUÁRIO E FUNCIONALIDADES**
+
+### **🎓 ALUNO (FITNESS_STUDENT)**
+- **📄 Páginas Disponíveis:** 10
+- **⚙️ Funcionalidades Principais:** 8
+- **🔄 Fluxos de Navegação:** 3
+
+**Funcionalidades:**
+- Dashboard personalizado
+- Gestão de plano contratado
+- Visualização do treinador
+- Participação em eventos
+- Realização de testes
+- Histórico de pagamentos
+- Sistema de moedas/pontos
+- Solicitação de licenças
+
+### **🏆 TREINADOR (COACH)**
+- **📄 Páginas Disponíveis:** 10
+- **⚙️ Funcionalidades Principais:** 9
+- **🔄 Fluxos de Navegação:** 4
+
+**Funcionalidades:**
+- Dashboard de performance
+- Gestão de participantes
+- Criação e aplicação de testes
+- Análise de resultados
+- Controle de presença
+- Gestão de modalidades
+- Configuração de planos
+- Relatórios financeiros
+- Perfil profissional
+
+### **⚙️ ADMINISTRADOR (ADMIN)**
+- **📄 Páginas Disponíveis:** 16
+- **⚙️ Funcionalidades Principais:** 12
+- **🔄 Fluxos de Navegação:** 5
+
+**Funcionalidades:**
+- Dashboard administrativo
+- Gestão completa de usuários
+- Configuração de modalidades
+- Gestão de planos
+- Controle de eventos
+- Configuração de testes
+- Gestão de margens
+- Relatórios financeiros
+- Gestão de licenças
+- Analytics avançados
+- Configurações do sistema
+
+---
+
+## 🔄 **FLUXOS PRINCIPAIS**
+
+### **🆕 FLUXO 1: CADASTRO E ONBOARDING**
+1. **Registro** → **Verificação de Email** → **Login**
+2. **Quiz de Plano** → **Quiz de Treinador** → **Perfil do Treinador** → **Checkout**
+3. **Pagamento** → **Ativação da Assinatura** → **Dashboard**
+
+### **🔐 FLUXO 2: AUTENTICAÇÃO**
+1. **Login** → **Verificação 2FA** → **Verificação de Assinatura** → **Dashboard**
+2. **Redirecionamento baseado no tipo de usuário**
+
+### **💳 FLUXO 3: PAGAMENTO**
+1. **Seleção de Plano** → **Checkout** → **Processamento** → **Confirmação**
+2. **Gestão de pagamentos pendentes**
+
+### **👥 FLUXO 4: GESTÃO DE ALUNOS (TREINADOR)**
+1. **Visualização de Participantes** → **Gestão de Testes** → **Resultados**
+2. **Confirmação de Presença** → **Relatórios de Performance**
+
+### **⚙️ FLUXO 5: ADMINISTRATIVO**
+1. **Dashboard Geral** → **Gestão de Usuários** → **Configurações** → **Analytics**
+2. **Relatórios Financeiros** → **Gestão de EVENTOS** → **Controle de Qualidade**
+
+---
+
+## 🎯 **COMPONENTES PRINCIPAIS**
+
+### **📊 StatsCard**
 Componente de estatísticas com visual moderno:
 ```tsx
 <StatsCard
@@ -157,31 +331,38 @@ Componente de estatísticas com visual moderno:
 />
 ```
 
-### DashboardLayout
+### **🏗️ DashboardLayout**
 Layout responsivo com sidebar e header:
 - Menu de navegação baseado em roles
 - Perfil do usuário integrado
 - Sistema de notificações
 - Responsividade automática
 
-### DashboardOverview
+### **📈 DashboardOverview**
 Visão geral com gráficos e métricas:
 - Gráficos de linha, barra e pizza
 - Tabs para diferentes análises
-- Dados mockados para demonstração
+- Dados em tempo real
 - Integração com a API
 
-## 🔐 Sistema de Autenticação
+### **🧮 Quiz Components**
+Sistema de quiz inteligente:
+- Progressão visual
+- Animações fluidas
+- Algoritmo de scoring
+- Resultados detalhados
 
-O dashboard implementa autenticação completa conforme roteiro:
+---
 
-### Funcionalidades Implementadas:
+## 🔐 **SISTEMA DE AUTENTICAÇÃO**
+
+### **Funcionalidades Implementadas:**
 - **AuthContext**: Gerenciamento global de estado de autenticação
 - **ProtectedRoute**: Componente para proteção de rotas por roles
 - **Guards**: Verificação de email, 2FA, assinatura ativa
 - **Redirecionamentos**: Automáticos baseados no tipo de usuário
 
-### Fluxo de Autenticação:
+### **Fluxo de Autenticação:**
 ```typescript
 // Login com verificações automáticas
 const response = await auth.login({
@@ -194,25 +375,19 @@ const response = await auth.login({
 // 2. 2FA necessário?
 // 3. Assinatura ativa (para alunos)?
 // 4. Redirecionar para dashboard correto
-
-// Logout
-await auth.logout();
 ```
 
-### Proteção de Rotas:
+### **Proteção de Rotas:**
 ```typescript
 // Proteção por role
-<ProtectedRoute requiredRoles={[UserType.ADMIN]}>
+<ProtectedRoute allowedUserTypes={[UserType.ADMIN]}>
   <AdminDashboard />
 </ProtectedRoute>
-
-// Proteção com assinatura
-<StudentRoute>
-  <StudentDashboard />
-</StudentRoute>
 ```
 
-## 📡 Integração com API
+---
+
+## 📡 **INTEGRAÇÃO COM API**
 
 Cliente HTTP centralizado para todas as operações:
 
@@ -225,9 +400,14 @@ const payments = await enduranceApi.getPayments(filters);
 
 // Subcontas
 const subaccounts = await enduranceApi.getCoachesSubaccounts();
+
+// Testes
+const tests = await enduranceApi.getTests();
 ```
 
-## 🎨 Customização do Tema
+---
+
+## 🎨 **CUSTOMIZAÇÃO DO TEMA**
 
 O tema é totalmente customizável através do `enduranceTheme.ts`:
 
@@ -236,6 +416,7 @@ const enduranceTheme = createTheme({
   palette: {
     primary: { main: '#1976d2' },
     secondary: { main: '#2e7d32' },
+    tertiary: { main: '#f57c00' },
   },
   colors: {
     gradient: {
@@ -248,12 +429,14 @@ const enduranceTheme = createTheme({
 });
 ```
 
-## 📱 Responsividade
+---
+
+## 📱 **RESPONSIVIDADE**
 
 O dashboard é totalmente responsivo:
-- **Desktop**: Layout completo com sidebar
-- **Tablet**: Sidebar colapsível
-- **Mobile**: Menu drawer
+- **🖥️ Desktop**: Layout completo com sidebar
+- **📱 Tablet**: Sidebar colapsível
+- **📱 Mobile**: Menu drawer
 
 Breakpoints Material-UI:
 - `xs`: 0px
@@ -262,15 +445,20 @@ Breakpoints Material-UI:
 - `lg`: 1200px
 - `xl`: 1536px
 
-## 🔄 Estados de Loading
+---
+
+## 🔄 **ESTADOS DE LOADING**
 
 Estados visuais para melhor UX:
 - Skeleton screens
 - Progress indicators
 - Shimmer effects
 - Error boundaries
+- Loading spinners
 
-## 📈 Performance
+---
+
+## 📈 **PERFORMANCE**
 
 Otimizações implementadas:
 - Code splitting automático
@@ -278,8 +466,11 @@ Otimizações implementadas:
 - Memoization com React.memo
 - Otimização de imagens
 - Bundle analysis
+- Tree shaking
 
-## 🧪 Testes
+---
+
+## 🧪 **TESTES**
 
 ```bash
 # Testes unitários
@@ -292,7 +483,9 @@ npm run test:e2e
 npm run test:coverage
 ```
 
-## 📦 Build e Deploy
+---
+
+## 📦 **BUILD E DEPLOY**
 
 ```bash
 # Build otimizado
@@ -305,7 +498,9 @@ npm run analyze
 npm run deploy
 ```
 
-## 🤝 Contribuição
+---
+
+## 🤝 **CONTRIBUIÇÃO**
 
 1. Fork o projeto
 2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
@@ -313,16 +508,39 @@ npm run deploy
 4. Push para a branch (`git push origin feature/nova-funcionalidade`)
 5. Abra um Pull Request
 
-## 📝 Licença
+---
+
+## 📝 **LICENÇA**
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para detalhes.
 
-## 📞 Suporte
+---
 
-- **Email**: contato@enduranceon.com.br
-- **WhatsApp**: (48) 99117-8688
-- **Site**: [enduranceon.com.br](https://www.enduranceon.com.br/)
+## 📞 **SUPORTE**
+
+- **📧 Email**: contato@enduranceon.com.br
+- **📱 WhatsApp**: (48) 99117-8688
+- **🌐 Site**: [enduranceon.com.br](https://www.enduranceon.com.br/)
+- **📖 Documentação**: [docs.enduranceon.com.br](https://docs.enduranceon.com.br/)
 
 ---
 
-Desenvolvido com ❤️ pela equipe Endurance On 
+## 🎯 **CONCLUSÃO**
+
+A aplicação **Endurance On 2.0** é uma plataforma completa e robusta para assessoria esportiva, oferecendo:
+
+- **52 páginas** distribuídas em 8 categorias principais
+- **3 tipos de usuário** com funcionalidades específicas
+- **13 endpoints de API** para integração backend
+- **40 componentes React** reutilizáveis
+- **10 funcionalidades principais** cobrindo todos os aspectos do negócio
+- **5 fluxos principais** de navegação otimizados
+
+A arquitetura é escalável, modular e segue as melhores práticas de desenvolvimento React/Next.js, proporcionando uma experiência de usuário moderna e eficiente para todos os tipos de usuário da plataforma.
+
+---
+
+**Desenvolvido com ❤️ pela equipe Endurance On**
+
+**Versão:** 2.0  
+**Última Atualização:** Janeiro 2025 

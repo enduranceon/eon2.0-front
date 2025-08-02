@@ -26,11 +26,22 @@ export default function ProtectedRoute({ children, allowedUserTypes }: Protected
       setCheckingPayment(false);
 
       // Wait for auth to load
-      if (auth.isLoading) return;
+      if (auth.isLoading) {
+        return;
+      }
 
-      // Not authenticated
+      // Not authenticated - mas só redirecionar se não estiver em rota de auth
       if (!auth.isAuthenticated) {
-        router.push('/login');
+        const isAuthRoute = window.location.pathname.includes('/login') || 
+                           window.location.pathname.includes('/register') || 
+                           window.location.pathname.includes('/forgot-password') ||
+                           window.location.pathname.includes('/reset-password') ||
+                           window.location.pathname.includes('/verify-email') ||
+                           window.location.pathname.includes('/2fa');
+        
+        if (!isAuthRoute) {
+          router.push('/login');
+        }
         return;
       }
 
@@ -42,6 +53,19 @@ export default function ProtectedRoute({ children, allowedUserTypes }: Protected
           // Check subscription status first (faster)
           if (auth.subscriptionStatus === 'PENDING') {
             router.push('/payment-pending');
+            return;
+          }
+
+          // Check for ON_LEAVE status - mas não redirecionar se já estiver na página de licença
+          if (auth.subscriptionStatus === 'ON_LEAVE') {
+            // Verificar se já está na página de licença para evitar loop
+            const currentPath = window.location.pathname;
+            if (currentPath !== '/licenca-status') {
+              router.push('/licenca-status');
+              return;
+            }
+            // Se já está na página de licença, permitir acesso
+            setAccessGranted(true);
             return;
           }
 
@@ -76,7 +100,7 @@ export default function ProtectedRoute({ children, allowedUserTypes }: Protected
             router.push('/dashboard/admin');
             break;
           default:
-            router.push('/dashboard');
+            router.push('/login');
         }
         return;
       }

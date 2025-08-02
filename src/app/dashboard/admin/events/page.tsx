@@ -124,11 +124,44 @@ export default function AdminExamsPage() {
     setFormLoading(true);
     setFormError(null);
     try {
-      // Converter data do formato date para ISO
+      // Determinar se é modalidade Corrida
+      const selectedModalidade = modalities.find(m => m.id === data.modalidadeId);
+      const isCorrida = selectedModalidade?.name.toLowerCase() === 'corrida';
+
+      console.log('Dados do formulário:', data);
+      console.log('Modalidade selecionada:', selectedModalidade);
+      console.log('É corrida?', isCorrida);
+
+      // Processar dados antes de enviar
       const processedData = {
         ...data,
-        date: data.date + 'T00:00:00.000Z'
+        date: data.date + 'T00:00:00.000Z',
+        // Tratar campos opcionais - enviar null quando vazio
+        end_date: data.end_date && data.end_date.trim() !== '' ? data.end_date + 'T00:00:00.000Z' : null,
+        exam_url: data.exam_url && data.exam_url.trim() !== '' ? data.exam_url : null,
       };
+
+      // Processar distâncias ou categorias baseado na modalidade
+      if (isCorrida) {
+        // Para modalidade Corrida, enviar distâncias
+        processedData.distances = data.distances.map((distance: any) => ({
+          distance: distance.distance,
+          unit: distance.unit,
+          date: distance.date + 'T00:00:00.000Z'
+        }));
+        // Remover categorias se existir
+        delete processedData.categories;
+      } else {
+        // Para outras modalidades, enviar categorias
+        processedData.categories = data.categories.map((category: any) => ({
+          name: category.category, // Converter enum para string
+          date: category.date + 'T00:00:00.000Z'
+        }));
+        // Remover distâncias se existir
+        delete processedData.distances;
+      }
+
+      console.log('Dados processados:', processedData);
 
       if (editingExam) {
         await enduranceApi.updateExam(editingExam.id, processedData);
@@ -139,7 +172,12 @@ export default function AdminExamsPage() {
       loadExams();
     } catch (err: any) {
       console.error('Erro ao salvar prova:', err);
-      setFormError(err.response?.data?.message || 'Não foi possível salvar os dados.');
+      // Capturar erros de validação customizada
+      if (err.message) {
+        setFormError(err.message);
+      } else {
+        setFormError(err.response?.data?.message || 'Não foi possível salvar os dados.');
+      }
     } finally {
       setFormLoading(false);
     }
@@ -218,16 +256,17 @@ export default function AdminExamsPage() {
               <>
                 <TableContainer>
                   <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Nome da Prova</TableCell>
-                        <TableCell>Modalidade</TableCell>
-                        <TableCell>Distâncias</TableCell>
-                        <TableCell>Data</TableCell>
-                        <TableCell>Local</TableCell>
-                        <TableCell align="center">Ações</TableCell>
-                      </TableRow>
-                    </TableHead>
+                                         <TableHead>
+                                               <TableRow>
+                          <TableCell>Nome da Prova</TableCell>
+                          <TableCell>Modalidade</TableCell>
+                          <TableCell>Distâncias/Categorias</TableCell>
+                          <TableCell>Data Início</TableCell>
+                          <TableCell>Data Fim</TableCell>
+                          <TableCell>Local</TableCell>
+                          <TableCell align="center">Ações</TableCell>
+                        </TableRow>
+                     </TableHead>
                     <TableBody>
                       {exams.map((exam) => (
                         <TableRow key={exam.id} hover>
@@ -237,21 +276,41 @@ export default function AdminExamsPage() {
                           <TableCell>
                             <Chip label={exam.modalidade.name} size="small" />
                           </TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              {exam.distances?.map((distance, index) => (
-                                <Chip
-                                  key={distance.id || index}
-                                  label={`${distance.distance}${distance.unit} - R$ ${(distance.price && !isNaN(Number(distance.price)) ? Number(distance.price) : 0).toFixed(2)}`}
-                                  size="small"
-                                  variant="outlined"
-                                  color="primary"
-                                />
-                              )) || <Typography variant="caption" color="text.secondary">Sem distâncias</Typography>}
-                            </Box>
-                          </TableCell>
-                          <TableCell>{new Date(exam.date).toLocaleDateString('pt-BR')}</TableCell>
-                          <TableCell>{exam.location}</TableCell>
+                                                                                                           <TableCell>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                {exam.distances && exam.distances.length > 0 ? (
+                                  // Mostrar distâncias se existirem
+                                  exam.distances.map((distance, index) => (
+                                    <Chip
+                                      key={distance.id || index}
+                                      label={`${distance.distance}${distance.unit}${distance.date ? ` - ${new Date(distance.date).toLocaleDateString('pt-BR')}` : ''}`}
+                                      size="small"
+                                      variant="outlined"
+                                      color="primary"
+                                    />
+                                  ))
+                                ) : exam.categories && exam.categories.length > 0 ? (
+                                  // Mostrar categorias se existirem
+                                  exam.categories.map((category, index) => (
+                                    <Chip
+                                      key={category.id || index}
+                                      label={`${category.name}${category.date ? ` - ${new Date(category.date).toLocaleDateString('pt-BR')}` : ''}`}
+                                      size="small"
+                                      variant="outlined"
+                                      color="secondary"
+                                    />
+                                  ))
+                                ) : (
+                                  // Se não tiver nem distâncias nem categorias
+                                  <Typography variant="caption" color="text.secondary">Sem dados</Typography>
+                                )}
+                              </Box>
+                            </TableCell>
+                                                     <TableCell>{new Date(exam.date).toLocaleDateString('pt-BR')}</TableCell>
+                           <TableCell>
+                             {exam.end_date ? new Date(exam.end_date).toLocaleDateString('pt-BR') : '-'}
+                           </TableCell>
+                           <TableCell>{exam.location}</TableCell>
                           <TableCell align="center">
                             <IconButton size="small" onClick={() => handleOpenModal(exam)}><EditIcon /></IconButton>
                             <IconButton size="small" color="error" onClick={() => handleDeleteRequest(exam)}><DeleteIcon /></IconButton>

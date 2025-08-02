@@ -4,7 +4,7 @@ import { enduranceApi } from '@/services/enduranceApi';
 export async function GET(request: NextRequest) {
   try {
     // Obter dados reais das margens
-    const margins = await enduranceApi.getMargins({ limit: 1000 });
+    const margins = await enduranceApi.getMargins({ limit: 100 });
     
     // Calcular estatísticas baseadas nos dados reais
     const totalMargins = margins.pagination.total;

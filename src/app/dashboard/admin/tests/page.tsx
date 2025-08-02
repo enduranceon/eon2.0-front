@@ -38,6 +38,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Clear as ClearIcon,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
@@ -47,6 +48,7 @@ import { enduranceApi } from '../../../../services/enduranceApi';
 import { AvailableTest, TestType, PaginatedResponse } from '../../../../types/api';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import TestForm from '../../../../components/Dashboard/Admin/TestForm';
+import TestResultsViewer from '../../../../components/Dashboard/Admin/TestResultsViewer';
 
 export default function AdminTestsPage() {
   const { user, logout } = useAuth();
@@ -62,6 +64,7 @@ export default function AdminTestsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState<AvailableTest | null>(null);
   const [deletingTest, setDeletingTest] = useState<AvailableTest | null>(null);
+  const [viewingResults, setViewingResults] = useState<AvailableTest | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [testTypeFilter, setTestTypeFilter] = useState('');
@@ -112,10 +115,23 @@ export default function AdminTestsPage() {
     setFormLoading(true);
     setFormError(null);
     try {
+      // Processar dados antes de enviar
+      const processedData = {
+        name: data.name,
+        description: data.description,
+        testType: String(data.type), // Converter para string
+        isActive: data.isActive,
+        // Campos de resultados dinâmicos
+        supportsDynamicResults: data.supportsDynamicResults || false,
+        defaultResultFields: data.supportsDynamicResults ? data.defaultResultFields || [] : undefined
+      };
+
+      console.log('Dados processados para envio:', processedData);
+
       if (editingTest) {
-        await enduranceApi.updateTest(editingTest.id, data);
+        await enduranceApi.updateTest(editingTest.id, processedData);
       } else {
-        await enduranceApi.createTest(data);
+        await enduranceApi.createTest(processedData);
       }
       handleCloseModal();
       loadTests();
@@ -231,6 +247,11 @@ export default function AdminTestsPage() {
                         <TableRow key={test.id} hover>
                           <TableCell>
                             <Typography variant="body2" fontWeight="medium">{test.name}</Typography>
+                            {test.description && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {test.description}
+                              </Typography>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Chip label={test.type} size="small" />
@@ -249,6 +270,7 @@ export default function AdminTestsPage() {
                           <TableCell align="center">
                             <IconButton size="small" onClick={() => handleOpenModal(test)}><EditIcon /></IconButton>
                             <IconButton size="small" color="error" onClick={() => handleDeleteRequest(test)}><DeleteIcon /></IconButton>
+                            <IconButton size="small" color="info" onClick={() => setViewingResults(test)}><VisibilityIcon /></IconButton>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -278,6 +300,12 @@ export default function AdminTestsPage() {
             test={editingTest}
             loading={formLoading}
             error={formError}
+          />
+          
+          <TestResultsViewer
+            open={!!viewingResults}
+            onClose={() => setViewingResults(null)}
+            test={viewingResults}
           />
           
           <Dialog open={!!deletingTest} onClose={() => setDeletingTest(null)}>

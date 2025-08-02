@@ -57,11 +57,10 @@ export default function LicencaStatusPage() {
       setSubscription(response);
       
       // Se não está em licença, redirecionar para dashboard
-      if (response.status !== 'ON_LEAVE') {
-        router.push('/dashboard');
+      if (response && response.status !== 'ON_LEAVE') {
+        router.push('/dashboard/aluno');
         return;
       }
-      
     } catch (err) {
       console.error('Erro ao carregar assinatura:', err);
       setError('Erro ao carregar informações da licença.');
@@ -75,7 +74,7 @@ export default function LicencaStatusPage() {
       setLoading(true);
       await enduranceApi.cancelLeave();
       toast.success('Licença cancelada com sucesso!');
-      router.push('/dashboard');
+      router.push('/dashboard/aluno');
     } catch (error) {
       console.error('Erro ao cancelar licença:', error);
       toast.error('Erro ao cancelar licença.');
@@ -87,8 +86,7 @@ export default function LicencaStatusPage() {
   const handleLogout = async () => {
     try {
       setLoading(true);
-      await auth.logout();
-      router.push('/login');
+      auth.logout();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     } finally {
@@ -144,62 +142,58 @@ export default function LicencaStatusPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute allowedUserTypes={['FITNESS_STUDENT']}>
-        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-          <AppBar position="static" color="default" elevation={1}>
-            <Toolbar>
-              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                Endurance On
-              </Typography>
-              <IconButton
-                color="inherit"
-                onClick={handleLogout}
-                disabled={loading}
-              >
-                <LogoutIcon />
-              </IconButton>
-            </Toolbar>
-          </AppBar>
-          
-          <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-              <CircularProgress size={60} />
-            </Box>
-          </Container>
-        </Box>
-      </ProtectedRoute>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <AppBar position="static" color="default" elevation={1}>
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              Endurance On
+            </Typography>
+            <IconButton
+              color="inherit"
+              onClick={handleLogout}
+              disabled={loading}
+            >
+              <LogoutIcon />
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+        
+        <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+            <CircularProgress size={60} />
+          </Box>
+        </Container>
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <ProtectedRoute allowedUserTypes={['FITNESS_STUDENT']}>
-        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-          <AppBar position="static" color="default" elevation={1}>
-            <Toolbar>
-              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                Endurance On
-              </Typography>
-              <IconButton
-                color="inherit"
-                onClick={handleLogout}
-                disabled={loading}
-              >
-                <LogoutIcon />
-              </IconButton>
-            </Toolbar>
-          </AppBar>
-          
-          <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-            <Alert severity="error" sx={{ mb: 4 }}>
-              {error}
-            </Alert>
-            <Button variant="contained" onClick={loadSubscription}>
-              Tentar Novamente
-            </Button>
-          </Container>
-        </Box>
-      </ProtectedRoute>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <AppBar position="static" color="default" elevation={1}>
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              Endurance On
+            </Typography>
+            <IconButton
+              color="inherit"
+              onClick={handleLogout}
+              disabled={loading}
+            >
+              <LogoutIcon />
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+        
+        <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+          <Alert severity="error" sx={{ mb: 4 }}>
+            {error}
+          </Alert>
+          <Button variant="contained" onClick={loadSubscription}>
+            Tentar Novamente
+          </Button>
+        </Container>
+      </Box>
     );
   }
 
@@ -238,150 +232,160 @@ export default function LicencaStatusPage() {
             </Typography>
           </Box>
 
-          <Card sx={{ mb: 4, border: '2px solid', borderColor: getProgressColor() }}>
-            <CardContent sx={{ p: 4 }}>
-              <Alert severity="info" sx={{ mb: 4 }}>
-                <Typography variant="body1">
-                  Sua assinatura está temporariamente pausada. Após a data de fim, ela será reativada automaticamente.
-                  Durante este período, você não tem acesso ao dashboard.
-                </Typography>
-              </Alert>
+          {subscription ? (
+            <Card sx={{ mb: 4, border: '2px solid', borderColor: getProgressColor() }}>
+              <CardContent sx={{ p: 4 }}>
+                <Alert severity="info" sx={{ mb: 4 }}>
+                  <Typography variant="body1">
+                    Sua assinatura está temporariamente pausada. Após a data de fim, ela será reativada automaticamente.
+                    Durante este período, você não tem acesso ao dashboard.
+                  </Typography>
+                </Alert>
 
-              <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Data de Início
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                    {formatDate(subscription.leaveStartDate)}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Data de Fim
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                    {formatDate(subscription.leaveEndDate)}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Dias Restantes
-                  </Typography>
-                  <Typography 
-                    variant="body1" 
-                    sx={{ 
-                      fontWeight: 'bold',
-                      color: daysRemaining === 0 ? 'error.main' : 
-                             daysRemaining <= 3 ? 'warning.main' : 'success.main'
-                    }}
-                  >
-                    {daysRemaining === 0 ? 'Expirada' : `${daysRemaining} dias`}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Status
-                  </Typography>
-                  <Chip
-                    label={getStatusText()}
-                    color={getProgressColor() as any}
-                    icon={daysRemaining === 0 ? <WarningIcon /> : 
-                          daysRemaining <= 3 ? <WarningIcon /> : <CheckCircleIcon />}
-                  />
-                </Grid>
-
-                {subscription.leaveReason && (
-                  <Grid item xs={12}>
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                  <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" color="text.secondary">
-                      Motivo da Licença
+                      Data de Início
                     </Typography>
-                    <Typography variant="body1">
-                      {subscription.leaveReason}
+                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                      {formatDate(subscription.leaveStartDate)}
                     </Typography>
                   </Grid>
-                )}
-              </Grid>
 
-              <Divider sx={{ my: 3 }} />
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Data de Fim
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                      {formatDate(subscription.leaveEndDate)}
+                    </Typography>
+                  </Grid>
 
-              {/* Configurações da Licença */}
-              <Typography variant="h6" gutterBottom>
-                Configurações da Licença
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                <Chip
-                  label={`Treinos ${subscription.pauseTraining ? 'Pausados' : 'Ativos'}`}
-                  color={subscription.pauseTraining ? 'warning' : 'success'}
-                  icon={<RunIcon />}
-                />
-                <Chip
-                  label={`Cobrança ${subscription.pauseBilling ? 'Pausada' : 'Ativa'}`}
-                  color={subscription.pauseBilling ? 'warning' : 'success'}
-                  icon={<PaymentIcon />}
-                />
-              </Box>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Dias Restantes
+                    </Typography>
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        color: daysRemaining === 0 ? 'error.main' : 
+                               daysRemaining <= 3 ? 'warning.main' : 'success.main'
+                      }}
+                    >
+                      {daysRemaining === 0 ? 'Expirada' : `${daysRemaining} dias`}
+                    </Typography>
+                  </Grid>
 
-              {/* Progresso da Licença */}
-              {daysRemaining > 0 && (
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Progresso da Licença
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={((subscription.leaveDays - daysRemaining) / subscription.leaveDays) * 100}
-                    color={getProgressColor() as any}
-                    sx={{ height: 8, borderRadius: 4 }}
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Status
+                    </Typography>
+                    <Chip
+                      label={getStatusText()}
+                      color={getProgressColor() as any}
+                      icon={daysRemaining === 0 ? <WarningIcon /> : 
+                            daysRemaining <= 3 ? <WarningIcon /> : <CheckCircleIcon />}
+                    />
+                  </Grid>
+
+                  {subscription.leaveReason && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Motivo da Licença
+                      </Typography>
+                      <Typography variant="body1">
+                        {subscription.leaveReason}
+                      </Typography>
+                    </Grid>
+                  )}
+                </Grid>
+
+                <Divider sx={{ my: 3 }} />
+
+                {/* Configurações da Licença */}
+                <Typography variant="h6" gutterBottom>
+                  Configurações da Licença
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                  <Chip
+                    label={`Treinos ${subscription.pauseTraining ? 'Pausados' : 'Ativos'}`}
+                    color={subscription.pauseTraining ? 'warning' : 'success'}
+                    icon={<RunIcon />}
+                  />
+                  <Chip
+                    label={`Cobrança ${subscription.pauseBilling ? 'Pausada' : 'Ativa'}`}
+                    color={subscription.pauseBilling ? 'warning' : 'success'}
+                    icon={<PaymentIcon />}
                   />
                 </Box>
-              )}
 
-              {/* Informações da Assinatura */}
-              <Card variant="outlined" sx={{ mb: 4 }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Informações da Assinatura
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Plano
-                      </Typography>
-                      <Typography variant="body1">
-                        {subscription.plan?.name}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Modalidade
-                      </Typography>
-                      <Typography variant="body1">
-                        {subscription.modalidade?.name}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </Card>
+                {/* Progresso da Licença */}
+                {daysRemaining > 0 && (
+                  <Box sx={{ mb: 4 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Progresso da Licença
+                    </Typography>
+                    <LinearProgress
+                      variant="determinate"
+                      value={((subscription.leaveDays - daysRemaining) / subscription.leaveDays) * 100}
+                      color={getProgressColor() as any}
+                      sx={{ height: 8, borderRadius: 4 }}
+                    />
+                  </Box>
+                )}
 
-              {/* Ações */}
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-                <Button
-                  variant="contained"
-                  color="error"
-                  startIcon={<PlayArrowIcon />}
-                  onClick={handleCancelLeave}
-                  disabled={loading || daysRemaining === 0}
-                  size="large"
-                >
-                  Cancelar Licença e Reativar Assinatura
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
+                {/* Informações da Assinatura */}
+                <Card variant="outlined" sx={{ mb: 4 }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Informações da Assinatura
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Plano
+                        </Typography>
+                        <Typography variant="body1">
+                          {subscription.plan?.name}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Modalidade
+                        </Typography>
+                        <Typography variant="body1">
+                          {subscription.modalidade?.name}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+
+                {/* Ações */}
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    startIcon={<PlayArrowIcon />}
+                    onClick={handleCancelLeave}
+                    disabled={loading || daysRemaining === 0}
+                    size="large"
+                  >
+                    Cancelar Licença e Reativar Assinatura
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card sx={{ mb: 4 }}>
+              <CardContent sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="h6" color="text.secondary">
+                  Carregando informações da licença...
+                </Typography>
+              </CardContent>
+            </Card>
+          )}
         </Container>
         <Toaster position="top-right" />
       </Box>

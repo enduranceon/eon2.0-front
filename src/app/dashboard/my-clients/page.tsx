@@ -70,7 +70,7 @@ interface Student {
   name: string;
   email: string;
   image?: string;
-  gender: 'MASCULINO' | 'FEMININO' | 'OUTRO';
+  gender: 'MALE' | 'FEMALE' | 'MASCULINO' | 'FEMININO' | string;
   birthDate: string;
   isActive: boolean;
   createdAt: string;
@@ -120,25 +120,34 @@ export default function MeusAlunosPage() {
       
       // Processar dados reais da API
       const studentsData = response?.students || response?.data || [];
-      const processedStudents: Student[] = studentsData.map((student: any) => ({
-        id: student.id,
-        name: student.name || student.user?.name || 'Nome não disponível',
-        email: student.email || student.user?.email || 'Email não disponível',
-        image: student.image || student.user?.image,
-        gender: student.gender || student.user?.gender || 'OUTRO',
-        birthDate: student.birthDate || student.user?.birthDate || '1990-01-01',
-        isActive: student.isActive || student.status === 'ACTIVE',
-        createdAt: student.createdAt || student.user?.createdAt || new Date().toISOString(),
-        plan: student.plan ? {
-          id: student.plan.id,
-          name: student.plan.name,
-          price: student.plan.price || 0
-        } : undefined,
-        modalidade: student.modalidade ? {
-          id: student.modalidade.id,
-          name: student.modalidade.name
-        } : undefined
-      }));
+      const processedStudents: Student[] = studentsData.map((student: any) => {
+        // Processar imagem - a API retorna caminhos como "/api/uploads/general/..."
+        const imageUrl = student.image || student.user?.image ? 
+          (student.image || student.user?.image).startsWith('http') ? 
+            student.image || student.user?.image : 
+            `http://localhost:3001${student.image || student.user?.image}`
+          : undefined;
+        
+        return {
+          id: student.id,
+          name: student.name || student.user?.name || 'Nome não disponível',
+          email: student.email || student.user?.email || 'Email não disponível',
+          image: imageUrl,
+          gender: student.gender || student.user?.gender || '',
+          birthDate: student.birthDate || student.user?.birthDate || '1990-01-01',
+          isActive: student.isActive || student.status === 'ACTIVE',
+          createdAt: student.createdAt || student.user?.createdAt || new Date().toISOString(),
+          plan: student.plan ? {
+            id: student.plan.id,
+            name: student.plan.name,
+            price: student.plan.price || 0
+          } : undefined,
+          modalidade: student.modalidade ? {
+            id: student.modalidade.id,
+            name: student.modalidade.name
+          } : undefined
+        };
+      });
       
       setStudents(processedStudents);
       setError(null);
@@ -257,18 +266,28 @@ export default function MeusAlunosPage() {
   };
 
   const getGenderIcon = (gender: string) => {
-    switch (gender) {
-      case 'MASCULINO': return <MaleIcon fontSize="small" />;
-      case 'FEMININO': return <FemaleIcon fontSize="small" />;
-      default: return <GenderIcon fontSize="small" />;
+    switch (gender?.toUpperCase()) {
+      case 'MALE':
+      case 'MASCULINO':
+        return <MaleIcon fontSize="small" color="primary" />;
+      case 'FEMALE':
+      case 'FEMININO':
+        return <FemaleIcon fontSize="small" color="secondary" />;
+      default:
+        return <GenderIcon fontSize="small" color="action" />;
     }
   };
 
   const getGenderLabel = (gender: string) => {
-    switch (gender) {
-      case 'MASCULINO': return 'Masculino';
-      case 'FEMININO': return 'Feminino';
-      default: return 'Outro';
+    switch (gender?.toUpperCase()) {
+      case 'MALE':
+      case 'MASCULINO':
+        return 'Masculino';
+      case 'FEMALE':
+      case 'FEMININO':
+        return 'Feminino';
+      default:
+        return 'Não informado';
     }
   };
 
@@ -404,9 +423,8 @@ export default function MeusAlunosPage() {
                       onChange={(e: SelectChangeEvent) => setGenderFilter(e.target.value)}
                     >
                       <MenuItem value="all">Todos</MenuItem>
-                      <MenuItem value="MASCULINO">Masculino</MenuItem>
-                      <MenuItem value="FEMININO">Feminino</MenuItem>
-                      <MenuItem value="OUTRO">Outro</MenuItem>
+                      <MenuItem value="MALE">Masculino</MenuItem>
+                      <MenuItem value="FEMALE">Feminino</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -498,7 +516,11 @@ export default function MeusAlunosPage() {
                       <TableRow key={student.id}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Avatar src={student.image}>
+                            <Avatar 
+                              src={student.image} 
+                              alt={student.name}
+                              sx={{ width: 40, height: 40 }}
+                            >
                               <PersonIcon />
                             </Avatar>
                             <Box>

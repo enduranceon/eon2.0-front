@@ -150,15 +150,17 @@ export default function AINotificationPanel({
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Tooltip title="Atualizar insights">
-              <IconButton onClick={refreshInsights} disabled={isLoading} size="small" sx={{ color: 'white' }}>
-                <RefreshIcon sx={{ 
-                  animation: isLoading ? 'spin 1s linear infinite' : 'none',
-                  '@keyframes spin': {
-                    '0%': { transform: 'rotate(0deg)' },
-                    '100%': { transform: 'rotate(360deg)' },
-                  },
-                }} />
-              </IconButton>
+              <span>
+                <IconButton onClick={refreshInsights} disabled={isLoading} size="small" sx={{ color: 'white' }}>
+                  <RefreshIcon sx={{ 
+                    animation: isLoading ? 'spin 1s linear infinite' : 'none',
+                    '@keyframes spin': {
+                      '0%': { transform: 'rotate(0deg)' },
+                      '100%': { transform: 'rotate(360deg)' },
+                    },
+                  }} />
+                </IconButton>
+              </span>
             </Tooltip>
             
             <IconButton onClick={() => setIsExpanded(!isExpanded)} size="small" sx={{ color: 'white' }}>

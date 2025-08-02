@@ -41,7 +41,8 @@ import {
   LocationOn as LocationIcon,
   Search as SearchIcon,
   FilterList as FilterListIcon,
-  Today as TodayIcon
+  Today as TodayIcon,
+  EmojiEvents as EmojiEventsIcon
 } from '@mui/icons-material';
 import { enduranceApi } from '@/services/enduranceApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -97,6 +98,16 @@ interface ExamRegistration {
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
   registeredAt: string;
   attendanceConfirmed?: boolean;
+  result?: string;
+  distance?: {
+    id: string;
+    distance: string;
+    unit: string;
+  } | null;
+  category?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export default function ConfirmarPresencaPage() {
@@ -106,6 +117,8 @@ export default function ConfirmarPresencaPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRegistration, setSelectedRegistration] = useState<ExamRegistration | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  const [resultValue, setResultValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const { user, logout } = useAuth();
@@ -113,7 +126,6 @@ export default function ConfirmarPresencaPage() {
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
   };
 
   useEffect(() => {
@@ -167,7 +179,10 @@ export default function ConfirmarPresencaPage() {
           },
           status: 'CONFIRMED', // Inscrições confirmadas
           registeredAt: registration.createdAt,
-          attendanceConfirmed: registration.attended
+          attendanceConfirmed: registration.attended,
+          result: registration.result || undefined,
+          distance: registration.distance || null,
+          category: registration.category || null
         };
       });
       
@@ -216,7 +231,9 @@ export default function ConfirmarPresencaPage() {
         return;
       }
       
-      await enduranceApi.confirmExamAttendance(registrationId);
+      await enduranceApi.updateExamRegistration(registrationId, {
+        attended: true
+      });
       
       setRegistrations(prev => prev.map(reg => 
         reg.id === registrationId 
@@ -244,6 +261,79 @@ export default function ConfirmarPresencaPage() {
         setError('Erro: Você não tem permissão para confirmar esta presença.');
       } else {
         setError('Erro ao confirmar presença. Tente novamente.');
+      }
+      
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const handleRegisterResult = async (registrationId: string, result: string) => {
+    try {
+      if (!result.trim()) {
+        setError('O resultado não pode estar vazio');
+        return;
+      }
+
+      // Verificar se o registrationId é válido
+      if (!registrationId || registrationId.trim() === '') {
+        setError('ID da inscrição inválido');
+        return;
+      }
+      
+      // Verificar se o registrationId é um ID válido ou um ID temporário
+      if (!isValidId(registrationId)) {
+        console.error('❌ ID da inscrição não é válido:', registrationId);
+        console.warn('⚠️  Tentando usar dados mockados ou de desenvolvimento');
+        
+        // Verificar se é um ID temporário ou se estamos em desenvolvimento
+        if (registrationId.startsWith('temp-') || process.env.NODE_ENV === 'development') {
+          setRegistrations(prev => prev.map(reg => 
+            reg.id === registrationId 
+              ? { ...reg, result: result }
+              : reg
+          ));
+          setSuccess('Resultado registrado com sucesso! (Modo desenvolvimento)');
+          setResultDialogOpen(false);
+          setSelectedRegistration(null);
+          setResultValue('');
+          setTimeout(() => setSuccess(null), 3000);
+          return;
+        }
+        
+        setError('ID da inscrição inválido. Verifique se o backend está configurado corretamente.');
+        return;
+      }
+      
+      // Chamar a API para registrar o resultado
+      await enduranceApi.updateExamRegistration(registrationId, {
+        result: result,
+        attended: true // Confirmar presença também
+      });
+      
+      setRegistrations(prev => prev.map(reg => 
+        reg.id === registrationId 
+          ? { ...reg, result: result, attendanceConfirmed: true }
+          : reg
+      ));
+      
+      setSuccess('Resultado registrado com sucesso!');
+      setResultDialogOpen(false);
+      setSelectedRegistration(null);
+      setResultValue('');
+      
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error: any) {
+      console.error('Erro ao registrar resultado:', error);
+      
+      // Tratamento específico de erros
+      if (error?.response?.status === 400) {
+        setError('Erro: Dados inválidos enviados para o servidor.');
+      } else if (error?.response?.status === 404) {
+        setError('Erro: Inscrição não encontrada.');
+      } else if (error?.response?.status === 403) {
+        setError('Erro: Você não tem permissão para registrar este resultado.');
+      } else {
+        setError('Erro ao registrar resultado. Tente novamente.');
       }
       
       setTimeout(() => setError(null), 5000);
@@ -413,7 +503,9 @@ export default function ConfirmarPresencaPage() {
                   <TableCell>Data</TableCell>
                   <TableCell>Local</TableCell>
                   <TableCell>Modalidade</TableCell>
+                  <TableCell>Distância/Categoria</TableCell>
                   <TableCell>Status</TableCell>
+                  <TableCell>Resultado</TableCell>
                   <TableCell>Ações</TableCell>
                 </TableRow>
               </TableHead>
@@ -467,6 +559,27 @@ export default function ConfirmarPresencaPage() {
                       />
                     </TableCell>
                     <TableCell>
+                      {registration.distance ? (
+                        <Chip 
+                          label={`${registration.distance.distance}${registration.distance.unit}`}
+                          color="primary"
+                          size="small"
+                          variant="outlined"
+                        />
+                      ) : registration.category ? (
+                        <Chip 
+                          label={registration.category.name}
+                          color="secondary"
+                          size="small"
+                          variant="outlined"
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          Não especificado
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Chip 
                         label={registration.attendanceConfirmed ? 'Confirmado' : 'Pendente'}
                         color={registration.attendanceConfirmed ? 'success' : 'warning'}
@@ -474,30 +587,58 @@ export default function ConfirmarPresencaPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      {!registration.attendanceConfirmed ? (
-                        <Button
-                          variant="contained"
-                          color="success"
-                          size="small"
-                          startIcon={<CheckCircleIcon />}
-                          onClick={() => {
-                            
-                            setSelectedRegistration(registration);
-                            setConfirmDialogOpen(true);
-                          }}
-                        >
-                          Confirmar
-                        </Button>
+                      {registration.result ? (
+                        <Typography variant="body2" fontWeight="bold" color="success.main">
+                          {registration.result}
+                        </Typography>
                       ) : (
-                        <Tooltip title="Presença já confirmada">
-                          <Chip 
-                            label="Confirmado" 
-                            color="success" 
-                            size="small"
-                            icon={<CheckCircleIcon />}
-                          />
-                        </Tooltip>
+                        <Typography variant="body2" color="text.secondary">
+                          Não registrado
+                        </Typography>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                        {!registration.attendanceConfirmed ? (
+                          <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            startIcon={<CheckCircleIcon />}
+                            onClick={() => {
+                              setSelectedRegistration(registration);
+                              setConfirmDialogOpen(true);
+                            }}
+                          >
+                            Confirmar
+                          </Button>
+                        ) : (
+                          <Tooltip title="Presença já confirmada">
+                            <Chip 
+                              label="Confirmado" 
+                              color="success" 
+                              size="small"
+                              icon={<CheckCircleIcon />}
+                            />
+                          </Tooltip>
+                        )}
+                        
+                        {registration.attendanceConfirmed && (
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                            startIcon={<EmojiEventsIcon />}
+                            onClick={() => {
+                              setSelectedRegistration(registration);
+                              setResultValue(registration.result || '');
+                              setResultDialogOpen(true);
+                            }}
+                          >
+                            {registration.result ? 'Editar Resultado' : 'Registrar Resultado'}
+                          </Button>
+                        )}
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -562,6 +703,65 @@ export default function ConfirmarPresencaPage() {
             startIcon={<CheckCircleIcon />}
           >
             Confirmar Presença
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de Registro de Resultado */}
+      <Dialog open={resultDialogOpen} onClose={() => setResultDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {selectedRegistration?.result ? 'Editar Resultado' : 'Registrar Resultado'}
+        </DialogTitle>
+        <DialogContent>
+          {selectedRegistration && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body1" gutterBottom>
+                Registrar resultado do aluno <strong>{selectedRegistration.user.name}</strong> na prova:
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <strong>{selectedRegistration.exam.name}</strong>
+              </Typography>
+              
+              {/* Mostrar Distância ou Categoria */}
+              {selectedRegistration.distance && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  <strong>Distância:</strong> {selectedRegistration.distance.distance}{selectedRegistration.distance.unit}
+                </Typography>
+              )}
+              
+              {selectedRegistration.category && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  <strong>Categoria:</strong> {selectedRegistration.category.name}
+                </Typography>
+              )}
+              
+              <TextField
+                fullWidth
+                label="Resultado"
+                variant="outlined"
+                value={resultValue}
+                onChange={(e) => setResultValue(e.target.value)}
+                placeholder="Ex: 1h 30min 45s, 42.2km, 3º lugar, etc."
+                multiline
+                rows={3}
+                sx={{ mt: 2 }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setResultDialogOpen(false);
+            setResultValue('');
+          }}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={() => selectedRegistration && handleRegisterResult(selectedRegistration.id, resultValue)}
+            variant="contained"
+            color="primary"
+          >
+            {selectedRegistration?.result ? 'Atualizar Resultado' : 'Registrar Resultado'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -4,7 +4,7 @@ import { enduranceApi } from '@/services/enduranceApi';
 export async function GET(request: NextRequest) {
   try {
     // Obter dados reais dos eventos
-    const events = await enduranceApi.getExams({ limit: 1000 });
+    const events = await enduranceApi.getExams({ limit: 100 });
     
     // Calcular estatísticas baseadas nos dados reais
     const totalEvents = events.pagination.total;

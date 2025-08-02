@@ -123,7 +123,6 @@ export default function FinanceiroPage() {
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
   };
 
   useEffect(() => {
@@ -131,9 +130,8 @@ export default function FinanceiroPage() {
   }, []);
 
   useEffect(() => {
-    if (filters.page || filters.limit || filters.startDate || filters.endDate || 
-        filters.studentId || filters.planId || filters.modalidadeId || 
-        filters.paymentStatus || filters.subscriptionStatus) {
+    // Skip the initial load since loadInitialData already fetches earnings
+    if (earnings !== null) {
       fetchEarnings();
     }
   }, [filters]);
@@ -207,7 +205,16 @@ export default function FinanceiroPage() {
       setLoadingPeriod(true);
       setError(null);
       
-      const response = await enduranceApi.getCoachFinancialPeriodTotals(periodSearch);
+      // Prepare the request data, filtering out empty values
+      const requestData = {
+        startDate: periodSearch.startDate,
+        endDate: periodSearch.endDate,
+        ...(periodSearch.modalidadeId && { modalidadeId: periodSearch.modalidadeId }),
+        ...(periodSearch.planId && { planId: periodSearch.planId }),
+        ...(periodSearch.paymentStatus && periodSearch.paymentStatus !== '' && { paymentStatus: periodSearch.paymentStatus }),
+      };
+      
+      const response = await enduranceApi.getCoachFinancialPeriodTotals(requestData);
       setPeriodTotals(response);
       setSuccess('Totais do período calculados com sucesso!');
       
@@ -593,136 +600,145 @@ export default function FinanceiroPage() {
           )}
 
           {/* Tabela de Ganhos */}
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  Histórico de Ganhos
-                </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<GetAppIcon />}
-                  size="small"
-                  disabled
-                >
-                  Exportar
-                </Button>
-              </Box>
-              
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Aluno</TableCell>
-                      <TableCell>Plano / Modalidade</TableCell>
-                      <TableCell>Valor Total</TableCell>
-                      <TableCell>Seus Ganhos</TableCell>
-                      <TableCell>Margem</TableCell>
-                      <TableCell>Status Pagamento</TableCell>
-                      <TableCell>Status Assinatura</TableCell>
-                      <TableCell>Data</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {earnings?.data?.map((transaction) => (
-                      <TableRow key={transaction.id} hover>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Avatar src={getAbsoluteImageUrl(transaction.payment.user.image)}>
-                              <PersonIcon />
-                            </Avatar>
+          {earnings && (
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6">
+                    Histórico de Ganhos
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    startIcon={<GetAppIcon />}
+                    size="small"
+                    disabled
+                  >
+                    Exportar
+                  </Button>
+                </Box>
+                
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Aluno</TableCell>
+                        <TableCell>Plano / Modalidade</TableCell>
+                        <TableCell>Valor Total</TableCell>
+                        <TableCell>Seus Ganhos</TableCell>
+                        <TableCell>Margem</TableCell>
+                        <TableCell>Status Pagamento</TableCell>
+                        <TableCell>Status Assinatura</TableCell>
+                        <TableCell>Data</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {earnings?.data && earnings.data.length > 0 ? earnings.data.map((transaction) => transaction && (
+                        <TableRow key={transaction?.id || 'unknown'} hover>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Avatar src={getAbsoluteImageUrl(transaction.payment?.user?.image)}>
+                                <PersonIcon />
+                              </Avatar>
+                              <Box>
+                                <Typography variant="body2" fontWeight="bold">
+                                  {transaction.payment?.user?.name || 'N/A'}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {transaction.payment?.user?.email || 'N/A'}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
                             <Box>
                               <Typography variant="body2" fontWeight="bold">
-                                {transaction.payment.user.name}
+                                {transaction.payment?.subscription?.plan?.name || 'N/A'}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                {transaction.payment.user.email}
+                                {transaction.payment?.subscription?.modalidade?.name || 'N/A'}
                               </Typography>
                             </Box>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Box>
+                          </TableCell>
+                          <TableCell>
                             <Typography variant="body2" fontWeight="bold">
-                              {transaction.payment.subscription.plan.name}
+                              {formatCurrency(transaction.totalAmount || 0)}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {transaction.payment.subscription.modalidade.name}
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="bold" color="success.main">
+                              {formatCurrency(transaction.coachAmount || 0)}
                             </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold">
-                            {formatCurrency(transaction.totalAmount)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold" color="success.main">
-                            {formatCurrency(transaction.coachAmount)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={`${transaction.marginPercentage.toFixed(1)}%`}
-                            color={transaction.marginPercentage >= 70 ? 'success' : 'warning'}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={getStatusLabel(transaction.payment.status)}
-                            color={getStatusColor(transaction.payment.status)}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={getSubscriptionStatusLabel(transaction.payment.subscription.status)}
-                            color={getSubscriptionStatusColor(transaction.payment.subscription.status)}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption">
-                            {format(new Date(transaction.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {earnings?.data?.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={8} align="center">
-                          <Typography variant="body2" color="text.secondary">
-                            Nenhum ganho encontrado com os filtros aplicados
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={`${(transaction.marginPercentage || 0).toFixed(1)}%`}
+                              color={(transaction.marginPercentage || 0) >= 70 ? 'success' : 'warning'}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={getStatusLabel(transaction.payment?.status || 'UNKNOWN')}
+                              color={getStatusColor(transaction.payment?.status || 'UNKNOWN')}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={getSubscriptionStatusLabel(transaction.payment?.subscription?.status || 'UNKNOWN')}
+                              color={getSubscriptionStatusColor(transaction.payment?.subscription?.status || 'UNKNOWN')}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption">
+                              {transaction.createdAt ? format(new Date(transaction.createdAt), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      )) : (
+                        <TableRow>
+                          <TableCell colSpan={8} align="center">
+                            <Typography variant="body2" color="text.secondary">
+                              Carregando dados...
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
 
-              {/* Paginação */}
-              {earnings?.pagination && (
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                  <TablePagination
-                    component="div"
-                    count={earnings.pagination.total}
-                    page={earnings.pagination.page - 1}
-                    onPageChange={(_, newPage) => handleFilterChange('page', newPage + 1)}
-                    rowsPerPage={earnings.pagination.limit}
-                    onRowsPerPageChange={(e) => handleFilterChange('limit', parseInt(e.target.value))}
-                    rowsPerPageOptions={[5, 10, 25, 50]}
-                    labelRowsPerPage="Itens por página"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-                  />
-                </Box>
-              )}
-            </CardContent>
-          </Card>
+                {/* Paginação */}
+                {earnings?.pagination && (
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                    <TablePagination
+                      component="div"
+                      count={earnings.pagination.total}
+                      page={earnings.pagination.page - 1}
+                      onPageChange={(_, newPage) => handleFilterChange('page', newPage + 1)}
+                      rowsPerPage={earnings.pagination.limit}
+                      onRowsPerPageChange={(e) => handleFilterChange('limit', parseInt(e.target.value))}
+                      rowsPerPageOptions={[5, 10, 25, 50]}
+                      labelRowsPerPage="Itens por página"
+                      labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                    />
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Dialog de Totais por Período */}
-          <Dialog open={periodDialogOpen} onClose={() => setPeriodDialogOpen(false)} maxWidth="md" fullWidth>
+          <Dialog 
+            open={periodDialogOpen} 
+            onClose={() => setPeriodDialogOpen(false)} 
+            maxWidth="md" 
+            fullWidth
+            disableAutoFocus
+            disableEnforceFocus
+            disableRestoreFocus
+          >
             <DialogTitle>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <AssessmentIcon />
@@ -769,22 +785,37 @@ export default function FinanceiroPage() {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Plano (Opcional)</InputLabel>
-                    <Select
-                      value={periodSearch.planId}
-                      onChange={(e) => setPeriodSearch(prev => ({ ...prev, planId: e.target.value }))}
-                    >
-                      <MenuItem value="">Todos</MenuItem>
-                      {plans.map((plan) => (
-                        <MenuItem key={plan.id} value={plan.id}>
-                          {plan.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
+                                 <Grid item xs={12} md={6}>
+                   <FormControl fullWidth>
+                     <InputLabel>Plano (Opcional)</InputLabel>
+                     <Select
+                       value={periodSearch.planId}
+                       onChange={(e) => setPeriodSearch(prev => ({ ...prev, planId: e.target.value }))}
+                     >
+                       <MenuItem value="">Todos</MenuItem>
+                       {plans.map((plan) => (
+                         <MenuItem key={plan.id} value={plan.id}>
+                           {plan.name}
+                         </MenuItem>
+                       ))}
+                     </Select>
+                   </FormControl>
+                 </Grid>
+                 <Grid item xs={12} md={6}>
+                   <FormControl fullWidth>
+                     <InputLabel>Status Pagamento (Opcional)</InputLabel>
+                     <Select
+                       value={periodSearch.paymentStatus}
+                       onChange={(e) => setPeriodSearch(prev => ({ ...prev, paymentStatus: e.target.value }))}
+                     >
+                       <MenuItem value="">Todos</MenuItem>
+                       <MenuItem value="PENDING">Pendente</MenuItem>
+                       <MenuItem value="CONFIRMED">Confirmado</MenuItem>
+                       <MenuItem value="CANCELLED">Cancelado</MenuItem>
+                       <MenuItem value="OVERDUE">Atrasado</MenuItem>
+                     </Select>
+                   </FormControl>
+                 </Grid>
               </Grid>
 
               {/* Resultados dos Totais */}

@@ -437,9 +437,11 @@ export default function FinancialSummaryCards({ onCardClick }: FinancialSummaryC
             Resumo Financeiro
           </Typography>
           <Tooltip title="Atualizar dados">
-            <IconButton disabled>
-              <RefreshIcon />
-            </IconButton>
+            <span>
+              <IconButton disabled>
+                <RefreshIcon />
+              </IconButton>
+            </span>
           </Tooltip>
         </Box>
         <Grid container spacing={2}>
@@ -463,16 +465,18 @@ export default function FinancialSummaryCards({ onCardClick }: FinancialSummaryC
 
     return (
     <Box sx={{ mb: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-          Resumo Financeiro
-        </Typography>
-        <Tooltip title="Atualizar dados">
-          <IconButton onClick={loadSummaryData} disabled={loading}>
-            <RefreshIcon />
-          </IconButton>
-        </Tooltip>
-      </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+            Resumo Financeiro
+          </Typography>
+          <Tooltip title="Atualizar dados">
+            <span>
+              <IconButton onClick={loadSummaryData} disabled={loading}>
+                <RefreshIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
       
       {/* Grid container com animação */}
       <Box sx={{ position: 'relative', minHeight: expandedCard ? '500px' : 'auto' }}>

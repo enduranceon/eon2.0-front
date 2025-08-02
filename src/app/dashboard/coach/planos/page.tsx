@@ -44,26 +44,21 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
 import { enduranceApi } from '../../../../services/enduranceApi';
+import { Plan, PlanPeriod } from '../../../../types/api';
 
-interface Plan {
+interface PlanPrice {
   id: string;
-  name: string;
-  description: string;
-  enrollmentFee: string;
-  isActive: boolean;
-  createdAt: string;
-  modalidades?: Array<{
-    id: string;
-    modalidade: {
-      id: string;
-      name: string;
-    };
-  }>;
+  period: string;
+  price: string;
+}
+
+interface PlanWithPrices extends Omit<Plan, 'prices'> {
+  prices: PlanPrice[];
 }
 
 interface LinkedPlan {
   id: string;
-  plan: Plan;
+  plan: PlanWithPrices;
   linkedAt: string;
 }
 
@@ -76,8 +71,8 @@ export default function CoachPlanosPage() {
   const [error, setError] = useState<string | null>(null);
   
   const [linkedPlans, setLinkedPlans] = useState<LinkedPlan[]>([]);
-  const [availablePlans, setAvailablePlans] = useState<Plan[]>([]);
-  const [filteredAvailable, setFilteredAvailable] = useState<Plan[]>([]);
+  const [availablePlans, setAvailablePlans] = useState<PlanWithPrices[]>([]);
+  const [filteredAvailable, setFilteredAvailable] = useState<PlanWithPrices[]>([]);
   
   const [addPlanOpen, setAddPlanOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,7 +85,14 @@ export default function CoachPlanosPage() {
     }
 
     if (auth.user.userType !== 'COACH') {
-      router.push('/dashboard');
+      // Redirecionar para dashboard específico baseado no tipo de usuário
+      if (auth.user.userType === 'ADMIN') {
+        router.push('/dashboard/admin');
+      } else if (auth.user.userType === 'FITNESS_STUDENT') {
+        router.push('/dashboard/aluno');
+      } else {
+        router.push('/login');
+      }
       return;
     }
 
@@ -103,7 +105,7 @@ export default function CoachPlanosPage() {
       setFilteredAvailable(
         availablePlans.filter(plan =>
           plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          plan.description.toLowerCase().includes(searchTerm.toLowerCase())
+          (plan.description && plan.description.toLowerCase().includes(searchTerm.toLowerCase()))
         )
       );
     } else {
@@ -177,17 +179,38 @@ export default function CoachPlanosPage() {
     }
   };
 
-  const formatCurrency = (value: string) => {
-    const numValue = parseFloat(value);
+  const formatCurrency = (value: string | number) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     }).format(numValue);
   };
 
+  const getLowestPrice = (prices: PlanPrice[]) => {
+    if (!prices || prices.length === 0) return 0;
+    const lowestPrice = prices.reduce((min, price) => {
+      const currentPrice = typeof price.price === 'string' ? parseFloat(price.price) : price.price;
+      const minPrice = typeof min.price === 'string' ? parseFloat(min.price) : min.price;
+      return currentPrice < minPrice ? price : min;
+    });
+    return typeof lowestPrice.price === 'string' ? parseFloat(lowestPrice.price) : lowestPrice.price;
+  };
+
+  const getPeriodLabel = (period: string) => {
+    const periodMap: Record<string, string> = {
+      'MONTHLY': 'Mensal',
+      'QUARTERLY': 'Trimestral',
+      'SEMIANNUALLY': 'Semestral',
+      'YEARLY': 'Anual',
+      'WEEKLY': 'Semanal',
+      'BIWEEKLY': 'Quinzenal'
+    };
+    return periodMap[period] || period;
+  };
+
   const handleLogout = () => {
     auth.logout();
-    router.push('/login');
   };
 
   if (loading) {
@@ -269,7 +292,10 @@ export default function CoachPlanosPage() {
                   </Box>
                   <Typography variant="h4" fontWeight="bold" color="warning.main">
                     {linkedPlans.length > 0 ? formatCurrency(
-                      (linkedPlans.reduce((sum, p) => sum + parseFloat(p.plan.enrollmentFee), 0) / linkedPlans.length).toString()
+                      (linkedPlans.reduce((sum, p) => {
+                        const lowestPrice = getLowestPrice(p.plan.prices || []);
+                        return sum + lowestPrice;
+                      }, 0) / linkedPlans.length)
                     ) : 'R$ 0,00'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -335,7 +361,7 @@ export default function CoachPlanosPage() {
                                 size="small"
                               />
                               <Chip
-                                label={formatCurrency(linkedPlan.plan.enrollmentFee)}
+                                label={`A partir de ${formatCurrency(getLowestPrice(linkedPlan.plan.prices || []))}`}
                                 color="warning"
                                 size="small"
                               />
@@ -347,6 +373,24 @@ export default function CoachPlanosPage() {
                           {linkedPlan.plan.description}
                         </Typography>
                         
+                        {linkedPlan.plan.prices && linkedPlan.plan.prices.length > 0 && (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                              Preços:
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {linkedPlan.plan.prices.map((price) => (
+                                <Chip
+                                  key={price.id}
+                                  label={`${getPeriodLabel(price.period)}: ${formatCurrency(price.price)}`}
+                                  variant="outlined"
+                                  size="small"
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
+                        
                         {linkedPlan.plan.modalidades && linkedPlan.plan.modalidades.length > 0 && (
                           <Box sx={{ mb: 2 }}>
                             <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
@@ -355,7 +399,7 @@ export default function CoachPlanosPage() {
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {linkedPlan.plan.modalidades.map((modalidade) => (
                                 <Chip
-                                  key={modalidade.id}
+                                  key={modalidade.modalidade.id}
                                   label={modalidade.modalidade.name}
                                   variant="outlined"
                                   size="small"
@@ -454,7 +498,7 @@ export default function CoachPlanosPage() {
                                 sx={{ ml: 1 }}
                               />
                               <Chip
-                                label={formatCurrency(plan.enrollmentFee)}
+                                label={`A partir de ${formatCurrency(getLowestPrice(plan.prices || []))}`}
                                 color="warning"
                                 size="small"
                                 sx={{ ml: 1 }}
@@ -466,11 +510,30 @@ export default function CoachPlanosPage() {
                               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                 {plan.description}
                               </Typography>
+                              
+                              {plan.prices && plan.prices.length > 0 && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                    Preços:
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {plan.prices.map((price) => (
+                                      <Chip
+                                        key={price.id}
+                                        label={`${getPeriodLabel(price.period)}: ${formatCurrency(price.price)}`}
+                                        variant="outlined"
+                                        size="small"
+                                      />
+                                    ))}
+                                  </Box>
+                                </Box>
+                              )}
+                              
                               {plan.modalidades && plan.modalidades.length > 0 && (
                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                   {plan.modalidades.map((modalidade) => (
                                     <Chip
-                                      key={modalidade.id}
+                                      key={modalidade.modalidade.id}
                                       label={modalidade.modalidade.name}
                                       variant="outlined"
                                       size="small"

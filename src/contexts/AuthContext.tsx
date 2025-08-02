@@ -66,6 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         enduranceApi.setToken(token);
 
         const user = await enduranceApi.getProfile();
+        
         const subscriptionStatus = await checkUserSubscription(user);
 
         setState({
@@ -78,8 +79,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           subscriptionStatus,
           isLoading: false,
         });
+        
+        // Marcar que a inicialização foi concluída com sucesso
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth_initialized', 'true');
+        }
+        
       } catch (error) {
-        console.error('Falha na inicialização da autenticação:', error);
         enduranceApi.clearToken();
         setState({
           user: null,
@@ -91,6 +97,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           subscriptionActive: false,
           subscriptionStatus: null,
         });
+        
+        // Marcar que a inicialização foi concluída (mesmo com erro)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth_initialized', 'true');
+        }
       }
     } else {
       setState({
@@ -103,14 +114,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
         subscriptionActive: false,
         subscriptionStatus: null,
       });
+      
+      // Marcar que a inicialização foi concluída (sem token)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_initialized', 'true');
+      }
     }
   };
 
-  const checkUserSubscription = async (user: User): Promise<'ACTIVE' | 'PENDING' | 'NONE'> => {
+  const checkUserSubscription = async (user: User): Promise<'ACTIVE' | 'PENDING' | 'NONE' | 'ON_LEAVE'> => {
     // Apenas alunos precisam de assinatura ativa
     if (user.userType === UserType.FITNESS_STUDENT) {
       try {
         const subscription = await enduranceApi.getActiveSubscription();
+        
         if (!subscription) return 'NONE';
 
         // Priorizar status explícito retornado pela API
@@ -118,7 +135,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (rawStatus) {
           const normalized = rawStatus.toString().trim().toUpperCase();
+          
           if (normalized === 'ACTIVE') return 'ACTIVE';
+          if (normalized === 'ON_LEAVE') return 'ON_LEAVE';
           if (normalized.startsWith('PENDING')) return 'PENDING';
         }
 
@@ -126,7 +145,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if ((subscription as any).isActive) return 'ACTIVE';
 
         return 'NONE';
-      } catch {
+      } catch (error) {
+        console.error('❌ Error checking subscription:', error);
         return 'NONE';
       }
     }
@@ -218,8 +238,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isLoading: true,
       }));
 
+      // Marcar que a inicialização foi concluída
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_initialized', 'true');
+      }
+
       // Redirecionar para dashboard apropriado
-      redirectToDashboard(user.userType, subscriptionStatus as 'ACTIVE' | 'PENDING' | 'NONE');
+      redirectToDashboard(user.userType, subscriptionStatus as 'ACTIVE' | 'PENDING' | 'NONE' | 'ON_LEAVE');
       toast.success('Login realizado com sucesso!');
       
       // Aguardar um tempo para garantir que o redirecionamento seja processado
@@ -238,6 +263,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = () => {
     enduranceApi.clearToken();
+    
+    // Limpar flag de inicialização
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_initialized');
+    }
+    
     setState({
       user: null,
       token: null,
@@ -283,7 +314,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Se usuário logado, redirecionar para dashboard
       if (state.user) {
-        redirectToDashboard(state.user.userType, state.subscriptionStatus as 'ACTIVE' | 'PENDING' | 'NONE');
+        redirectToDashboard(state.user.userType, state.subscriptionStatus as 'ACTIVE' | 'PENDING' | 'NONE' | 'ON_LEAVE');
       } else {
         router.push('/login');
       }
@@ -338,7 +369,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isLoading: true, // Manter loading ativo até redirecionamento
       }));
       
-      redirectToDashboard(user.userType, subscriptionStatus as 'ACTIVE' | 'PENDING' | 'NONE');
+      // Marcar que a inicialização foi concluída
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_initialized', 'true');
+      }
+      
+      redirectToDashboard(user.userType, subscriptionStatus as 'ACTIVE' | 'PENDING' | 'NONE' | 'ON_LEAVE');
       toast.success('2FA verificado com sucesso!');
       
       // Aguardar redirecionamento ser processado
@@ -403,7 +439,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const redirectToDashboard = (
     userType: UserType,
-    subscriptionStatus: 'ACTIVE' | 'PENDING' | 'NONE' = 'NONE'
+    subscriptionStatus: 'ACTIVE' | 'PENDING' | 'NONE' | 'ON_LEAVE' = 'NONE'
   ) => {
     switch (userType) {
       case UserType.ADMIN:
@@ -417,13 +453,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           router.push('/dashboard/aluno');
         } else if (subscriptionStatus === 'PENDING') {
           router.push('/subscription/pending');
+        } else if (subscriptionStatus === 'ON_LEAVE') {
+          router.push('/licenca-status');
         } else {
           // Se não tem assinatura, inicia fluxo de onboarding pelas calculadoras
           router.push('/onboarding/quiz-plano');
         }
         break;
       default:
-        router.push('/dashboard');
+        router.push('/login');
     }
   };
 
@@ -496,7 +534,16 @@ export function useRequireAuth(requiredRoles?: UserType[], requireSubscription =
     // Role insuficiente
     if (requiredRoles && !auth.hasRole(requiredRoles)) {
       toast.error('Acesso negado');
-      router.push('/dashboard');
+      // Redirecionar para dashboard específico baseado no tipo de usuário
+      if (auth.user?.userType === UserType.ADMIN) {
+        router.push('/dashboard/admin');
+      } else if (auth.user?.userType === UserType.COACH) {
+        router.push('/dashboard/coach');
+      } else if (auth.user?.userType === UserType.FITNESS_STUDENT) {
+        router.push('/dashboard/aluno');
+      } else {
+        router.push('/login');
+      }
       return;
     }
 

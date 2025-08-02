@@ -99,7 +99,8 @@ export const checkUserHasPendingPayment = async (user: any, enduranceApi: any): 
         }
 
         // Se a assinatura não está ativa e não há isActive=true
-        if (!subscription.isActive && status !== 'ACTIVE') {
+        // Mas não considerar ON_LEAVE como pagamento pendente
+        if (!subscription.isActive && status !== 'ACTIVE' && status !== 'ON_LEAVE') {
           return true;
         }
       }

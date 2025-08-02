@@ -36,7 +36,7 @@ const getTestIcon = (type: TestType) => {
 };
 
 // Componente para exibir histórico de testes
-const TestHistory = ({ history, loading, error }: { history: UserTest[], loading: boolean, error: string | null }) => {
+const TestHistory = ({ history, loading, error }: { history: any[], loading: boolean, error: string | null }) => {
   const [filters, setFilters] = useState({
     search: '',
     startDate: null,
@@ -49,19 +49,22 @@ const TestHistory = ({ history, loading, error }: { history: UserTest[], loading
   };
 
   const filteredHistory = history.filter((test: any) => {
+    // Adaptar para a nova estrutura do endpoint /users/dashboard/my-tests
+    const testName = test.test?.name || test.name;
+    const testDescription = test.test?.description || test.description;
+    const testType = test.test?.type || test.type;
+    const testDate = test.executionDate || test.recordedAt || test.createdAt;
     
+    const matchesSearch = testName?.toLowerCase().includes(filters.search.toLowerCase()) ||
+                         testDescription?.toLowerCase().includes(filters.search.toLowerCase());
     
-    const matchesSearch = test.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-                         test.description?.toLowerCase().includes(filters.search.toLowerCase());
+    const matchesType = filters.testType === 'all' || testType === filters.testType;
     
-    const matchesType = filters.testType === 'all' || test.type === filters.testType;
-    
-    const testDate = new Date(test.createdAt);
-    const matchesStartDate = !filters.startDate || testDate >= filters.startDate;
-    const matchesEndDate = !filters.endDate || testDate <= filters.endDate;
+    const date = new Date(testDate);
+    const matchesStartDate = !filters.startDate || date >= filters.startDate;
+    const matchesEndDate = !filters.endDate || date <= filters.endDate;
     
     const shouldInclude = matchesSearch && matchesType && matchesStartDate && matchesEndDate;
-    
     
     return shouldInclude;
   });
@@ -105,11 +108,14 @@ const TestHistory = ({ history, loading, error }: { history: UserTest[], loading
   };
 
   const renderTestResults = (test: any) => {
-    if (!test.results || !Array.isArray(test.results) || test.results.length === 0) {
+    // Adaptar para a nova estrutura do endpoint /users/dashboard/my-tests
+    const hasResults = test.type === 'RESULT' && (test.dynamicResults || test.value);
+    
+    if (!hasResults) {
       return (
         <Box sx={{ mt: 2 }}>
           <Typography variant="body2" color="text.secondary">
-            Nenhum resultado registrado ainda.
+            {test.type === 'APPOINTMENT' ? 'Teste agendado - aguardando realização.' : 'Nenhum resultado registrado ainda.'}
           </Typography>
         </Box>
       );
@@ -118,13 +124,13 @@ const TestHistory = ({ history, loading, error }: { history: UserTest[], loading
     return (
       <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2 }}>
-          📊 Histórico de Resultados:
+          📊 Resultados do Teste:
         </Typography>
         
-        {/* Resultado mais recente */}
+        {/* Resultado */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
-            🏆 Resultado Mais Recente
+            🏆 Resultado
           </Typography>
           <Box sx={{ 
             p: 2, 
@@ -137,79 +143,37 @@ const TestHistory = ({ history, loading, error }: { history: UserTest[], loading
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} sm={6}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                  {test.results[test.results.length - 1].value} {test.results[test.results.length - 1].unit}
+                  {test.dynamicResults?.multipleResults ? (
+                    // Múltiplos resultados dinâmicos
+                    test.dynamicResults.multipleResults.map((result: any, index: number) => (
+                      <Box key={index} sx={{ mb: 1 }}>
+                        {result.value} {result.unit} ({result.fieldName})
+                      </Box>
+                    ))
+                  ) : (
+                    // Resultado único
+                    `${test.value || 'N/A'} ${test.unit || ''}`
+                  )}
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Typography variant="body2">
-                  📅 {formatDate(test.results[test.results.length - 1].recordedAt)}
-                </Typography>
-                {test.results[test.results.length - 1].notes && (
-                  <Typography variant="body2">
-                    📝 {test.results[test.results.length - 1].notes}
-                  </Typography>
-                )}
+                                 <Typography variant="body2">
+                   📅 {formatDate(test.executionDate || test.recordedAt || test.createdAt)}
+                 </Typography>
+                 {test.notes && (
+                   <Typography variant="body2">
+                     📝 {test.notes}
+                   </Typography>
+                 )}
+                 {test.recorder && (
+                   <Typography variant="body2">
+                     👨‍🏫 Registrado por: {test.recorder.name}
+                   </Typography>
+                 )}
               </Grid>
             </Grid>
           </Box>
         </Box>
-
-        {/* Histórico completo */}
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          📈 Evolução Completa
-        </Typography>
-        <Grid container spacing={2}>
-          {test.results.map((result: any, index: number) => {
-            const isLatest = index === test.results.length - 1;
-            const isImprovement = index > 0 && 
-              parseFloat(result.value) > parseFloat(test.results[index - 1].value);
-            
-            return (
-              <Grid item xs={12} sm={6} md={4} key={result.id}>
-                <Box sx={{ 
-                  p: 2, 
-                  border: '1px solid', 
-                  borderColor: isLatest ? 'primary.main' : 'divider', 
-                  borderRadius: 2,
-                  bgcolor: isLatest ? 'primary.light' : 'background.paper',
-                  position: 'relative'
-                }}>
-                  {isLatest && (
-                    <Chip 
-                      label="Mais Recente" 
-                      color="primary" 
-                      size="small" 
-                      sx={{ position: 'absolute', top: -8, right: 8 }}
-                    />
-                  )}
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    {isImprovement ? (
-                      <TrendingUpIcon color="success" sx={{ mr: 1 }} />
-                    ) : index > 0 ? (
-                      <TrendingDownIcon color="error" sx={{ mr: 1 }} />
-                    ) : (
-                      <RemoveIcon color="action" sx={{ mr: 1 }} />
-                    )}
-                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                      {result.value} {result.unit}
-                    </Typography>
-                  </Box>
-                  
-                  <Typography variant="body2" color="text.secondary">
-                    📅 {formatDate(result.recordedAt)}
-                  </Typography>
-                  
-                  {result.notes && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      📝 {result.notes}
-                    </Typography>
-                  )}
-                </Box>
-              </Grid>
-            );
-          })}
-        </Grid>
       </Box>
     );
   };
@@ -297,33 +261,33 @@ const TestHistory = ({ history, loading, error }: { history: UserTest[], loading
           <Accordion key={test.id} sx={{ boxShadow: 2 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
-                  {getTestIcon(test.type || TestType.TECHNICAL)}
+                <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
+                  {getTestIcon(test.test?.type || test.type || TestType.TECHNICAL)}
                 </Avatar>
                 <Box sx={{ flexGrow: 1 }}>
                   <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {test.name}
+                    {test.test?.name || test.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {formatDate(test.createdAt)}
-                  </Typography>
-                </Box>
-                <Chip 
-                  label={getStatusText(test.status)} 
-                  color={getStatusColor(test.status) as any}
-                  size="small"
-                />
+                                   <Typography variant="body2" color="text.secondary">
+                   {formatDate(test.executionDate || test.recordedAt || test.createdAt)}
+                 </Typography>
+               </Box>
+               <Chip 
+                 label={test.type === 'RESULT' ? 'Concluído' : 'Agendado'} 
+                 color={test.type === 'RESULT' ? 'success' : 'info'}
+                 size="small"
+               />
               </Box>
             </AccordionSummary>
             <AccordionDetails>
               <Box>
                 <Typography variant="body1" sx={{ mb: 2 }}>
-                  {test.description}
+                  {test.test?.description || test.description}
                 </Typography>
                 
-                {test.location && (
+                {test.dynamicResults?.location && (
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    📍 Local: {test.location}
+                    📍 Local: {test.dynamicResults.location}
                   </Typography>
                 )}
                 
@@ -333,7 +297,7 @@ const TestHistory = ({ history, loading, error }: { history: UserTest[], loading
                   </Typography>
                 )}
 
-                {test.results && test.results.length > 0 && renderTestResults(test)}
+                                 {test.type === 'RESULT' && renderTestResults(test)}
               </Box>
             </AccordionDetails>
           </Accordion>
@@ -347,33 +311,24 @@ export default function StudentTestsPage() {
   const auth = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userTests, setUserTests] = useState<UserTest[]>([]);
+  const [userTests, setUserTests] = useState<any[]>([]);
 
   const loadData = useCallback(async (userId: string) => {
     try {
       setLoading(true);
       setError(null);
       
-  
+      // Usar o novo endpoint específico para alunos
+      const response = await enduranceApi.getUserTests({
+        limit: 100 // Buscar todos os testes do aluno
+      });
       
-      const response = await enduranceApi.getUserTests(userId);
-      
-      // Processar a nova estrutura da API
+      // Processar a resposta da API
       let testData = [];
       
-      
-      if (response && typeof response === 'object' && 'success' in response && response.success && 'data' in response) {
-        testData = (response as any).data.data || [];
-        
-      } else if (Array.isArray(response)) {
-        testData = response;
-        
-      } else if (response && typeof response === 'object' && 'data' in response) {
-        testData = Array.isArray((response as any).data) ? (response as any).data : [(response as any).data];
-        
+      if (response && response.data) {
+        testData = response.data;
       }
-      
-      
       
       setUserTests(testData || []);
       

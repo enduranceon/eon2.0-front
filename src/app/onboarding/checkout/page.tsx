@@ -230,7 +230,7 @@ export default function CheckoutPage() {
         localStorage.setItem('onboarding_step_3_completed', 'true');
         // Para cartão de crédito confirmado, redirecionar diretamente para dashboard
         if (paymentMethod === PaymentMethod.CREDIT_CARD) {
-          setTimeout(() => router.push('/dashboard'), 2000);
+          setTimeout(() => router.push('/dashboard/aluno'), 2000);
         }
       } else {
         enqueueSnackbar('Pagamento pendente. Siga as instruções.', { variant: 'info' });
@@ -298,8 +298,7 @@ export default function CheckoutPage() {
   const handleLogout = async () => {
     try {
       setLoading(true);
-      await auth.logout();
-      router.push('/login');
+      auth.logout();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     } finally {
@@ -377,7 +376,7 @@ export default function CheckoutPage() {
                 </CardContent>
              </Card>
         )}
-         <Button onClick={() => router.push('/dashboard')} sx={{ mt: 4 }}>Ir para o Dashboard</Button>
+         <Button onClick={() => router.push('/dashboard/aluno')} sx={{ mt: 4 }}>Ir para o Dashboard</Button>
         </Container>
       </Box>
     );

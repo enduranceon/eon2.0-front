@@ -82,7 +82,14 @@ export default function CoachModalidadesPage() {
     }
 
     if (auth.user.userType !== 'COACH') {
-      router.push('/dashboard');
+      // Redirecionar para dashboard específico baseado no tipo de usuário
+      if (auth.user.userType === 'ADMIN') {
+        router.push('/dashboard/admin');
+      } else if (auth.user.userType === 'FITNESS_STUDENT') {
+        router.push('/dashboard/aluno');
+      } else {
+        router.push('/login');
+      }
       return;
     }
 
@@ -171,7 +178,6 @@ export default function CoachModalidadesPage() {
 
   const handleLogout = () => {
     auth.logout();
-    router.push('/login');
   };
 
   if (loading) {

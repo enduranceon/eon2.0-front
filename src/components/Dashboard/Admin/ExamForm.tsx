@@ -24,14 +24,37 @@ import {
   Divider
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { Exam, Modalidade, ExamDistance } from '../../../types/api';
+import { Exam, Modalidade, ExamDistance, ExamCategory } from '../../../types/api';
 import { enduranceApi } from '../../../services/enduranceApi';
 
 const distanceSchema = z.object({
-  distance: z.coerce.number().min(0.1, 'Distância deve ser maior que 0'),
+  distance: z.coerce.number().optional().refine((val) => {
+    if (!val || val <= 0) return false;
+    return true;
+  }, {
+    message: "Distância deve ser maior que 0",
+  }),
   unit: z.string().default('km'),
-  price: z.coerce.number().min(0, 'Preço deve ser maior ou igual a 0'),
-  maxParticipants: z.coerce.number().min(1, 'Limite deve ser maior que 0'),
+  date: z.string().optional().refine((val) => {
+    if (!val || val === '') return true; // Campo opcional no schema, mas validado customizadamente
+    // Aceita formato date (YYYY-MM-DD)
+    return /^\d{4}-\d{2}-\d{2}$/.test(val);
+  }, {
+    message: "Data inválida",
+  }),
+});
+
+const categorySchema = z.object({
+  category: z.nativeEnum(ExamCategory, {
+    errorMap: () => ({ message: 'Selecione uma categoria' })
+  }),
+  date: z.string().optional().refine((val) => {
+    if (!val || val === '') return true; // Campo opcional no schema, mas validado customizadamente
+    // Aceita formato date (YYYY-MM-DD)
+    return /^\d{4}-\d{2}-\d{2}$/.test(val);
+  }, {
+    message: "Data inválida",
+  }),
 });
 
 const examSchema = z.object({
@@ -45,10 +68,17 @@ const examSchema = z.object({
   }, {
     message: "Data inválida",
   }),
+  end_date: z.string().optional().refine((val) => {
+    if (!val || val === '') return true; // Campo opcional
+    // Aceita formato date (YYYY-MM-DD)
+    return /^\d{4}-\d{2}-\d{2}$/.test(val);
+  }, {
+    message: "Data inválida",
+  }),
+  exam_url: z.string().url('URL inválida').optional().or(z.literal('')),
   modalidadeId: z.string().min(1, 'Selecione uma modalidade'),
-  price: z.coerce.number().min(0, 'Preço deve ser maior ou igual a 0').optional(),
-  maxParticipants: z.coerce.number().min(1, 'Limite deve ser maior que 0').optional(),
-  distances: z.array(distanceSchema).min(1, 'Adicione pelo menos uma distância'),
+  distances: z.array(distanceSchema).optional(),
+  categories: z.array(categorySchema).optional(),
 });
 
 type ExamFormData = z.infer<typeof examSchema>;
@@ -65,20 +95,51 @@ interface ExamFormProps {
 export default function ExamForm({ open, onClose, onSubmit, exam, loading, error }: ExamFormProps) {
   const isEditMode = !!exam;
   const [modalities, setModalities] = useState<Modalidade[]>([]);
+  const [isCorrida, setIsCorrida] = useState(false);
 
-  const { control, handleSubmit, reset, formState: { errors }, watch } = useForm<ExamFormData>({
+  const { control, handleSubmit, reset, formState: { errors }, watch, getValues } = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
     defaultValues: { 
       name: '', 
       description: '', 
       location: '', 
       date: '', 
+      end_date: '',
+      exam_url: '',
       modalidadeId: '',
-      price: 0,
-      maxParticipants: 100,
-      distances: [{ distance: 5, unit: 'km', price: 30, maxParticipants: 50 }]
+      distances: [{ distance: 5, unit: 'km', date: '' }],
+      categories: [{ category: ExamCategory.SPRINT, date: '' }]
     },
   });
+
+  const selectedModalidadeId = watch('modalidadeId');
+
+  // Detectar se a modalidade selecionada é Corrida
+  useEffect(() => {
+    if (selectedModalidadeId && modalities.length > 0) {
+      const selectedModalidade = modalities.find(m => m.id === selectedModalidadeId);
+      const newIsCorrida = selectedModalidade?.name.toLowerCase() === 'corrida';
+      setIsCorrida(newIsCorrida);
+      
+      console.log('Modalidade mudou para:', selectedModalidade?.name);
+      console.log('Nova isCorrida:', newIsCorrida);
+      
+      // Limpar campos quando a modalidade muda
+      if (newIsCorrida) {
+        // Se mudou para Corrida, limpar categorias
+        reset({
+          ...getValues(),
+          categories: [{ category: ExamCategory.SPRINT, date: '' }]
+        });
+      } else {
+        // Se mudou para outra modalidade, limpar distâncias
+        reset({
+          ...getValues(),
+          distances: [{ distance: 5, unit: 'km', date: '' }]
+        });
+      }
+          }
+    }, [selectedModalidadeId, modalities, reset, getValues]);
 
   // Função para converter data do formato date para ISO
   const convertToISO = (dateString: string) => {
@@ -87,9 +148,14 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
     return dateString + 'T00:00:00.000Z';
   };
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: distanceFields, append: appendDistance, remove: removeDistance } = useFieldArray({
     control,
     name: "distances"
+  });
+
+  const { fields: categoryFields, append: appendCategory, remove: removeCategory } = useFieldArray({
+    control,
+    name: "categories"
   });
 
   useEffect(() => {
@@ -107,20 +173,26 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
   useEffect(() => {
     if (open) {
       if (isEditMode && exam) {
+        // Determinar se é modalidade Corrida para decidir quais campos mostrar
+        const isCorrida = exam.modalidade?.name.toLowerCase() === 'corrida';
+        
         reset({
           name: exam.name,
           description: exam.description || '',
           location: exam.location,
           date: new Date(exam.date).toISOString().substring(0, 10),
+          end_date: exam.end_date ? new Date(exam.end_date).toISOString().substring(0, 10) : '',
+          exam_url: exam.exam_url || '',
           modalidadeId: exam.modalidadeId,
-          price: exam.price || 0,
-          maxParticipants: exam.maxParticipants || 100,
-          distances: exam.distances?.length > 0 ? exam.distances.map(d => ({
+          distances: isCorrida && exam.distances?.length > 0 ? exam.distances.map(d => ({
             distance: d.distance,
             unit: d.unit,
-            price: d.price,
-            maxParticipants: d.maxParticipants
-          })) : [{ distance: 5, unit: 'km', price: 30, maxParticipants: 50 }]
+            date: d.date ? new Date(d.date).toISOString().substring(0, 10) : '',
+          })) : [{ distance: 5, unit: 'km', date: '' }],
+          categories: !isCorrida && exam.categories?.length > 0 ? exam.categories.map(c => ({
+            category: c.name as ExamCategory, // Converter string para enum
+            date: c.date ? new Date(c.date).toISOString().substring(0, 10) : '',
+          })) : [{ category: ExamCategory.SPRINT, date: '' }]
         });
       } else {
         reset({ 
@@ -128,29 +200,106 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
           description: '', 
           location: '', 
           date: '', 
+          end_date: '',
+          exam_url: '',
           modalidadeId: '',
-          price: 0,
-          maxParticipants: 100,
-          distances: [{ distance: 5, unit: 'km', price: 30, maxParticipants: 50 }]
+          distances: [{ distance: 5, unit: 'km', date: '' }],
+          categories: [{ category: ExamCategory.SPRINT, date: '' }]
         });
       }
     }
   }, [open, exam, isEditMode, reset]);
 
   const addDistance = () => {
-    append({ distance: 10, unit: 'km', price: 50, maxParticipants: 50 });
+    appendDistance({ distance: 10, unit: 'km', date: '' });
   };
 
-  const removeDistance = (index: number) => {
-    if (fields.length > 1) {
-      remove(index);
+  const removeDistanceItem = (index: number) => {
+    if (distanceFields.length > 1) {
+      removeDistance(index);
+    }
+  };
+
+  const addCategory = () => {
+    appendCategory({ category: ExamCategory.SPRINT, date: '' });
+  };
+
+  const removeCategoryItem = (index: number) => {
+    if (categoryFields.length > 1) {
+      removeCategory(index);
+    }
+  };
+
+  // Validação customizada baseada na modalidade
+  const validateFormData = (data: ExamFormData) => {
+    console.log('Iniciando validação customizada...');
+    const selectedModalidade = modalities.find(m => m.id === data.modalidadeId);
+    const isCorrida = selectedModalidade?.name.toLowerCase() === 'corrida';
+    
+    console.log('Modalidade selecionada:', selectedModalidade);
+    console.log('É corrida?', isCorrida);
+    console.log('Dados de distâncias:', data.distances);
+    console.log('Dados de categorias:', data.categories);
+
+    if (isCorrida) {
+      // Para modalidade Corrida, validar distâncias
+      if (!data.distances || data.distances.length === 0) {
+        throw new Error('Para provas de Corrida, adicione pelo menos uma distância');
+      }
+      
+      // Validar se todas as distâncias têm dados válidos
+      for (let i = 0; i < data.distances.length; i++) {
+        const distance = data.distances[i];
+        console.log(`Validando distância ${i + 1}:`, distance);
+        if (!distance.distance || distance.distance <= 0) {
+          throw new Error(`Distância ${i + 1}: valor deve ser maior que 0`);
+        }
+        if (!distance.date || distance.date.trim() === '') {
+          throw new Error(`Distância ${i + 1}: data é obrigatória`);
+        }
+      }
+    } else {
+      // Para outras modalidades, validar categorias
+      if (!data.categories || data.categories.length === 0) {
+        throw new Error('Para outras modalidades, adicione pelo menos uma categoria');
+      }
+      
+      // Validar se todas as categorias têm dados válidos
+      for (let i = 0; i < data.categories.length; i++) {
+        const category = data.categories[i];
+        console.log(`Validando categoria ${i + 1}:`, category);
+        if (!category.category) {
+          throw new Error(`Categoria ${i + 1}: selecione uma categoria`);
+        }
+        if (!category.date || category.date.trim() === '') {
+          throw new Error(`Categoria ${i + 1}: data é obrigatória`);
+        }
+      }
+    }
+    
+    console.log('Validação customizada passou com sucesso!');
+  };
+
+  const handleFormSubmit = async (data: ExamFormData) => {
+    try {
+      console.log('Dados recebidos no handleFormSubmit:', data);
+      console.log('Modalidades disponíveis:', modalities);
+      
+      // Validar dados baseado na modalidade
+      validateFormData(data);
+      console.log('Validação passou, enviando dados...');
+      await onSubmit(data);
+    } catch (error: any) {
+      console.error('Erro de validação:', error);
+      // Propagar o erro para o componente pai
+      throw error;
     }
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>{isEditMode ? 'Editar Prova' : 'Nova Prova'}</DialogTitle>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(handleFormSubmit)}>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           
@@ -174,7 +323,17 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
             </Grid>
             <Grid item xs={12} sm={6}>
               <Controller name="date" control={control} render={({ field }) => ( 
-                <TextField {...field} type="date" label="Data da Prova" fullWidth required InputLabelProps={{ shrink: true }} error={!!errors.date} helperText={errors.date?.message} /> 
+                <TextField {...field} type="date" label="Data de Início da Prova" fullWidth required InputLabelProps={{ shrink: true }} error={!!errors.date} helperText={errors.date?.message} /> 
+              )}/>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Controller name="end_date" control={control} render={({ field }) => ( 
+                <TextField {...field} type="date" label="Data de Fim da Prova (opcional)" fullWidth InputLabelProps={{ shrink: true }} error={!!errors.end_date} helperText={errors.end_date?.message} /> 
+              )}/>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Controller name="exam_url" control={control} render={({ field }) => ( 
+                <TextField {...field} label="URL Externa do Evento (opcional)" fullWidth error={!!errors.exam_url} helperText={errors.exam_url?.message} /> 
               )}/>
             </Grid>
             <Grid item xs={12}>
@@ -188,124 +347,177 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
                 {errors.modalidadeId && <Alert severity="error" sx={{ mt: 1 }}>{errors.modalidadeId.message}</Alert>}
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller name="price" control={control} render={({ field }) => ( 
-                <TextField {...field} type="number" label="Preço Base (opcional)" fullWidth error={!!errors.price} helperText={errors.price?.message} /> 
-              )}/>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller name="maxParticipants" control={control} render={({ field }) => ( 
-                <TextField {...field} type="number" label="Limite Geral de Participantes (opcional)" fullWidth error={!!errors.maxParticipants} helperText={errors.maxParticipants?.message} /> 
-              )}/>
-            </Grid>
           </Grid>
 
           <Divider sx={{ my: 3 }} />
 
-          {/* Gerenciamento de distâncias */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">Distâncias da Prova</Typography>
-            <Button
-              type="button"
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={addDistance}
-              size="small"
-            >
-              Adicionar Distância
-            </Button>
-          </Box>
+          {/* Gerenciamento de distâncias ou categorias baseado na modalidade */}
+          {isCorrida ? (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">Distâncias da Prova</Typography>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addDistance}
+                  size="small"
+                >
+                  Adicionar Distância
+                </Button>
+              </Box>
 
-          {errors.distances && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {errors.distances.message}
-            </Alert>
+              {errors.distances && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {errors.distances.message}
+                </Alert>
+              )}
+
+              {distanceFields.map((field, index) => (
+                <Card key={field.id} sx={{ mb: 2, p: 2 }}>
+                  <CardContent sx={{ p: '0 !important' }}>
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item xs={12} sm={3}>
+                        <Controller
+                          name={`distances.${index}.distance`}
+                          control={control}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              type="number"
+                              label="Distância"
+                              fullWidth
+                              required
+                              error={!!errors.distances?.[index]?.distance}
+                              helperText={errors.distances?.[index]?.distance?.message}
+                            />
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={2}>
+                        <Controller
+                          name={`distances.${index}.unit`}
+                          control={control}
+                          render={({ field }) => (
+                            <FormControl fullWidth>
+                              <InputLabel>Unidade</InputLabel>
+                              <Select {...field} label="Unidade">
+                                <MenuItem value="km">km</MenuItem>
+                                <MenuItem value="m">m</MenuItem>
+                                <MenuItem value="mi">mi</MenuItem>
+                              </Select>
+                            </FormControl>
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={5}>
+                        <Controller
+                          name={`distances.${index}.date`}
+                          control={control}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              type="date"
+                              label="Data da Prova"
+                              fullWidth
+                              required
+                              InputLabelProps={{ shrink: true }}
+                              error={!!errors.distances?.[index]?.date}
+                              helperText={errors.distances?.[index]?.date?.message}
+                            />
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={2}>
+                        <IconButton
+                          onClick={() => removeDistanceItem(index)}
+                          color="error"
+                          disabled={distanceFields.length === 1}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          ) : (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">Categorias da Prova</Typography>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addCategory}
+                  size="small"
+                >
+                  Adicionar Categoria
+                </Button>
+              </Box>
+
+              {errors.categories && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {errors.categories.message}
+                </Alert>
+              )}
+
+              {categoryFields.map((field, index) => (
+                <Card key={field.id} sx={{ mb: 2, p: 2 }}>
+                  <CardContent sx={{ p: '0 !important' }}>
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item xs={12} sm={5}>
+                        <Controller
+                          name={`categories.${index}.category`}
+                          control={control}
+                          render={({ field }) => (
+                            <FormControl fullWidth required>
+                              <InputLabel>Categoria</InputLabel>
+                              <Select {...field} label="Categoria">
+                                <MenuItem value={ExamCategory.SPRINT}>Sprint</MenuItem>
+                                <MenuItem value={ExamCategory.SUPER_SPRINT}>Super Sprint</MenuItem>
+                                <MenuItem value={ExamCategory.OLYMPIC}>Olímpico</MenuItem>
+                                <MenuItem value={ExamCategory.HALF_DISTANCE}>Half Distance</MenuItem>
+                                <MenuItem value={ExamCategory.DUATHLON}>Duathlon</MenuItem>
+                              </Select>
+                            </FormControl>
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={5}>
+                        <Controller
+                          name={`categories.${index}.date`}
+                          control={control}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              type="date"
+                              label="Data da Prova"
+                              fullWidth
+                              required
+                              InputLabelProps={{ shrink: true }}
+                              error={!!errors.categories?.[index]?.date}
+                              helperText={errors.categories?.[index]?.date?.message}
+                            />
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={2}>
+                        <IconButton
+                          onClick={() => removeCategoryItem(index)}
+                          color="error"
+                          disabled={categoryFields.length === 1}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
           )}
-
-          {fields.map((field, index) => (
-            <Card key={field.id} sx={{ mb: 2, p: 2 }}>
-              <CardContent sx={{ p: '0 !important' }}>
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} sm={3}>
-                    <Controller
-                      name={`distances.${index}.distance`}
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          type="number"
-                          label="Distância"
-                          fullWidth
-                          required
-                          error={!!errors.distances?.[index]?.distance}
-                          helperText={errors.distances?.[index]?.distance?.message}
-                        />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={2}>
-                    <Controller
-                      name={`distances.${index}.unit`}
-                      control={control}
-                      render={({ field }) => (
-                        <FormControl fullWidth>
-                          <InputLabel>Unidade</InputLabel>
-                          <Select {...field} label="Unidade">
-                            <MenuItem value="km">km</MenuItem>
-                            <MenuItem value="m">m</MenuItem>
-                            <MenuItem value="mi">mi</MenuItem>
-                          </Select>
-                        </FormControl>
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
-                    <Controller
-                      name={`distances.${index}.price`}
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          type="number"
-                          label="Preço"
-                          fullWidth
-                          required
-                          error={!!errors.distances?.[index]?.price}
-                          helperText={errors.distances?.[index]?.price?.message}
-                        />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
-                    <Controller
-                      name={`distances.${index}.maxParticipants`}
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          type="number"
-                          label="Limite de Participantes"
-                          fullWidth
-                          required
-                          error={!!errors.distances?.[index]?.maxParticipants}
-                          helperText={errors.distances?.[index]?.maxParticipants?.message}
-                        />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={1}>
-                    <IconButton
-                      onClick={() => removeDistance(index)}
-                      color="error"
-                      disabled={fields.length === 1}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          ))}
         </DialogContent>
         <DialogActions sx={{ p: '16px 24px' }}>
           <Button onClick={onClose} disabled={loading}>Cancelar</Button>

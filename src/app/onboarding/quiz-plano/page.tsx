@@ -40,13 +40,20 @@ export default function QuizPlanoPage() {
     }
 
     if (auth.user.userType !== UserType.FITNESS_STUDENT) {
-      router.push('/dashboard');
+      // Redirecionar para dashboard específico baseado no tipo de usuário
+      if (auth.user.userType === UserType.ADMIN) {
+        router.push('/dashboard/admin');
+      } else if (auth.user.userType === UserType.COACH) {
+        router.push('/dashboard/coach');
+      } else {
+        router.push('/login');
+      }
       return;
     }
 
     // Se já completou onboarding, redirecionar
     if (auth.user.onboardingCompleted) {
-      router.push('/dashboard');
+      router.push('/dashboard/aluno');
       return;
     }
   }, [auth.isAuthenticated, auth.user, router]);
@@ -68,8 +75,7 @@ export default function QuizPlanoPage() {
   const handleLogout = async () => {
     try {
       setLoading(true);
-      await auth.logout();
-      router.push('/login');
+      auth.logout();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     } finally {

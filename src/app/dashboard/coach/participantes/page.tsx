@@ -71,8 +71,12 @@ interface Participant {
   };
   distance?: {
     id: string;
-    distance: number;
+    distance: string;
     unit: string;
+  };
+  category?: {
+    id: string;
+    name: string;
   };
   attended: boolean;
   attendanceConfirmedAt?: string;
@@ -229,13 +233,13 @@ export default function ParticipantsPage() {
   };
 
   const generateCSV = () => {
-    const headers = ['Nome', 'Email', 'Prova', 'Modalidade', 'Distância', 'Data da Prova', 'Local', 'Presença Confirmada', 'Data da Confirmação'];
+    const headers = ['Nome', 'Email', 'Prova', 'Modalidade', 'Distância/Categoria', 'Data da Prova', 'Local', 'Presença Confirmada', 'Data da Confirmação'];
     const rows = participants.map(p => [
       p.user.name,
       p.user.email,
       p.exam.name,
       p.exam.modalidade.name,
-      p.distance ? `${p.distance.distance}${p.distance.unit}` : 'N/A',
+      p.distance ? `${p.distance.distance}${p.distance.unit}` : p.category ? p.category.name : 'N/A',
       new Date(p.exam.date).toLocaleDateString('pt-BR'),
       p.exam.location,
       p.attended ? 'Sim' : 'Não',
@@ -385,7 +389,7 @@ export default function ParticipantsPage() {
                         <TableCell>Participante</TableCell>
                         <TableCell>Prova</TableCell>
                         <TableCell>Modalidade</TableCell>
-                        <TableCell>Distância</TableCell>
+                        <TableCell>Distância/Categoria</TableCell>
                         <TableCell>Data da Prova</TableCell>
                         <TableCell>Local</TableCell>
                         <TableCell>Presença</TableCell>
@@ -424,6 +428,12 @@ export default function ParticipantsPage() {
                                 label={`${participant.distance.distance}${participant.distance.unit}`}
                                 size="small"
                                 icon={<DistanceIcon />}
+                              />
+                            ) : participant.category ? (
+                              <Chip 
+                                label={participant.category.name}
+                                size="small"
+                                icon={<CategoryIcon />}
                               />
                             ) : (
                               <Typography variant="caption" color="text.secondary">
@@ -534,10 +544,12 @@ export default function ParticipantsPage() {
                         <Chip label={selectedParticipant.exam.modalidade.name} size="small" />
                       </Box>
                       <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary">Distância</Typography>
+                        <Typography variant="body2" color="text.secondary">Distância/Categoria</Typography>
                         <Typography variant="body1">
                           {selectedParticipant.distance 
                             ? `${selectedParticipant.distance.distance}${selectedParticipant.distance.unit}`
+                            : selectedParticipant.category 
+                            ? selectedParticipant.category.name
                             : 'N/A'
                           }
                         </Typography>

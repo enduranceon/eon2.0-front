@@ -33,7 +33,7 @@ import { toast } from 'sonner';
 import Image from 'next/image';
 import { enduranceApi } from '../../services/enduranceApi';
 import { getPendingPaymentData, clearPendingPaymentData } from '../../utils/paymentUtils';
-import { PaymentStatus } from '../../types/api';
+import { PaymentStatus, UserType } from '../../types/api';
 import { saveRememberMeData, getRememberMeData } from '../../utils/rememberMeUtils';
 import LogoSymbol from '@/assets/images/logo/logo_simbolo_preto.png';
 import NextLink from 'next/link';
@@ -57,10 +57,19 @@ export default function LoginPage() {
 
   // Redirecionar se já autenticado
   React.useEffect(() => {
-    if (auth.isAuthenticated) {
-      router.push('/dashboard');
+    if (auth.isAuthenticated && auth.user) {
+      // Redirecionar para dashboard específico baseado no tipo de usuário
+      if (auth.user.userType === UserType.ADMIN) {
+        router.push('/dashboard/admin');
+      } else if (auth.user.userType === UserType.COACH) {
+        router.push('/dashboard/coach');
+      } else if (auth.user.userType === UserType.FITNESS_STUDENT) {
+        router.push('/dashboard/aluno');
+      } else {
+        router.push('/login');
+      }
     }
-  }, [auth.isAuthenticated, router]);
+  }, [auth.isAuthenticated, auth.user, router]);
 
   // Carregar dados de "Lembrar-me" ao montar o componente
   React.useEffect(() => {
@@ -119,14 +128,8 @@ export default function LoginPage() {
       // Salvar dados de "Lembrar-me" se marcado
       saveRememberMeData(formData.email.toLowerCase().trim(), rememberMe);
       
-      // Redirecionar baseado no tipo de usuário
-      if (response.user.userType === 'ADMIN') {
-        router.push('/dashboard/admin');
-      } else if (response.user.userType === 'COACH') {
-        router.push('/dashboard/coach');
-      } else {
-        router.push('/dashboard');
-      }
+      // O redirecionamento é gerenciado pelo AuthContext baseado no status da assinatura
+      // Não precisamos fazer redirecionamento manual aqui
     } catch (error: any) {
       let errorMessage = 'Erro ao fazer login. Tente novamente.';
       

@@ -41,7 +41,12 @@ export default function SettingsPage() {
               p: 2,
             }}
           >
-            <Card sx={{ background: 'rgba(255, 255, 255, 0.98)', backdropFilter: 'blur(10px)' }}>
+            <Card sx={{ 
+          background: (theme) => theme.palette.mode === 'dark' 
+            ? 'rgba(30, 30, 30, 0.98)' 
+            : 'rgba(255, 255, 255, 0.98)', 
+          backdropFilter: 'blur(10px)' 
+        }}>
               <CardContent sx={{ p: { xs: 2, md: 4 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <PaletteIcon sx={{ mr: 1.5, color: 'primary.main' }} />

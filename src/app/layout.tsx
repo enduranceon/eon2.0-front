@@ -9,6 +9,7 @@ import { LoadingProvider } from '@/contexts/LoadingContext';
 import { AINotificationProvider } from '@/contexts/AINotificationContext';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
+import { BrowserExtensionProtection } from '@/components/BrowserExtensionProtection';
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -53,6 +54,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${montserrat.variable} ${gotham.variable}`}>
       <body>
+        <BrowserExtensionProtection />
         <AuthProvider>
           <ColorModeProvider>
             <LoadingProvider>
