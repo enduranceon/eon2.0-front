@@ -56,6 +56,7 @@ import {
   Science as ScienceIcon,
   CalendarToday as CalendarIcon,
   Pause as PauseIcon,
+  VideoCall as VideoCallIcon,
 } from '@mui/icons-material';
 import NotificationCenter from './NotificationCenter';
 import AINotificationPanel from './AINotificationPanel';
@@ -195,6 +196,13 @@ const menuItems: MenuItemProps[] = [
     path: '/dashboard/admin/licencas',
     roles: [UserType.ADMIN],
   },
+  {
+    id: 'admin-videochamadas',
+    label: 'Videochamadas',
+    icon: <VideoCallIcon />,
+    path: '/dashboard/admin/videochamadas',
+    roles: [UserType.ADMIN],
+  },
   
   // Coach
   {
@@ -247,6 +255,13 @@ const menuItems: MenuItemProps[] = [
     path: '/dashboard/coach/participantes',
     roles: [UserType.COACH],
   },
+  {
+    id: 'coach-videochamadas',
+    label: 'Videochamadas',
+    icon: <VideoCallIcon />,
+    path: '/dashboard/coach/videochamadas',
+    roles: [UserType.COACH],
+  },
   
   // Student
   {
@@ -296,6 +311,13 @@ const menuItems: MenuItemProps[] = [
     label: 'Pagamentos',
     icon: <PaymentIcon />,
     path: '/dashboard/aluno/pagamentos',
+    roles: [UserType.FITNESS_STUDENT],
+  },
+  {
+    id: 'student-videochamadas',
+    label: 'Videochamadas',
+    icon: <VideoCallIcon />,
+    path: '/dashboard/aluno/videochamadas',
     roles: [UserType.FITNESS_STUDENT],
   },
 ];
@@ -648,7 +670,7 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <NotificationCenter userType={user.userType} userId={user.id} />
             
-            {user.userType === 'ADMIN' && (
+            {(user.userType === 'ADMIN' || user.userType === 'COACH' || user.userType === 'FITNESS_STUDENT') && (
               <IconButton
                 size="large"
                 aria-label="open AI assistant"

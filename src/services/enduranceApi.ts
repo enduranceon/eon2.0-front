@@ -50,6 +50,14 @@ import {
   TestRequest,
   TestRequestsResponse,
   UpdateTestRequestStatusRequest,
+  VideoCall,
+  VideoCallStatus,
+  VideoCallHistory,
+  CreateVideoCallRequest,
+  UpdateVideoCallRequest,
+  VideoCallFilters,
+  VideoCallStats,
+  VideoCallsResponse,
 } from '../types/api';
 
 export class EnduranceApiClient {
@@ -357,9 +365,24 @@ export class EnduranceApiClient {
     return this.delete<void>(`/tests/${testId}/dynamic-fields/${fieldId}`);
   }
 
-  // Registrar Resultado Simples (Global)
-  async recordTestResult(data: RecordTestResultRequest): Promise<TestResult> {
-    return this.post<TestResult>('/tests/record-result', data);
+  // Registrar Resultado (novo padrão preferencial: timeSeconds/generalRank/categoryRank)
+  async recordTestResult(data: Partial<RecordTestResultRequest> & {
+    testId: string;
+    userId: string;
+    timeSeconds?: number;
+    generalRank?: number;
+    categoryRank?: number;
+    notes?: string;
+  }): Promise<TestResult> {
+    const payload: any = {
+      testId: data.testId,
+      userId: data.userId,
+      timeSeconds: data.timeSeconds,
+      generalRank: data.generalRank,
+      categoryRank: data.categoryRank,
+      notes: data.notes,
+    };
+    return this.post<TestResult>('/tests/record-result', payload);
   }
 
   // Registrar Resultado Dinâmico (Global)
@@ -624,6 +647,31 @@ export class EnduranceApiClient {
 
   async updateUserStatus(id: string, isActive: boolean): Promise<User> {
     return this.api.patch(`/users/${id}/status`, { isActive }).then(res => res.data.data);
+  }
+
+  // Alterar treinador de um aluno (ADMIN)
+  async changeStudentCoach(
+    userId: string,
+    coachId: string,
+    applyToAllSubscriptions: boolean = true,
+  ): Promise<number> {
+    const response = await this.patch<any>(`/users/${userId}/change-coach`, {
+      coachId,
+      applyToAllSubscriptions,
+    });
+    // Normalizar resposta para número (quantidade de assinaturas alteradas)
+    if (typeof response === 'number') return response;
+    if (response && typeof response === 'object') {
+      const candidates = [
+        (response as any).updatedCount,
+        (response as any).count,
+        (response as any).updated,
+        (response as any).total,
+      ];
+      const numeric = candidates.find(v => typeof v === 'number');
+      return typeof numeric === 'number' ? numeric : 0;
+    }
+    return 0;
   }
 
   async deleteUser(id: string): Promise<void> {
@@ -911,13 +959,12 @@ export class EnduranceApiClient {
 
   // Gerenciamento de Alunos
   async getCoachStudents(params?: { modalidadeId?: string; planId?: string; status?: string }): Promise<any> {
-    console.log('🔄 Buscando alunos do treinador...');
+    
     
     // Tentativa 1: Endpoint específico de alunos do coach
     try {
-      console.log('📡 Tentativa 1: Endpoint /coaches/students');
       const response = await this.get<any>('/coaches/students', params);
-      console.log('✅ Sucesso com endpoint específico:', response);
+      
       
       // A API retorna { success: true, data: { total, displayed, students: [...] } }
       if (response.success && response.data && response.data.students) {
@@ -936,17 +983,13 @@ export class EnduranceApiClient {
       
       return response;
     } catch (error) {
-      console.log('❌ Endpoint /coaches/students falhou:', error);
       
       // Tentativa 2: Buscar via assinaturas ativas
       try {
-        console.log('📡 Tentativa 2: Buscar via assinaturas ativas');
         const subscriptions = await this.getSubscriptions({ 
           status: 'ACTIVE',
           ...params 
         });
-        
-        console.log('📊 Assinaturas encontradas:', subscriptions);
         
         // Extrair informações dos alunos das assinaturas
         const students = subscriptions.data
@@ -961,35 +1004,27 @@ export class EnduranceApiClient {
             modalidadeName: subscription.modalidade.name
           }));
         
-        console.log('👥 Alunos extraídos das assinaturas:', students);
-        
         return {
           data: students,
           pagination: subscriptions.pagination
         };
       } catch (subscriptionError) {
-        console.log('❌ Busca via assinaturas falhou:', subscriptionError);
         
         // Tentativa 3: Buscar todos os usuários e filtrar por tipo
         try {
-          console.log('📡 Tentativa 3: Buscar todos os usuários FITNESS_STUDENT');
           const users = await this.getUsers({ 
             userType: UserType.FITNESS_STUDENT,
             isActive: true,
             ...params 
           });
           
-          console.log('👥 Todos os alunos encontrados:', users);
-          
           return {
             data: users.data || users,
             pagination: users.pagination || { page: 1, limit: users.data?.length || 0, total: users.data?.length || 0, totalPages: 1, hasNext: false, hasPrev: false }
           };
         } catch (usersError) {
-          console.log('❌ Busca via usuários falhou:', usersError);
           
           // Fallback: retornar array vazio
-          console.log('⚠️ Retornando array vazio como fallback');
           return {
             data: [],
             pagination: { page: 1, limit: 0, total: 0, totalPages: 1, hasNext: false, hasPrev: false }
@@ -1120,6 +1155,48 @@ export class EnduranceApiClient {
   // Analytics do Coach
   async getCoachAnalytics(): Promise<any> {
     return this.get<any>('/coaches/dashboard/analytics');
+  }
+
+  // Insights do Coach
+  async getCoachInsights(params?: { period?: '1w' | '1m' | '3m' | '6m' }): Promise<{
+    summary?: any;
+    insights: Array<{
+      id: string;
+      type: string;
+      priority: 'high' | 'medium' | 'low';
+      impact?: 'positive' | 'negative' | 'neutral';
+      title: string;
+      summary: string;
+      value?: number;
+      unit?: string;
+      recommendations?: string[];
+      confidence?: number;
+      createdAt?: string;
+    }>
+    priorityActions?: any;
+  }> {
+    return this.get<any>('/coaches/dashboard/insights', params);
+  }
+
+  // Insights do Aluno
+  async getStudentInsights(params?: { period?: '1w' | '1m' | '3m' | '6m' }): Promise<{
+    summary?: any;
+    insights: Array<{
+      id: string;
+      type: string; // plan | payments | exams | tests
+      priority: 'high' | 'medium' | 'low';
+      impact?: 'positive' | 'negative' | 'neutral';
+      title: string;
+      summary: string;
+      value?: number;
+      unit?: string;
+      recommendations?: string[];
+      confidence?: number;
+      createdAt?: string;
+    }>;
+    priorityActions?: any;
+  }> {
+    return this.get<any>('/users/dashboard/insights', params);
   }
 
   // Gerenciamento de Modalidades do Coach
@@ -1410,7 +1487,58 @@ export class EnduranceApiClient {
     return this.get('/coaches/financial/summary');
   }
 
+  // Métodos para Videochamadas
 
+  async createVideoCall(data: CreateVideoCallRequest): Promise<VideoCall> {
+    return this.post('/video-calls', data);
+  }
+
+  async getVideoCalls(filters?: VideoCallFilters): Promise<VideoCallsResponse> {
+    return this.get('/video-calls', filters);
+  }
+
+  async getVideoCall(id: string): Promise<VideoCall> {
+    return this.get(`/video-calls/${id}`);
+  }
+
+  async updateVideoCall(id: string, data: UpdateVideoCallRequest): Promise<VideoCall> {
+    return this.patch(`/video-calls/${id}`, data);
+  }
+
+  async deleteVideoCall(id: string): Promise<void> {
+    return this.delete(`/video-calls/${id}`);
+  }
+
+  async getVideoCallStats(): Promise<VideoCallStats> {
+    return this.get('/video-calls/stats');
+  }
+
+  // Métodos específicos para treinadores
+  async acceptVideoCall(id: string): Promise<VideoCall> {
+    return this.post(`/video-calls/${id}/accept`);
+  }
+
+  async denyVideoCall(id: string, data: { cancellationReason: string }): Promise<VideoCall> {
+    return this.post(`/video-calls/${id}/deny`, data);
+  }
+
+  async completeVideoCall(id: string): Promise<VideoCall> {
+    return this.post(`/video-calls/${id}/complete`);
+  }
+
+  // Métodos específicos para alunos
+  async cancelVideoCall(id: string, data: { cancellationReason: string }): Promise<VideoCall> {
+    return this.post(`/video-calls/${id}/cancel`, data);
+  }
+
+  async rescheduleVideoCall(id: string, data: { scheduledAt: string; notes?: string }): Promise<VideoCall> {
+    return this.post(`/video-calls/${id}/reschedule`, data);
+  }
+
+  // Métodos para histórico
+  async getVideoCallHistory(videoCallId: string): Promise<VideoCallHistory[]> {
+    return this.get(`/video-calls/${videoCallId}/history`);
+  }
 }
 
 // Instância singleton

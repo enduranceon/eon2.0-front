@@ -958,8 +958,10 @@ export interface TestResult {
   id: string;
   testId: string;
   userId: string;
-  value: number;
-  unit?: string;
+  // Novo padrão de resultados (preferencial)
+  timeSeconds?: number;      // tempo total em segundos
+  generalRank?: number;      // classificação geral (inteiro ≥ 1)
+  categoryRank?: number;     // classificação na categoria (inteiro ≥ 1)
   notes?: string;
   recordedBy?: string;
   recordedAt: string;
@@ -993,6 +995,10 @@ export interface TestResult {
     id: string;
     name: string;
   };
+
+  // Campos legados (compatibilidade)
+  value?: number;            // legado - não usar no frontend novo
+  unit?: string;             // legado - não usar no frontend novo
 }
 
 export interface RecordDynamicTestResultRequest {
@@ -1178,4 +1184,98 @@ export interface UpdateTestRequestStatusRequest {
   location?: string;
   notes?: string;
   results?: string;
+}
+
+// Tipos para Videochamadas
+export enum VideoCallStatus {
+  REQUESTED = 'REQUESTED',
+  SCHEDULED = 'SCHEDULED',
+  WAITING = 'WAITING',
+  CANCELLED = 'CANCELLED',
+  DENIED = 'DENIED',
+  CHANGED = 'CHANGED',
+  COMPLETED = 'COMPLETED'
+}
+
+export interface VideoCall {
+  id: string;
+  studentId: string;
+  coachId: string;
+  status: VideoCallStatus;
+  requestedAt: string;
+  scheduledAt?: string;
+  completedAt?: string;
+  duration?: number; // em minutos
+  meetingLink?: string;
+  notes?: string;
+  cancellationReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  student?: User;
+  coach?: User;
+}
+
+export interface VideoCallHistory {
+  id: string;
+  videoCallId: string;
+  status: VideoCallStatus;
+  changedBy: string; // userId
+  notes?: string;
+  changedAt: string;
+  user?: User;
+}
+
+export interface CreateVideoCallRequest {
+  coachId: string;
+  scheduledAt?: string;
+  duration?: number; // 15-120 minutos
+  notes?: string;
+}
+
+export interface UpdateVideoCallRequest {
+  status?: VideoCallStatus;
+  scheduledAt?: string;
+  duration?: number;
+  meetingLink?: string;
+  notes?: string;
+  cancellationReason?: string;
+}
+
+export interface VideoCallFilters {
+  status?: VideoCallStatus;
+  studentId?: string;
+  coachId?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface VideoCallStats {
+  total: number;
+  requested: number;
+  scheduled: number;
+  completed: number;
+  cancelled: number;
+  denied: number;
+  averageResponseTime?: number; // em minutos
+  averageDuration?: number; // em minutos
+  monthlyUsage?: {
+    month: string;
+    count: number;
+  }[];
+}
+
+export interface VideoCallsResponse {
+  data: VideoCall[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  summary?: VideoCallStats;
 } 

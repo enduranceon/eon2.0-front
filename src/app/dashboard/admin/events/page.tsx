@@ -128,9 +128,7 @@ export default function AdminExamsPage() {
       const selectedModalidade = modalities.find(m => m.id === data.modalidadeId);
       const isCorrida = selectedModalidade?.name.toLowerCase() === 'corrida';
 
-      console.log('Dados do formulário:', data);
-      console.log('Modalidade selecionada:', selectedModalidade);
-      console.log('É corrida?', isCorrida);
+     
 
       // Processar dados antes de enviar
       const processedData = {
@@ -161,7 +159,7 @@ export default function AdminExamsPage() {
         delete processedData.distances;
       }
 
-      console.log('Dados processados:', processedData);
+     
 
       if (editingExam) {
         await enduranceApi.updateExam(editingExam.id, processedData);

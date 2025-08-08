@@ -15,19 +15,16 @@ export function safeQuerySelector(
   try {
     // Verificar se o seletor não está vazio
     if (!selector || selector.trim() === '') {
-      console.warn('safeQuerySelector: Seletor vazio fornecido');
       return null;
     }
 
     // Verificar se o parent é válido
     if (!parent) {
-      console.warn('safeQuerySelector: Elemento pai inválido');
       return null;
     }
 
     return parent.querySelector(selector);
   } catch (error) {
-    console.warn('safeQuerySelector: Erro ao executar querySelector:', error);
     return null;
   }
 }
@@ -45,19 +42,16 @@ export function safeQuerySelectorAll(
   try {
     // Verificar se o seletor não está vazio
     if (!selector || selector.trim() === '') {
-      console.warn('safeQuerySelectorAll: Seletor vazio fornecido');
       return document.querySelectorAll(':not(*)'); // Retorna NodeList vazio
     }
 
     // Verificar se o parent é válido
     if (!parent) {
-      console.warn('safeQuerySelectorAll: Elemento pai inválido');
       return document.querySelectorAll(':not(*)'); // Retorna NodeList vazio
     }
 
     return parent.querySelectorAll(selector);
   } catch (error) {
-    console.warn('safeQuerySelectorAll: Erro ao executar querySelectorAll:', error);
     return document.querySelectorAll(':not(*)'); // Retorna NodeList vazio
   }
 }
@@ -90,7 +84,6 @@ export function waitForElement(
   return new Promise((resolve) => {
     // Verificar se o seletor não está vazio
     if (!selector || selector.trim() === '') {
-      console.warn('waitForElement: Seletor vazio fornecido');
       resolve(null);
       return;
     }
@@ -143,7 +136,6 @@ export function safeRemoveElement(
     }
     return false;
   } catch (error) {
-    console.warn('safeRemoveElement: Erro ao remover elemento:', error);
     return false;
   }
 }
@@ -172,7 +164,6 @@ export function safeAddEventListener(
     }
     return false;
   } catch (error) {
-    console.warn('safeAddEventListener: Erro ao adicionar event listener:', error);
     return false;
   }
 }
@@ -201,7 +192,6 @@ export function safeRemoveEventListener(
     }
     return false;
   } catch (error) {
-    console.warn('safeRemoveEventListener: Erro ao remover event listener:', error);
     return false;
   }
 } 

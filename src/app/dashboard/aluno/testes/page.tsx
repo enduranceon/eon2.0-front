@@ -108,10 +108,24 @@ const TestHistory = ({ history, loading, error }: { history: any[], loading: boo
   };
 
   const renderTestResults = (test: any) => {
-    // Adaptar para a nova estrutura do endpoint /users/dashboard/my-tests
-    const hasResults = test.type === 'RESULT' && (test.dynamicResults || test.value);
-    
-    if (!hasResults) {
+    const toNumber = (v: any): number | undefined => {
+      if (v === null || v === undefined) return undefined;
+      if (typeof v === 'number') return isNaN(v) ? undefined : v;
+      const n = Number(v);
+      return isNaN(n) ? undefined : n;
+    };
+    const formatTime = (seconds?: number) => {
+      if (typeof seconds !== 'number' || isNaN(seconds)) return undefined;
+      const minutes = Math.floor(seconds / 60);
+      const rem = seconds - minutes * 60;
+      const secFixed = rem.toFixed(3);
+      const secStr = rem < 10 ? `0${secFixed}` : secFixed;
+      return `${minutes}:${secStr}`;
+    };
+    // Preferir novo padrão
+    const hasStandard = toNumber(test.timeSeconds) !== undefined;
+    const hasLegacy = test.dynamicResults || test.value;
+    if (!hasStandard && !hasLegacy) {
       return (
         <Box sx={{ mt: 2 }}>
           <Typography variant="body2" color="text.secondary">
@@ -126,50 +140,39 @@ const TestHistory = ({ history, loading, error }: { history: any[], loading: boo
         <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2 }}>
           📊 Resultados do Teste:
         </Typography>
-        
-        {/* Resultado */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
             🏆 Resultado
           </Typography>
-          <Box sx={{ 
-            p: 2, 
-            border: '2px solid', 
-            borderColor: 'primary.main', 
-            borderRadius: 2,
-            bgcolor: 'primary.light',
-            color: 'primary.contrastText'
-          }}>
+          <Box sx={{ p: 2, border: '2px solid', borderColor: 'primary.main', borderRadius: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} sm={6}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                  {test.dynamicResults?.multipleResults ? (
-                    // Múltiplos resultados dinâmicos
-                    test.dynamicResults.multipleResults.map((result: any, index: number) => (
-                      <Box key={index} sx={{ mb: 1 }}>
-                        {result.value} {result.unit} ({result.fieldName})
-                      </Box>
-                    ))
-                  ) : (
-                    // Resultado único
-                    `${test.value || 'N/A'} ${test.unit || ''}`
-                  )}
-                </Typography>
+                {hasStandard ? (
+                  <Box>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Tempo: {formatTime(toNumber(test.timeSeconds))}</Typography>
+                    {toNumber(test.generalRank) !== undefined && (
+                      <Typography variant="body1">Classificação Geral: {toNumber(test.generalRank)}</Typography>
+                    )}
+                    {toNumber(test.categoryRank) !== undefined && (
+                      <Typography variant="body1">Classificação na Categoria: {toNumber(test.categoryRank)}</Typography>
+                    )}
+                  </Box>
+                ) : test.dynamicResults ? (
+                  <Box>
+                    {test.dynamicResults.multipleResults?.map((result: any, index: number) => (
+                      <Typography key={index} variant="body2">
+                        {result.fieldName}: {result.value} {result.unit}
+                      </Typography>
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2">{test.value} {test.unit}</Typography>
+                )}
               </Grid>
               <Grid item xs={12} sm={6}>
-                                 <Typography variant="body2">
-                   📅 {formatDate(test.executionDate || test.recordedAt || test.createdAt)}
-                 </Typography>
-                 {test.notes && (
-                   <Typography variant="body2">
-                     📝 {test.notes}
-                   </Typography>
-                 )}
-                 {test.recorder && (
-                   <Typography variant="body2">
-                     👨‍🏫 Registrado por: {test.recorder.name}
-                   </Typography>
-                 )}
+                <Typography variant="body2">📅 {formatDate(test.executionDate || test.recordedAt || test.createdAt)}</Typography>
+                {test.notes && <Typography variant="body2">📝 {test.notes}</Typography>}
+                {test.recorder && <Typography variant="body2">👨‍🏫 Registrado por: {test.recorder.name}</Typography>}
               </Grid>
             </Grid>
           </Box>
@@ -272,11 +275,11 @@ const TestHistory = ({ history, loading, error }: { history: any[], loading: boo
                    {formatDate(test.executionDate || test.recordedAt || test.createdAt)}
                  </Typography>
                </Box>
-               <Chip 
-                 label={test.type === 'RESULT' ? 'Concluído' : 'Agendado'} 
-                 color={test.type === 'RESULT' ? 'success' : 'info'}
-                 size="small"
-               />
+                <Chip 
+                  label={typeof test.timeSeconds === 'number' || test.type === 'RESULT' ? 'Concluído' : 'Agendado'} 
+                  color={typeof test.timeSeconds === 'number' || test.type === 'RESULT' ? 'success' : 'info'}
+                  size="small"
+                />
               </Box>
             </AccordionSummary>
             <AccordionDetails>

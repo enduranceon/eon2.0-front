@@ -141,13 +141,11 @@ export default function CheckoutPage() {
               }, 0);
             }
           } else {
-            console.warn('⚠️ Plano não encontrado na API com ID:', planData.id);
           }
         } catch (error) {
           console.error('❌ Erro ao recuperar plano do localStorage:', error);
         }
       } else {
-        console.warn('⚠️ Nenhum plano salvo no localStorage');
       }
 
       // Recuperar modalidade do localStorage

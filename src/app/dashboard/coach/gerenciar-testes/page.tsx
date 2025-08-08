@@ -75,7 +75,7 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/Dashboard/DashboardLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import PageHeader from '@/components/Dashboard/PageHeader';
-import { AvailableTest, UserTest, TestType, DynamicTestResult, RecordDynamicTestResultRequest, TestDynamicField } from '@/types/api';
+import { AvailableTest, TestType } from '@/types/api';
 import toast, { Toaster } from 'react-hot-toast';
 
 // Função para obter URL absoluta da imagem
@@ -92,7 +92,7 @@ const getAbsoluteImageUrl = (url: string | undefined | null): string | undefined
   const path = url.startsWith('/api') ? url.substring(4) : url;
   return `${origin}/api${path.startsWith('/') ? '' : '/'}${path}`;
   } catch (error) {
-    console.warn('Erro ao processar URL da imagem:', url, error);
+    
     return undefined;
   }
 };
@@ -103,6 +103,11 @@ interface AllStudentTest {
   id: string;
   testId: string;
   userId: string;
+  // Novo padrão de resultados (preferencial)
+  timeSeconds?: number;
+  generalRank?: number;
+  categoryRank?: number;
+  // Legado
   value?: string;
   unit?: string;
   notes?: string;
@@ -189,139 +194,19 @@ const formatGender = (gender: string): string => {
   }
 };
 
-const DynamicTestForm = ({ testData, setTestData, selectedTest }: { 
-  testData: any, 
-  setTestData: (data: any) => void,
-  selectedTest?: AvailableTest
-}) => {
-  const [dynamicFields, setDynamicFields] = useState<TestDynamicField[]>([]);
-  const [loadingFields, setLoadingFields] = useState(false);
-
-  // Carregar campos dinâmicos do teste selecionado
-  useEffect(() => {
-    if (selectedTest?.id) {
-      loadDynamicFields();
-    }
-  }, [selectedTest?.id]);
-
-  const loadDynamicFields = async () => {
-    if (!selectedTest?.id) return;
-    
-    setLoadingFields(true);
-    try {
-      const fields = await enduranceApi.getTestDynamicFields(selectedTest.id);
-      setDynamicFields(fields);
-      
-      // Inicializar testData com os campos dinâmicos
-      const initialData = fields.map(field => ({
-        fieldName: field.fieldName,
-        value: '',
-        unit: field.metric || '',
-        description: ''
-      }));
-      setTestData({ dynamicResults: initialData });
-    } catch (error) {
-      console.error('Erro ao carregar campos dinâmicos:', error);
-      toast.error('Erro ao carregar campos do teste');
-    } finally {
-      setLoadingFields(false);
-    }
-  };
-
-  const updateField = (index: number, field: keyof DynamicTestResult, value: string) => {
-    setTestData((prevData: any) => {
-      const newDynamicResults = [...(prevData.dynamicResults || [])];
-      newDynamicResults[index] = { ...newDynamicResults[index], [field]: value };
-      return { ...prevData, dynamicResults: newDynamicResults };
-    });
-  };
-
-  const isValidField = (result: DynamicTestResult) => {
-    return result.fieldName && result.value && result.value.toString().trim() !== '';
-  };
-
-  const isValidForm = () => {
-    const results = testData.dynamicResults || [];
-    return results.length > 0 && results.every(isValidField);
-  };
-
-  if (loadingFields) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-        <CircularProgress />
-      </Box>
-    );
+// Conversão de tempo "mm:ss.sss" para segundos (decimal)
+const parseTimeToSeconds = (input: string): number | null => {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    return Number(trimmed);
   }
-
-  return (
-    <Box>
-      <Typography variant="h6" gutterBottom>
-        Campos de Resultado
-      </Typography>
-      
-      {dynamicFields.length === 0 ? (
-        <Alert severity="info">
-          Este teste não possui campos dinâmicos configurados.
-        </Alert>
-      ) : (
-        <Box sx={{ mt: 2 }}>
-          {(testData.dynamicResults || []).map((result: DynamicTestResult, index: number) => (
-            <Card key={index} sx={{ mb: 2, p: 2 }}>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} sm={4}>
-        <TextField
-          fullWidth
-                    label="Campo"
-                    value={result.fieldName || ''}
-                    disabled
-                    variant="outlined"
-                    size="small"
-        />
-      </Grid>
-                <Grid item xs={12} sm={3}>
-        <TextField
-          fullWidth
-                    label="Valor"
-                    value={result.value || ''}
-                    onChange={(e) => updateField(index, 'value', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    required
-                    error={!result.value || result.value.toString().trim() === ''}
-                    helperText={!result.value || result.value.toString().trim() === '' ? 'Campo obrigatório' : ''}
-        />
-      </Grid>
-                <Grid item xs={12} sm={3}>
-                  <TextField
-                    fullWidth
-                    label="Unidade"
-                    value={result.unit || ''}
-                    disabled
-                    variant="outlined"
-                    size="small"
-                  />
-        </Grid>
-                <Grid item xs={12} sm={2}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                    {isValidField(result) && (
-                      <CheckIcon color="success" />
-      )}
-                  </Box>
-    </Grid>
-              </Grid>
-            </Card>
-          ))}
-          
-          <Alert severity={isValidForm() ? "success" : "warning"} sx={{ mt: 2 }}>
-            {isValidForm() 
-              ? "Todos os campos obrigatórios foram preenchidos corretamente."
-              : "Preencha todos os campos obrigatórios para continuar."
-            }
-          </Alert>
-        </Box>
-      )}
-    </Box>
-  );
+  const match = trimmed.match(/^(\d+):(\d{1,2})(?:\.(\d{1,3}))?$/);
+  if (!match) return null;
+  const minutes = Number(match[1]);
+  const seconds = Number(match[2]);
+  const millis = match[3] ? Number('0.' + match[3]) : 0;
+  return minutes * 60 + seconds + millis;
 };
 
 
@@ -362,7 +247,10 @@ export default function GerenciarTestesPage() {
   const [notes, setNotes] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [testData, setTestData] = useState<any>({});
+  // Campos do novo padrão
+  const [timeInput, setTimeInput] = useState<string>('');
+  const [generalRank, setGeneralRank] = useState<string>('');
+  const [categoryRank, setCategoryRank] = useState<string>('');
   const [studentSearchTerm, setStudentSearchTerm] = useState<string>('');
 
   // Estados para infinity scroll dos testes
@@ -398,7 +286,7 @@ export default function GerenciarTestesPage() {
   // Estados para modal de registro de teste para aluno específico
   const [selectedStudentForTest, setSelectedStudentForTest] = useState<any>(null);
   const [studentTestDialogOpen, setStudentTestDialogOpen] = useState(false);
-  const [studentTestData, setStudentTestData] = useState<any>({});
+  // removido fluxo dinâmico legado
   const [studentTestDate, setStudentTestDate] = useState<Date | null>(new Date());
   const [studentTestLocation, setStudentTestLocation] = useState('');
   const [studentTestNotes, setStudentTestNotes] = useState('');
@@ -411,15 +299,14 @@ export default function GerenciarTestesPage() {
 
 
 
-  // Função estabilizada para setTestData
-  const handleSetTestData = useCallback((data: any) => {
-    setTestData(data);
-  }, []);
+  const isStandardFormValid = useCallback(() => {
+    const ts = parseTimeToSeconds(timeInput);
+    const gr = parseInt(generalRank || '0', 10);
+    const cr = parseInt(categoryRank || '0', 10);
+    return ts !== null && !isNaN(ts) && gr >= 1 && cr >= 1;
+  }, [timeInput, generalRank, categoryRank]);
 
-  // Função estabilizada para setStudentTestData
-  const handleSetStudentTestData = useCallback((data: any) => {
-    setStudentTestData(data);
-  }, []);
+  // removido fluxo dinâmico legado
 
   // Função para carregar testes com paginação
   const loadTests = useCallback(async (page: number = 1, append: boolean = false) => {
@@ -510,29 +397,51 @@ export default function GerenciarTestesPage() {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
-    setTestData({});
     setTestDate(new Date());
     setLocation('');
     setNotes('');
+    setTimeInput('');
+    setGeneralRank('');
+    setCategoryRank('');
   };
 
   const getSelectedTest = () => {
     return availableTests.find(test => test.id === selectedTest);
   };
 
-  const renderTestForm = () => {
-    const test = getSelectedTest();
-    if (!test) return null;
-
-    // Usar sempre o DynamicTestForm conforme a nova estrutura
-    return (
-      <DynamicTestForm 
-        testData={testData} 
-        setTestData={handleSetTestData}
-        selectedTest={test}
-      />
-    );
-  };
+  const renderStandardResultForm = () => (
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={4}>
+        <TextField
+          fullWidth
+          label="Tempo (mm:ss.sss ou segundos)"
+          value={timeInput}
+          onChange={(e) => setTimeInput(e.target.value)}
+          helperText="Ex.: 18:35.2 ou 1115.2"
+        />
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <TextField
+          fullWidth
+          type="number"
+          label="Classificação Geral"
+          value={generalRank}
+          onChange={(e) => setGeneralRank(e.target.value)}
+          inputProps={{ min: 1 }}
+        />
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <TextField
+          fullWidth
+          type="number"
+          label="Classificação na Categoria"
+          value={categoryRank}
+          onChange={(e) => setCategoryRank(e.target.value)}
+          inputProps={{ min: 1 }}
+        />
+      </Grid>
+    </Grid>
+  );
 
   const handleSubmit = async () => {
     if (!selectedStudent || !selectedTest) {
@@ -546,19 +455,12 @@ export default function GerenciarTestesPage() {
       return;
     }
 
-    // Sempre usar resultados dinâmicos conforme a nova estrutura
-    if (!testData.dynamicResults || testData.dynamicResults.length === 0) {
-      toast.error('Adicione pelo menos um campo de resultado.');
-      return;
-    }
-
-    // Validar se todos os campos obrigatórios estão preenchidos
-    const hasInvalidFields = testData.dynamicResults.some(
-      (result: DynamicTestResult) => !result.fieldName || !result.value
-    );
-    
-    if (hasInvalidFields) {
-      toast.error('Preencha todos os campos obrigatórios.');
+    // Validar novo padrão
+    const ts = parseTimeToSeconds(timeInput || '');
+    const gr = parseInt(generalRank || '0', 10);
+    const cr = parseInt(categoryRank || '0', 10);
+    if (ts === null || isNaN(ts) || gr < 1 || cr < 1) {
+      toast.error('Preencha tempo (em segundos ou mm:ss.sss) e classificações (inteiros ≥ 1).');
       return;
     }
 
@@ -572,15 +474,14 @@ export default function GerenciarTestesPage() {
         return;
       }
 
-      const dynamicResultData: RecordDynamicTestResultRequest = {
+      await enduranceApi.recordTestResult({
         testId: selectedTest,
         userId: selectedStudent,
-        resultType: 'MULTIPLE',
-        multipleResults: testData.dynamicResults,
-        notes: notes
-      };
-
-      await enduranceApi.recordCoachDynamicTestResult(dynamicResultData);
+        timeSeconds: ts,
+        generalRank: gr,
+        categoryRank: cr,
+        notes: notes,
+      });
       
       toast.success('Teste registrado com sucesso!');
       handleCloseDialog();
@@ -685,22 +586,26 @@ export default function GerenciarTestesPage() {
   const openStudentTestDialog = (student: any) => {
     setSelectedStudentForTest(student);
     setStudentTestDialogOpen(true);
-    setStudentTestData({});
     setStudentTestDate(new Date());
     setStudentTestLocation('');
     setStudentTestNotes('');
     setStudentTestSelectedTest('');
+    setStudentTimeInput('');
+    setStudentGeneralRank('');
+    setStudentCategoryRank('');
   };
 
   // Função para fechar modal de registro de teste para aluno específico
   const closeStudentTestDialog = () => {
     setStudentTestDialogOpen(false);
     setSelectedStudentForTest(null);
-    setStudentTestData({});
     setStudentTestDate(new Date());
     setStudentTestLocation('');
     setStudentTestNotes('');
     setStudentTestSelectedTest('');
+    setStudentTimeInput('');
+    setStudentGeneralRank('');
+    setStudentCategoryRank('');
   };
 
   // Função para obter teste selecionado para aluno específico
@@ -708,21 +613,16 @@ export default function GerenciarTestesPage() {
     return availableTests.find(test => test.id === studentTestSelectedTest);
   };
 
-  // Função para renderizar formulário de teste para aluno específico
-  const renderStudentTestForm = () => {
-    const selectedTest = getSelectedStudentTest();
-    
-    if (!selectedTest) return null;
-
-    // Usar sempre o DynamicTestForm conforme a nova estrutura
-    return (
-      <DynamicTestForm
-        testData={studentTestData}
-        setTestData={handleSetStudentTestData}
-        selectedTest={selectedTest}
-      />
-    );
-  };
+  // Estados e validação do formulário do aluno específico
+  const [studentTimeInput, setStudentTimeInput] = useState<string>('');
+  const [studentGeneralRank, setStudentGeneralRank] = useState<string>('');
+  const [studentCategoryRank, setStudentCategoryRank] = useState<string>('');
+  const isStudentFormValid = useCallback(() => {
+    const ts = parseTimeToSeconds(studentTimeInput);
+    const gr = parseInt(studentGeneralRank || '0', 10);
+    const cr = parseInt(studentCategoryRank || '0', 10);
+    return ts !== null && !isNaN(ts) && gr >= 1 && cr >= 1;
+  }, [studentTimeInput, studentGeneralRank, studentCategoryRank]);
 
   // Função para submeter teste de aluno específico
   const handleSubmitStudentTest = async () => {
@@ -740,17 +640,22 @@ export default function GerenciarTestesPage() {
         return;
       }
 
-      const testData = {
+      const ts = parseTimeToSeconds(studentTimeInput || '');
+      const gr = parseInt(studentGeneralRank || '0', 10);
+      const cr = parseInt(studentCategoryRank || '0', 10);
+      if (ts === null || isNaN(ts) || gr < 1 || cr < 1) {
+        toast.error('Preencha tempo (em segundos ou mm:ss.sss) e classificações (inteiros ≥ 1).');
+        return;
+      }
+
+      await enduranceApi.recordTestResult({
         userId: selectedStudentForTest.user.id,
         testId: studentTestSelectedTest,
-        date: studentTestDate,
-        location: studentTestLocation,
+        timeSeconds: ts,
+        generalRank: gr,
+        categoryRank: cr,
         notes: studentTestNotes,
-        ...studentTestData
-      };
-
-      // Sempre usar resultados dinâmicos conforme a nova estrutura
-      await enduranceApi.recordCoachDynamicTestResult(testData as RecordDynamicTestResultRequest);
+      });
 
       toast.success('Teste registrado com sucesso!');
       closeStudentTestDialog();
@@ -797,6 +702,33 @@ export default function GerenciarTestesPage() {
       case 'CANCELLED': return 'Cancelado';
       default: return status;
     }
+  };
+
+  // Helpers para extrair/exibir resultados no novo padrão e fallback
+  const extractStandardResults = (t: any) => {
+    const toNumber = (v: any): number | undefined => {
+      if (v === null || v === undefined) return undefined;
+      if (typeof v === 'number') return isNaN(v) ? undefined : v;
+      const n = Number(v);
+      return isNaN(n) ? undefined : n;
+    };
+    const src = t || {};
+    const rootHasTime = toNumber(src.timeSeconds) !== undefined;
+    const candidate = rootHasTime ? src : (src.testResult || src.result || {});
+    const timeSeconds = toNumber(candidate.timeSeconds);
+    const generalRank = toNumber(candidate.generalRank);
+    const categoryRank = toNumber(candidate.categoryRank);
+    const notes = src.notes ?? candidate.notes;
+    return { timeSeconds, generalRank, categoryRank, notes };
+  };
+
+  const formatTime = (seconds?: number) => {
+    if (typeof seconds !== 'number' || isNaN(seconds)) return undefined;
+    const minutes = Math.floor(seconds / 60);
+    const rem = seconds - minutes * 60;
+    const secFixed = rem.toFixed(3);
+    const secStr = rem < 10 ? `0${secFixed}` : secFixed;
+    return `${minutes}:${secStr}`; // mm:ss.sss
   };
 
   const getTestTypeLabel = (type: string) => {
@@ -1007,18 +939,15 @@ export default function GerenciarTestesPage() {
                       <Typography variant="body2" color="text.secondary" gutterBottom>
                         {getSelectedTest()?.description}
                       </Typography>
-                      {getSelectedTest()?.supportsDynamicResults && (
-                        <Alert severity="info" sx={{ mt: 1 }}>
-                          <Typography variant="body2">
-                            Este teste suporta múltiplos campos de resultado. 
-                            Adicione os campos específicos necessários para este teste.
-                          </Typography>
-                        </Alert>
-                      )}
+                      <Alert severity="info" sx={{ mt: 1 }}>
+                        <Typography variant="body2">
+                          Informe os resultados no padrão: Tempo (em segundos ou mm:ss.sss), Classificação Geral e na Categoria.
+                        </Typography>
+                      </Alert>
                     </Grid>
 
                     <Grid item xs={12}>
-                      {renderTestForm()}
+                      {renderStandardResultForm()}
                     </Grid>
 
                     <Grid item xs={12} sm={6}>
@@ -1066,7 +995,7 @@ export default function GerenciarTestesPage() {
                   <Button 
                     onClick={handleSubmit} 
                     variant="contained" 
-                    disabled={isSubmitting || (!testData.dynamicResults || testData.dynamicResults.length === 0)}
+                    disabled={isSubmitting || !isStandardFormValid()}
                     startIcon={isSubmitting ? <CircularProgress size={20} /> : <SaveIcon />}
                   >
                     {isSubmitting ? 'Registrando...' : 'Registrar Teste'}
@@ -1165,18 +1094,45 @@ export default function GerenciarTestesPage() {
                           <Typography variant="body2" color="text.secondary" gutterBottom>
                             {getSelectedStudentTest()?.description}
                           </Typography>
-                          {getSelectedStudentTest()?.supportsDynamicResults && (
-                            <Alert severity="info" sx={{ mt: 1 }}>
-                              <Typography variant="body2">
-                                Este teste suporta múltiplos campos de resultado. 
-                                Adicione os campos específicos necessários para este teste.
-                              </Typography>
-                            </Alert>
-                          )}
+                          <Alert severity="info" sx={{ mt: 1 }}>
+                            <Typography variant="body2">
+                              Informe os resultados no padrão: Tempo (em segundos ou mm:ss.sss), Classificação Geral e na Categoria.
+                            </Typography>
+                          </Alert>
                         </Grid>
 
                         <Grid item xs={12}>
-                          {renderStudentTestForm()}
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                label="Tempo (mm:ss.sss ou segundos)"
+                                value={studentTimeInput}
+                                onChange={(e) => setStudentTimeInput(e.target.value)}
+                                helperText="Ex.: 18:35.2 ou 1115.2"
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                type="number"
+                                label="Classificação Geral"
+                                value={studentGeneralRank}
+                                onChange={(e) => setStudentGeneralRank(e.target.value)}
+                                inputProps={{ min: 1 }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                type="number"
+                                label="Classificação na Categoria"
+                                value={studentCategoryRank}
+                                onChange={(e) => setStudentCategoryRank(e.target.value)}
+                                inputProps={{ min: 1 }}
+                              />
+                            </Grid>
+                          </Grid>
                         </Grid>
 
                         <Grid item xs={12} sm={6}>
@@ -1226,7 +1182,7 @@ export default function GerenciarTestesPage() {
                   <Button 
                     onClick={handleSubmitStudentTest} 
                     variant="contained" 
-                                          disabled={isSubmittingStudentTest || !studentTestSelectedTest || (!studentTestData.dynamicResults || studentTestData.dynamicResults.length === 0)}
+                    disabled={isSubmittingStudentTest || !studentTestSelectedTest || !isStudentFormValid()}
                     startIcon={isSubmittingStudentTest ? <CircularProgress size={20} /> : <SaveIcon />}
                   >
                     {isSubmittingStudentTest ? 'Registrando...' : 'Registrar Teste'}
@@ -1457,23 +1413,41 @@ export default function GerenciarTestesPage() {
                                   </Typography>
                                 </TableCell>
                                 <TableCell>
-                                  {test.dynamicResults ? (
-                                    <Box>
-                                      {test.dynamicResults.multipleResults?.map((result, index) => (
-                                        <Typography key={index} variant="body2">
-                                          {result.fieldName}: {result.value} {result.unit}
-                                        </Typography>
-                                      ))}
-                                    </Box>
-                                  ) : test.value ? (
-                                    <Typography variant="body2">
-                                      {test.value} {test.unit}
-                                    </Typography>
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">
-                                      Sem resultado
-                                    </Typography>
-                                  )}
+                                  {(() => {
+                                    const std = extractStandardResults(test);
+                                    if (typeof std.timeSeconds === 'number') {
+                                      return (
+                                        <Box>
+                                          <Typography variant="body2">Tempo: {formatTime(std.timeSeconds)}</Typography>
+                                          {typeof std.generalRank === 'number' && (
+                                            <Typography variant="body2">Geral: {std.generalRank}</Typography>
+                                          )}
+                                          {typeof std.categoryRank === 'number' && (
+                                            <Typography variant="body2">Categoria: {std.categoryRank}</Typography>
+                                          )}
+                                        </Box>
+                                      );
+                                    }
+                                    if (test.dynamicResults) {
+                                      return (
+                                        <Box>
+                                          {test.dynamicResults.multipleResults?.map((result, index) => (
+                                            <Typography key={index} variant="body2">
+                                              {result.fieldName}: {result.value} {result.unit}
+                                            </Typography>
+                                          ))}
+                                        </Box>
+                                      );
+                                    }
+                                    if (test.value) {
+                                      return (
+                                        <Typography variant="body2">{test.value} {test.unit}</Typography>
+                                      );
+                                    }
+                                    return (
+                                      <Typography variant="body2" color="text.secondary">Sem resultado</Typography>
+                                    );
+                                  })()}
                                 </TableCell>
                                 <TableCell>
                                   <Box sx={{ display: 'flex', gap: 1 }}>
@@ -1607,41 +1581,56 @@ export default function GerenciarTestesPage() {
                     </Grid>
                   )}
 
-                  {selectedTestForDetails.dynamicResults?.multipleResults && (
-                    <Grid item xs={12}>
-                      <Typography variant="subtitle2" color="text.secondary">Resultados</Typography>
-                      <Box sx={{ 
-                        bgcolor: 'grey.50', 
-                        p: 2, 
-                        borderRadius: 1, 
-                        border: '1px solid',
-                        borderColor: 'grey.200'
-                      }}>
-                        {selectedTestForDetails.dynamicResults.multipleResults.map((result, index) => (
-                          <Typography key={index} variant="body2" sx={{ mb: 1 }}>
-                            <strong>{result.fieldName}:</strong> {result.value} {result.unit}
-                          </Typography>
-                        ))}
-                      </Box>
-                    </Grid>
-                  )}
-
-                  {selectedTestForDetails.value && !selectedTestForDetails.dynamicResults && (
-                    <Grid item xs={12}>
-                      <Typography variant="subtitle2" color="text.secondary">Resultado</Typography>
-                      <Box sx={{ 
-                        bgcolor: 'grey.50', 
-                        p: 2, 
-                        borderRadius: 1, 
-                        border: '1px solid',
-                        borderColor: 'grey.200'
-                      }}>
-                        <Typography variant="body2">
-                          {selectedTestForDetails.value} {selectedTestForDetails.unit}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  )}
+                  {(() => {
+                    const std = extractStandardResults(selectedTestForDetails);
+                    if (typeof std.timeSeconds === 'number') {
+                      return (
+                        <Grid item xs={12}>
+                          <Typography variant="subtitle2" color="text.secondary">Resultados</Typography>
+                          <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                            <Typography variant="body2" sx={{ mb: 1 }}>
+                              <strong>Tempo:</strong> {formatTime(std.timeSeconds)}
+                            </Typography>
+                            {typeof std.generalRank === 'number' && (
+                              <Typography variant="body2" sx={{ mb: 1 }}>
+                                <strong>Classificação Geral:</strong> {std.generalRank}
+                              </Typography>
+                            )}
+                            {typeof std.categoryRank === 'number' && (
+                              <Typography variant="body2" sx={{ mb: 1 }}>
+                                <strong>Classificação na Categoria:</strong> {std.categoryRank}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Grid>
+                      );
+                    }
+                    if (selectedTestForDetails.dynamicResults?.multipleResults) {
+                      return (
+                        <Grid item xs={12}>
+                          <Typography variant="subtitle2" color="text.secondary">Resultados</Typography>
+                          <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                            {selectedTestForDetails.dynamicResults.multipleResults.map((result, index) => (
+                              <Typography key={index} variant="body2" sx={{ mb: 1 }}>
+                                <strong>{result.fieldName}:</strong> {result.value} {result.unit}
+                              </Typography>
+                            ))}
+                          </Box>
+                        </Grid>
+                      );
+                    }
+                    if (selectedTestForDetails.value) {
+                      return (
+                        <Grid item xs={12}>
+                          <Typography variant="subtitle2" color="text.secondary">Resultado</Typography>
+                          <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                            <Typography variant="body2">{selectedTestForDetails.value} {selectedTestForDetails.unit}</Typography>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+                    return null;
+                  })()}
                   </Grid>
               )}
                 </DialogContent>

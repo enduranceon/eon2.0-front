@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { aiNotificationService, AIInsight } from '../services/aiNotificationService';
 import { useAuth } from './AuthContext';
 import { UserType } from '../types/api';
+import { enduranceApi } from '@/services/enduranceApi';
 import toast from 'react-hot-toast';
 
 interface AINotificationContextType {
@@ -26,24 +27,82 @@ export function AINotificationProvider({ children }: AINotificationProviderProps
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
-  // Inicializar quando usuário estiver disponível E for admin
+  // Inicializar quando usuário estiver disponível e for ADMIN ou COACH
   useEffect(() => {
-    if (user?.id && user?.userType === UserType.ADMIN) {
-      initializeAI();
-    }
+    if (!user?.id || !user?.userType) return;
+    initializeAI();
   }, [user?.id, user?.userType]);
 
   const initializeAI = async () => {
     try {
       setIsLoading(true);
       
-      const userId = user?.id || 'admin_user'; // Em produção, usar o ID real do usuário
+      const userId = user?.id || 'user'; // Em produção, usar o ID real do usuário
       
       // Atualiza último login
       aiNotificationService.updateLastLogin(userId);
       
-      // Gera insights inteligentes
-      const newInsights = await aiNotificationService.generateIntelligentInsights(userId);
+      // Gera insights inteligentes (admin)
+      const adminInsightsPromise = aiNotificationService.generateIntelligentInsights(userId);
+
+      // Busca insights reais do coach quando role = COACH
+      const coachInsightsPromise = (async () => {
+        if (user?.userType !== UserType.COACH) return [] as AIInsight[];
+        try {
+          const coachResponse = await enduranceApi.getCoachInsights({ period: '1m' });
+          const mapped: AIInsight[] = (coachResponse?.insights || []).map((i) => ({
+            id: i.id,
+            type: i.impact === 'negative' ? 'warning' : i.impact === 'positive' ? 'success' : 'info',
+            title: i.title,
+            message: i.summary,
+            actionable: true,
+            priority: i.priority || 'medium',
+            // Mapear para módulos do coach
+            moduleId: mapCoachInsightToModuleId(i),
+            icon: 'psychology',
+            timestamp: new Date(i.createdAt || Date.now()),
+            aiConfidence: typeof i.confidence === 'number' ? i.confidence : 80,
+            recommendedAction: (i.recommendations && i.recommendations[0]) || undefined,
+            data: i,
+          }));
+          return mapped;
+        } catch (e) {
+          return [] as AIInsight[];
+        }
+      })();
+
+      const studentInsightsPromise = (async () => {
+        if (user?.userType !== UserType.FITNESS_STUDENT) return [] as AIInsight[];
+        try {
+          const studentResponse = await enduranceApi.getStudentInsights({ period: '1m' });
+          const mapped: AIInsight[] = (studentResponse?.insights || []).map((i) => ({
+            id: i.id,
+            type: i.impact === 'negative' ? 'warning' : i.impact === 'positive' ? 'success' : 'info',
+            title: i.title,
+            message: i.summary,
+            actionable: true,
+            priority: i.priority || 'medium',
+            moduleId: mapStudentInsightToModuleId(i),
+            icon: 'psychology',
+            timestamp: new Date(i.createdAt || Date.now()),
+            aiConfidence: typeof i.confidence === 'number' ? i.confidence : 80,
+            recommendedAction: (i.recommendations && i.recommendations[0]) || undefined,
+            data: i,
+          }));
+          return mapped;
+        } catch (e) {
+          return [] as AIInsight[];
+        }
+      })();
+
+      const [adminInsights, coachInsights, studentInsights] = await Promise.all([
+        adminInsightsPromise,
+        coachInsightsPromise,
+        studentInsightsPromise,
+      ]);
+      const newInsights = (user?.userType === UserType.COACH)
+        ? coachInsights
+        : (user?.userType === UserType.FITNESS_STUDENT ? studentInsights : adminInsights);
       
       // Mescla com insights existentes
       const existingInsights = aiNotificationService.getActiveNotifications(userId);
@@ -75,7 +134,7 @@ export function AINotificationProvider({ children }: AINotificationProviderProps
       
       // Em caso de erro, carrega insights básicos do localStorage
       try {
-        const userId = user?.id || 'admin_user';
+        const userId = user?.id || 'user';
         const savedInsights = aiNotificationService.getActiveNotifications(userId);
         setInsights(savedInsights);
       } catch (fallbackErr) {
@@ -86,6 +145,30 @@ export function AINotificationProvider({ children }: AINotificationProviderProps
       setIsLoading(false);
     }
   };
+
+  function mapCoachInsightToModuleId(i: any): string {
+    // Heurística simples para mapear categorias de insight do coach para módulos do menu do coach
+    const title = (i?.title || '').toLowerCase();
+    const type = (i?.type || '').toLowerCase();
+    if (title.includes('ganho') || title.includes('finance') || type.includes('financial')) return 'financial';
+    if (title.includes('teste') || type.includes('tests')) return 'coach-gerenciar-testes';
+    if (title.includes('prova') || title.includes('inscrição') || type.includes('exam')) return 'coach-participantes';
+    if (title.includes('aluno') || type.includes('students') || type.includes('alunos')) return 'my-clients';
+    if (title.includes('modalidade') || type.includes('modalidades')) return 'coach-modalidades';
+    if (title.includes('plano') || type.includes('plans')) return 'coach-planos';
+    return 'dashboard-coach';
+  }
+
+  function mapStudentInsightToModuleId(i: any): string {
+    const title = (i?.title || '').toLowerCase();
+    const type = (i?.type || '').toLowerCase();
+    if (title.includes('pagamento') || type.includes('payments')) return 'student-payments';
+    if (title.includes('teste') || type.includes('tests')) return 'student-tests';
+    if (title.includes('prova') || title.includes('inscrição') || type.includes('exams')) return 'student-events';
+    if (title.includes('plano') || type.includes('plan')) return 'student-plan';
+    if (title.includes('treinador') || type.includes('coach')) return 'student-coach';
+    return 'dashboard-student';
+  }
 
   const refreshInsights = async () => {
     await initializeAI();

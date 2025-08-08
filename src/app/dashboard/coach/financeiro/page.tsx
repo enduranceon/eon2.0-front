@@ -143,26 +143,11 @@ export default function FinanceiroPage() {
       
       // Carregar dados iniciais
       const [summaryResponse, earningsResponse, studentsResponse, plansResponse, modalidadesResponse] = await Promise.all([
-        enduranceApi.getCoachFinancialSummary().catch(err => {
-          console.warn('Erro ao carregar resumo financeiro:', err);
-          return null;
-        }),
-        enduranceApi.getCoachFinancialEarnings({ page: 1, limit: 10 }).catch(err => {
-          console.warn('Erro ao carregar ganhos:', err);
-          return null;
-        }),
-        enduranceApi.getCoachStudents().catch(err => {
-          console.warn('Erro ao carregar alunos:', err);
-          return { students: [] };
-        }),
-        enduranceApi.getCoachPlans().catch(err => {
-          console.warn('Erro ao carregar planos:', err);
-          return { plans: [] };
-        }),
-        enduranceApi.getModalidades().catch(err => {
-          console.warn('Erro ao carregar modalidades:', err);
-          return { modalidades: [] };
-        })
+        enduranceApi.getCoachFinancialSummary().catch(() => null),
+        enduranceApi.getCoachFinancialEarnings({ page: 1, limit: 10 }).catch(() => null),
+        enduranceApi.getCoachStudents().catch(() => ({ students: [] })),
+        enduranceApi.getCoachPlans().catch(() => ({ plans: [] })),
+        enduranceApi.getModalidades().catch(() => ({ modalidades: [] }))
       ]);
       
       setSummary(summaryResponse);

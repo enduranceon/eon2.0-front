@@ -154,10 +154,7 @@ export default function ConfirmarPresencaPage() {
         // Verificar se o ID é válido (UUID, CUID ou NanoID)
         let validId = registration.id;
         if (!isValidId(registration.id)) {
-          console.warn(`⚠️  ID inválido detectado: "${registration.id}". Gerando ID temporário.`);
           validId = `temp-${Date.now()}-${index}`; // ID temporário para desenvolvimento
-        } else {
-          
         }
         
         return {
@@ -210,7 +207,6 @@ export default function ConfirmarPresencaPage() {
       // Verificar se o registrationId é um ID válido ou um ID temporário
       if (!isValidId(registrationId)) {
         console.error('❌ ID da inscrição não é válido:', registrationId);
-        console.warn('⚠️  Tentando usar dados mockados ou de desenvolvimento');
         
         // Verificar se é um ID temporário ou se estamos em desenvolvimento
         if (registrationId.startsWith('temp-') || process.env.NODE_ENV === 'development') {
@@ -283,7 +279,6 @@ export default function ConfirmarPresencaPage() {
       // Verificar se o registrationId é um ID válido ou um ID temporário
       if (!isValidId(registrationId)) {
         console.error('❌ ID da inscrição não é válido:', registrationId);
-        console.warn('⚠️  Tentando usar dados mockados ou de desenvolvimento');
         
         // Verificar se é um ID temporário ou se estamos em desenvolvimento
         if (registrationId.startsWith('temp-') || process.env.NODE_ENV === 'development') {

@@ -123,30 +123,12 @@ export default function StudentDashboard() {
         walletBalanceData,
         eventsData
       ] = await Promise.all([
-        enduranceApi.getActiveSubscription().catch(err => {
-          console.warn('Erro ao carregar assinatura:', err);
-          return null;
-        }),
-        enduranceApi.getUserTests().catch(err => {
-          console.warn('Erro ao carregar testes do usuário:', err);
-          return { data: [], summary: { total: 0, completed: 0, pending: 0 } };
-        }),
-        enduranceApi.getUserExams(auth.user.id).catch(err => {
-          console.warn('Erro ao carregar provas do usuário:', err);
-          return { data: [], pagination: { total: 0 } };
-        }),
-        enduranceApi.getProfile().catch(err => {
-          console.warn('Erro ao carregar perfil do usuário:', err);
-          return auth.user;
-        }),
-        enduranceApi.getWalletBalance().catch(err => {
-          console.warn('Erro ao carregar saldo da carteira:', err);
-          return { balance: 0, currency: 'BRL' };
-        }),
-        enduranceApi.getExams({ status: 'ACTIVE', limit: 5 }).catch(err => {
-          console.warn('Erro ao carregar eventos:', err);
-          return { data: [] };
-        })
+        enduranceApi.getActiveSubscription().catch(() => null),
+        enduranceApi.getUserTests().catch(() => ({ data: [], summary: { total: 0, completed: 0, pending: 0 } })),
+        enduranceApi.getUserExams(auth.user.id).catch(() => ({ data: [], pagination: { total: 0 } })),
+        enduranceApi.getProfile().catch(() => auth.user),
+        enduranceApi.getWalletBalance().catch(() => ({ balance: 0, currency: 'BRL' })),
+        enduranceApi.getExams({ status: 'ACTIVE', limit: 5 }).catch(() => ({ data: [] }))
       ]);
 
       // Buscar informações do treinador se a assinatura tiver coachId
@@ -155,7 +137,6 @@ export default function StudentDashboard() {
         try {
           coachData = await enduranceApi.getCoach(activeSubscription.coachId);
         } catch (err) {
-          console.warn('Erro ao carregar dados do treinador:', err);
         }
       }
 
@@ -188,18 +169,32 @@ export default function StudentDashboard() {
     }).format(value);
   };
 
+  const getTestCounts = () => {
+    const summary = userTests?.summary || {};
+    const total = summary.total ?? userTests?.pagination?.total ?? (Array.isArray(userTests?.data) ? userTests.data.length : 0);
+    // completed pode vir como resultsCount (novo), results (API client), ou completed (legado)
+    let completed = summary.resultsCount ?? summary.results ?? summary.completed;
+    if (completed === undefined && Array.isArray(userTests?.data)) {
+      // fallback: contar itens do tipo RESULT
+      completed = userTests.data.filter((t: any) => t?.type === 'RESULT').length;
+    }
+    completed = typeof completed === 'number' ? completed : 0;
+    return { total: typeof total === 'number' ? total : 0, completed };
+  };
+
   const getTestCompletionRate = () => {
-    if (!userTests?.summary) return 0;
-    const { total, completed } = userTests.summary;
+    const { total, completed } = getTestCounts();
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
   const getUpcomingExamsCount = () => {
-    if (!userExams?.data) return 0;
+    if (!Array.isArray(userExams?.data)) return 0;
     const now = new Date();
-    return userExams.data.filter((exam: any) => 
-      new Date(exam.examDate) > now && exam.status === 'REGISTERED'
-    ).length;
+    return userExams.data.filter((exam: any) => {
+      const dateValue = exam?.date || exam?.examDate;
+      const d = dateValue ? new Date(dateValue) : null;
+      return d instanceof Date && !isNaN(d.getTime()) && d > now;
+    }).length;
   };
 
   // Verificação simples de autenticação (substitui ProtectedRoute)
@@ -305,7 +300,7 @@ export default function StudentDashboard() {
           <Grid item xs={12} sm={6} md={3}>
             <StatsCard
               title="Testes Realizados"
-              value={`${userTests?.summary?.completed || 0} de ${userTests?.summary?.total || 0}`}
+              value={`${getTestCounts().completed} de ${getTestCounts().total}`}
               subtitle={`Taxa de conclusão: ${getTestCompletionRate()}%`}
               icon={<TestIcon />}
               color="info"
@@ -381,10 +376,10 @@ export default function StudentDashboard() {
           <Grid item xs={12} sm={6} md={3}>
             <StatsCard
               title="Próximo Pagamento"
-              value={subscription?.nextBillingDate ? formatDate(subscription.nextBillingDate) : 'N/A'}
-              subtitle={subscription?.nextBillingDate ? 'Data do próximo débito' : 'Sem assinatura ativa'}
+              value={(subscription?.nextPaymentDate || subscription?.nextBillingDate) ? formatDate(subscription.nextPaymentDate || subscription.nextBillingDate) : 'N/A'}
+              subtitle={(subscription?.status === 'ACTIVE') ? 'Assinatura ativa' : (subscription ? 'Assinatura inativa' : 'Sem assinatura ativa')}
               icon={<PaymentIcon />}
-              color="info"
+              color={(subscription?.status === 'ACTIVE') ? 'info' : 'warning'}
               action={
                 <Button 
                   size="small" 

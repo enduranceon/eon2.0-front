@@ -31,7 +31,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  Checkbox,
+  FormControlLabel,
+  Tooltip,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -39,6 +42,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Clear as ClearIcon,
+  SwapHoriz as SwapHorizIcon,
 } from '@mui/icons-material';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
@@ -79,6 +83,14 @@ export default function AdminStudentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<User | null>(null);
   const [deletingStudent, setDeletingStudent] = useState<User | null>(null);
+  // Change coach modal
+  const [isChangeCoachOpen, setIsChangeCoachOpen] = useState(false);
+  const [targetStudent, setTargetStudent] = useState<User | null>(null);
+  const [selectedNewCoachId, setSelectedNewCoachId] = useState<string>('');
+  const [applyToAllSubscriptions, setApplyToAllSubscriptions] = useState<boolean>(true);
+  const [changeCoachLoading, setChangeCoachLoading] = useState<boolean>(false);
+  const [changeCoachError, setChangeCoachError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState('');
@@ -152,6 +164,43 @@ export default function AdminStudentsPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingStudent(null);
+  };
+
+  const handleOpenChangeCoach = (student: User) => {
+    setTargetStudent(student);
+    setSelectedNewCoachId('');
+    setApplyToAllSubscriptions(true);
+    setChangeCoachError(null);
+    setIsChangeCoachOpen(true);
+  };
+
+  const handleCloseChangeCoach = () => {
+    setIsChangeCoachOpen(false);
+    setTargetStudent(null);
+    setSelectedNewCoachId('');
+    setApplyToAllSubscriptions(true);
+    setChangeCoachError(null);
+  };
+
+  const handleConfirmChangeCoach = async () => {
+    if (!targetStudent || !selectedNewCoachId) return;
+    setChangeCoachLoading(true);
+    setChangeCoachError(null);
+    try {
+      const updatedCount = await enduranceApi.changeStudentCoach(
+        targetStudent.id,
+        selectedNewCoachId,
+        applyToAllSubscriptions,
+      );
+      setSuccessMessage(`Treinador alterado com sucesso em ${updatedCount} assinatura(s).`);
+      handleCloseChangeCoach();
+      await loadStudents();
+    } catch (err: any) {
+      console.error('Erro ao alterar treinador:', err);
+      setChangeCoachError(err?.response?.data?.message || 'Não foi possível alterar o treinador.');
+    } finally {
+      setChangeCoachLoading(false);
+    }
   };
 
   const handleFormSubmit = async (data: any) => {
@@ -239,6 +288,11 @@ export default function AdminStudentsPage() {
           />
 
           <Paper sx={{ p: 3, mt: 3 }}>
+            {successMessage && (
+              <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
+                {successMessage}
+              </Alert>
+            )}
             <Grid container spacing={2} sx={{ mb: 3 }}>
               <Grid item xs={12} md={4}>
                 <TextField
@@ -394,6 +448,11 @@ export default function AdminStudentsPage() {
                             </Typography>
                           </TableCell>
                           <TableCell align="center">
+                            <Tooltip title="Alterar Treinador">
+                              <IconButton size="small" color="primary" onClick={() => handleOpenChangeCoach(student)}>
+                                <SwapHorizIcon />
+                              </IconButton>
+                            </Tooltip>
                             <IconButton size="small" onClick={() => handleOpenModal(student)}>
                               <EditIcon />
                             </IconButton>
@@ -443,6 +502,53 @@ export default function AdminStudentsPage() {
               <Button onClick={() => setDeletingStudent(null)}>Cancelar</Button>
               <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={rowLoading[deletingStudent?.id || '']}>
                  {rowLoading[deletingStudent?.id || ''] ? <CircularProgress size={24} /> : 'Excluir'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Change Coach Dialog */}
+          <Dialog open={isChangeCoachOpen} onClose={handleCloseChangeCoach} fullWidth maxWidth="sm">
+            <DialogTitle>Alterar Treinador</DialogTitle>
+            <DialogContent>
+              {changeCoachError && (
+                <Alert severity="error" sx={{ mb: 2 }}>{changeCoachError}</Alert>
+              )}
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Selecione o novo treinador para o aluno {targetStudent?.name}.
+              </Typography>
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel>Novo Treinador</InputLabel>
+                <Select
+                  label="Novo Treinador"
+                  value={selectedNewCoachId}
+                  onChange={(e) => setSelectedNewCoachId(String(e.target.value))}
+                >
+                  {coaches.map(c => (
+                    <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={applyToAllSubscriptions}
+                    onChange={(e) => setApplyToAllSubscriptions(e.target.checked)}
+                  />
+                }
+                label="Aplicar a todas as assinaturas ativas"
+              />
+              <Typography variant="caption" color="text.secondary" display="block">
+                Quando desmarcado, a alteração será aplicada apenas à assinatura ativa mais recente.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseChangeCoach} disabled={changeCoachLoading}>Cancelar</Button>
+              <Button
+                variant="contained"
+                onClick={handleConfirmChangeCoach}
+                disabled={!selectedNewCoachId || changeCoachLoading}
+              >
+                {changeCoachLoading ? <CircularProgress size={20} /> : 'Confirmar'}
               </Button>
             </DialogActions>
           </Dialog>

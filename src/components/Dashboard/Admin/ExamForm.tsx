@@ -121,8 +121,6 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
       const newIsCorrida = selectedModalidade?.name.toLowerCase() === 'corrida';
       setIsCorrida(newIsCorrida);
       
-      console.log('Modalidade mudou para:', selectedModalidade?.name);
-      console.log('Nova isCorrida:', newIsCorrida);
       
       // Limpar campos quando a modalidade muda
       if (newIsCorrida) {
@@ -232,14 +230,9 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
 
   // Validação customizada baseada na modalidade
   const validateFormData = (data: ExamFormData) => {
-    console.log('Iniciando validação customizada...');
     const selectedModalidade = modalities.find(m => m.id === data.modalidadeId);
     const isCorrida = selectedModalidade?.name.toLowerCase() === 'corrida';
     
-    console.log('Modalidade selecionada:', selectedModalidade);
-    console.log('É corrida?', isCorrida);
-    console.log('Dados de distâncias:', data.distances);
-    console.log('Dados de categorias:', data.categories);
 
     if (isCorrida) {
       // Para modalidade Corrida, validar distâncias
@@ -250,7 +243,6 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
       // Validar se todas as distâncias têm dados válidos
       for (let i = 0; i < data.distances.length; i++) {
         const distance = data.distances[i];
-        console.log(`Validando distância ${i + 1}:`, distance);
         if (!distance.distance || distance.distance <= 0) {
           throw new Error(`Distância ${i + 1}: valor deve ser maior que 0`);
         }
@@ -267,7 +259,6 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
       // Validar se todas as categorias têm dados válidos
       for (let i = 0; i < data.categories.length; i++) {
         const category = data.categories[i];
-        console.log(`Validando categoria ${i + 1}:`, category);
         if (!category.category) {
           throw new Error(`Categoria ${i + 1}: selecione uma categoria`);
         }
@@ -277,17 +268,12 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
       }
     }
     
-    console.log('Validação customizada passou com sucesso!');
   };
 
   const handleFormSubmit = async (data: ExamFormData) => {
     try {
-      console.log('Dados recebidos no handleFormSubmit:', data);
-      console.log('Modalidades disponíveis:', modalities);
-      
       // Validar dados baseado na modalidade
       validateFormData(data);
-      console.log('Validação passou, enviando dados...');
       await onSubmit(data);
     } catch (error: any) {
       console.error('Erro de validação:', error);

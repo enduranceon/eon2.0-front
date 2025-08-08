@@ -62,3 +62,4 @@ logs/
 
 # Build artifacts
 dist/
+package-lock.json

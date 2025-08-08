@@ -120,13 +120,10 @@ export default function AdminTestsPage() {
         name: data.name,
         description: data.description,
         testType: String(data.type), // Converter para string
-        isActive: data.isActive,
-        // Campos de resultados dinâmicos
-        supportsDynamicResults: data.supportsDynamicResults || false,
-        defaultResultFields: data.supportsDynamicResults ? data.defaultResultFields || [] : undefined
+        isActive: data.isActive
       };
 
-      console.log('Dados processados para envio:', processedData);
+     
 
       if (editingTest) {
         await enduranceApi.updateTest(editingTest.id, processedData);

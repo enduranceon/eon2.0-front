@@ -225,7 +225,7 @@ export default function TestResultsViewer({ open, onClose, test }: TestResultsVi
           startIcon={<AddIcon />}
           onClick={() => {
             // TODO: Implementar adição de resultado
-            console.log('Adicionar resultado');
+          
           }}
         >
           Adicionar Resultado

@@ -75,8 +75,7 @@ export function useBrowserExtensionProtection() {
                 element.classList.contains('extension');
 
               if (hasExtensionAttributes) {
-                // Log para debug (opcional)
-                console.debug('Extensão detectada modificando DOM:', element);
+                
               }
             }
           });

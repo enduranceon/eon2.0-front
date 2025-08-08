@@ -148,7 +148,6 @@ export default function StudentCoachPage() {
               // Debug: verificar imagem do coach
               const imagePath = getCoachImagePath(fullCoachProfile);
             } catch (coachErr) {
-              console.warn('Erro ao buscar dados completos do coach:', coachErr);
               // Usar os dados básicos da assinatura
               setCoach(sub.coach);
               

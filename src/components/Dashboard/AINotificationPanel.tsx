@@ -97,6 +97,21 @@ export default function AINotificationPanel({
         'admin-coaches': '/dashboard/admin/coaches',
         'admin-requests': '/dashboard/admin/requests',
         'admin-settings': '/dashboard/admin/settings',
+        // Rotas para Coach
+        'dashboard-coach': '/dashboard/coach',
+        'my-clients': '/dashboard/my-clients',
+        'financial': '/dashboard/coach/financeiro',
+        'coach-modalidades': '/dashboard/coach/modalidades',
+        'coach-planos': '/dashboard/coach/planos',
+        'coach-gerenciar-testes': '/dashboard/coach/gerenciar-testes',
+        'coach-participantes': '/dashboard/coach/participantes',
+        // Rotas para Aluno
+        'dashboard-student': '/dashboard/aluno',
+        'student-coach': '/dashboard/aluno/treinador',
+        'student-events': '/dashboard/aluno/eventos',
+        'student-tests': '/dashboard/aluno/testes',
+        'student-plan': '/dashboard/aluno/meu-plano',
+        'student-payments': '/dashboard/aluno/pagamentos',
       };
 
       const route = moduleRoutes[insight.moduleId];

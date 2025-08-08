@@ -70,7 +70,6 @@ const getAbsoluteImageUrl = (url: string | undefined | null): string | undefined
     const path = url.startsWith('/api') ? url.substring(4) : url;
     return `${origin}/api${path.startsWith('/') ? '' : '/'}${path}`;
   } catch (error) {
-    console.warn('Erro ao processar URL da imagem:', url, error);
     return undefined;
   }
 };
