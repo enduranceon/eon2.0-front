@@ -1,4 +1,5 @@
 import { enduranceApi } from './enduranceApi';
+import { LeaveApprovalRequest, LeaveReasonType } from '@/types/api';
 
 export interface PlanQuote {
   currentPlanValue: number;
@@ -13,8 +14,9 @@ export interface PlanQuote {
 export interface SubscriptionRequest {
   id: string;
   userId: string;
-  type: 'PAUSE' | 'CANCEL';
+  type: 'PAUSE' | 'CANCEL' | 'LEAVE';
   reason: string;
+  leaveReasonType?: LeaveReasonType;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   adminNotes?: string;
   createdAt: string;
@@ -72,8 +74,13 @@ class SubscriptionService {
   }
 
   // Administração (apenas para admins)
-  async getSubscriptionRequests(status?: 'PENDING' | 'APPROVED' | 'REJECTED'): Promise<SubscriptionRequest[]> {
-    const params = status ? { status } : {};
+  async getSubscriptionRequests(
+    status?: 'PENDING' | 'APPROVED' | 'REJECTED',
+    type?: 'PAUSE' | 'CANCEL' | 'LEAVE'
+  ): Promise<SubscriptionRequest[]> {
+    const params: Record<string, string> = {};
+    if (status) params.status = status;
+    if (type) params.type = type;
     return await enduranceApi.get<SubscriptionRequest[]>('/subscriptions/requests', params);
   }
 
@@ -83,6 +90,10 @@ class SubscriptionService {
 
   async approveCancel(requestId: string, data: AdminRequestAction): Promise<void> {
     return await enduranceApi.patch<void>(`/subscriptions/requests/${requestId}/approve-cancel`, data);
+  }
+
+  async approveLeave(requestId: string, data: LeaveApprovalRequest): Promise<void> {
+    return await enduranceApi.approveLeave(requestId, data as any);
   }
 
   async rejectRequest(requestId: string, data: AdminRequestAction): Promise<void> {
@@ -98,9 +109,9 @@ class SubscriptionService {
   }
 
   // Verificar se usuário tem solicitação pendente
-  async hasActivePendingRequest(type?: 'PAUSE' | 'CANCEL'): Promise<boolean> {
+  async hasActivePendingRequest(type?: 'PAUSE' | 'CANCEL' | 'LEAVE'): Promise<boolean> {
     try {
-      const requests = await this.getSubscriptionRequests('PENDING');
+      const requests = await this.getSubscriptionRequests('PENDING', type);
       if (type) {
         return requests.some(request => request.type === type);
       }

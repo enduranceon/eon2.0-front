@@ -58,6 +58,9 @@ import {
   VideoCallFilters,
   VideoCallStats,
   VideoCallsResponse,
+  LeaveApprovalRequest,
+  LeaveExtendRequest,
+  LeaveRequestCreate,
 } from '../types/api';
 
 export class EnduranceApiClient {
@@ -1115,14 +1118,9 @@ export class EnduranceApiClient {
     return this.post<any>('/coaches/dashboard/record-test-result', data);
   }
 
-  // Sistema de Licença Temporária
-  async requestLeave(data: {
-    leaveStartDate: string;
-    leaveDays: number;
-    leaveReason?: string;
-    pauseTraining: boolean;
-    pauseBilling: boolean;
-  }): Promise<any> {
+  // Sistema de Licença Temporária (refatorado)
+  // Aluno apenas solicita com motivo/descrição
+  async requestLeave(data: LeaveRequestCreate): Promise<any> {
     return this.post<any>('/subscriptions/request-leave', data);
   }
 
@@ -1134,8 +1132,14 @@ export class EnduranceApiClient {
     return this.get<any>('/subscriptions/leaves');
   }
 
-  async approveLeave(requestId: string, adminNotes?: string): Promise<any> {
-    return this.patch<any>(`/subscriptions/leaves/${requestId}/approve`, { adminNotes });
+  // Admin aprova definindo período
+  async approveLeave(requestId: string, data: LeaveApprovalRequest): Promise<any> {
+    return this.patch<any>(`/subscriptions/leaves/${requestId}/approve`, data);
+  }
+
+  // Admin pode estender período
+  async extendLeave(subscriptionId: string, data: LeaveExtendRequest): Promise<any> {
+    return this.patch<any>(`/subscriptions/leaves/${subscriptionId}/extend`, data);
   }
 
   async reactivateExpiredLeaves(): Promise<any> {

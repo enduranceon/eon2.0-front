@@ -183,6 +183,12 @@ export default function CoachForm({
   React.useEffect(() => {
     if (open) {
       if (isEditMode && coach) {
+        // Endereço pode vir como coach.address (legado) ou coach.addresses[0] (novo formato da API)
+        const addressesArray = (coach as any).addresses as any[] | undefined;
+        const sourceAddress = Array.isArray(addressesArray) && addressesArray.length > 0
+          ? addressesArray[0]
+          : coach.address;
+
         reset({
           name: coach.name,
           email: coach.email,
@@ -193,13 +199,13 @@ export default function CoachForm({
           experience: (coach as any).experience || '', // Assuming experience is on User
           certifications: Array.isArray(coach.certifications) ? coach.certifications.join(', ') : '',
           address: {
-            street: coach.address?.street || '',
-            number: coach.address?.number || '',
-            neighborhood: coach.address?.neighborhood || '',
-            zipCode: coach.address?.zipCode ? applyCepMask(coach.address.zipCode) : '',
-            city: coach.address?.city || '',
-            state: coach.address?.state || '',
-            complement: coach.address?.complement || '',
+            street: sourceAddress?.street || '',
+            number: sourceAddress?.number || '',
+            neighborhood: sourceAddress?.neighborhood || '',
+            zipCode: sourceAddress?.zipCode ? applyCepMask(sourceAddress.zipCode) : '',
+            city: sourceAddress?.city || '',
+            state: sourceAddress?.state || '',
+            complement: sourceAddress?.complement || '',
           },
         });
         setLinkedPlans(coach.coachPlans || []);

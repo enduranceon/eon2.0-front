@@ -27,6 +27,10 @@ import {
   IconButton,
   Divider,
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { ptBR } from 'date-fns/locale';
 import {
   CheckCircle as ApproveIcon,
   Cancel as RejectIcon,
@@ -34,6 +38,7 @@ import {
   Cancel as CancelIcon,
   Person as PersonIcon,
   Schedule as ScheduleIcon,
+  CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -79,19 +84,26 @@ function RequestsPageContent() {
   const [selectedRequest, setSelectedRequest] = useState<SubscriptionRequest | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
+  const [leaveStartDate, setLeaveStartDate] = useState<Date | null>(null);
+  const [leaveEndDate, setLeaveEndDate] = useState<Date | null>(null);
 
   const statusFilters = ['PENDING', 'APPROVED', 'REJECTED'] as const;
   const currentStatus = statusFilters[tabValue];
+  const typeFilters = ['ALL', 'PAUSE', 'CANCEL', 'LEAVE'] as const;
+  const [typeFilter, setTypeFilter] = useState<typeof typeFilters[number]>('ALL');
 
   useEffect(() => {
     fetchRequests();
-  }, [tabValue]);
+  }, [tabValue, typeFilter]);
 
   const fetchRequests = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await subscriptionService.getSubscriptionRequests(currentStatus);
+      const data = await subscriptionService.getSubscriptionRequests(
+        currentStatus,
+        typeFilter === 'ALL' ? undefined : (typeFilter as 'PAUSE' | 'CANCEL' | 'LEAVE')
+      );
       // Garantir que data seja sempre um array
       setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -108,6 +120,8 @@ function RequestsPageContent() {
     setSelectedRequest(request);
     setActionType(action);
     setAdminNotes('');
+    setLeaveStartDate(null);
+    setLeaveEndDate(null);
     setActionModalOpen(true);
   };
 
@@ -120,8 +134,18 @@ function RequestsPageContent() {
       if (actionType === 'approve') {
         if (selectedRequest.type === 'PAUSE') {
           await subscriptionService.approvePause(selectedRequest.id, { adminNotes });
-        } else {
+        } else if (selectedRequest.type === 'CANCEL') {
           await subscriptionService.approveCancel(selectedRequest.id, { adminNotes });
+        } else if (selectedRequest.type === 'LEAVE') {
+          if (!leaveStartDate || !leaveEndDate) {
+            toast.error('Defina o período da licença');
+            return;
+          }
+          await subscriptionService.approveLeave(selectedRequest.id, {
+            startDate: leaveStartDate.toISOString(),
+            endDate: leaveEndDate.toISOString(),
+            adminNotes,
+          });
         }
         toast.success('Solicitação aprovada com sucesso!');
       } else {
@@ -149,11 +173,15 @@ function RequestsPageContent() {
   };
 
   const getTypeIcon = (type: string) => {
-    return type === 'PAUSE' ? <PauseIcon /> : <CancelIcon />;
+    if (type === 'PAUSE') return <PauseIcon />;
+    if (type === 'CANCEL') return <CancelIcon />;
+    return <CalendarIcon />;
   };
 
   const getTypeLabel = (type: string) => {
-    return type === 'PAUSE' ? 'Pausa' : 'Cancelamento';
+    if (type === 'PAUSE') return 'Pausa';
+    if (type === 'CANCEL') return 'Cancelamento';
+    return 'Licença';
   };
 
   // Garantir que requests seja sempre um array antes de filtrar
@@ -165,7 +193,7 @@ function RequestsPageContent() {
     <Box>
       <PageHeader
         title="Solicitações de Assinatura"
-        description="Gerencie as solicitações de pausa e cancelamento de assinaturas dos usuários."
+        description="Gerencie as solicitações de pausa, licença e cancelamento de assinaturas dos usuários."
       />
 
       {error && (
@@ -187,6 +215,20 @@ function RequestsPageContent() {
           </Box>
         ) : (
           <>
+            {/* Filtro por tipo */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 2, pt: 2 }}>
+              <Tabs
+                value={typeFilters.indexOf(typeFilter)}
+                onChange={(e, idx) => setTypeFilter(typeFilters[idx])}
+                aria-label="Filtro por tipo de solicitação"
+                variant="scrollable"
+              >
+                <Tab label="Todas" />
+                <Tab label="Pausa" />
+                <Tab label="Cancelamento" />
+                <Tab label="Licença" />
+              </Tabs>
+            </Box>
             <TabPanel value={tabValue} index={0}>
               {filteredRequests.length === 0 ? (
                 <Typography variant="body1" color="text.secondary" textAlign="center">
@@ -375,6 +417,29 @@ function RequestsPageContent() {
               <Typography variant="body1" gutterBottom>
                 <strong>Motivo:</strong> {selectedRequest.reason}
               </Typography>
+              {actionType === 'approve' && selectedRequest.type === 'LEAVE' && (
+                <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
+                  <Grid container spacing={2} sx={{ mt: 1 }}>
+                    <Grid item xs={12} sm={6}>
+                      <DatePicker
+                        label="Início da Licença"
+                        value={leaveStartDate}
+                        onChange={(d) => setLeaveStartDate(d)}
+                        slotProps={{ textField: { fullWidth: true } }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <DatePicker
+                        label="Fim da Licença"
+                        value={leaveEndDate}
+                        onChange={(d) => setLeaveEndDate(d)}
+                        minDate={leaveStartDate || undefined}
+                        slotProps={{ textField: { fullWidth: true } }}
+                      />
+                    </Grid>
+                  </Grid>
+                </LocalizationProvider>
+              )}
             </Box>
           )}
           <TextField

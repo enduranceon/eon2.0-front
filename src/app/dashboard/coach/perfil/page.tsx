@@ -78,6 +78,7 @@ interface CoachProfileData {
   createdAt: string;
   updatedAt: string;
   address?: Address;
+  addresses?: (Address & { isMain?: boolean })[];
   coachModalidades?: Array<{
     id: string;
     modalidade: {
@@ -181,7 +182,9 @@ export default function CoachProfilePage() {
     return `${origin}${finalPath.replace('/api//', '/api/')}`;
   };
 
-  const mainAddress = profile?.address;
+  const mainAddress = (profile?.addresses && Array.isArray(profile.addresses)
+    ? (profile.addresses.find((a: any) => a?.isMain) || profile.addresses[0])
+    : undefined) || profile?.address;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -901,6 +901,13 @@ export interface FinancialFilters {
 }
 
 // Sistema de Licença Temporária
+export enum LeaveReasonType {
+  TRAVEL = 'TRAVEL',
+  ILLNESS = 'ILLNESS',
+  FINANCIAL = 'FINANCIAL',
+  OTHER = 'OTHER',
+}
+
 export interface LeaveRequest {
   leaveStartDate: string;
   leaveDays: number;
@@ -930,6 +937,7 @@ export interface LeaveSubscription {
   leaveEndDate?: string;
   leaveDays?: number;
   leaveReason?: string;
+  leaveReasonType?: LeaveReasonType;
   pauseTraining: boolean;
   pauseBilling: boolean;
   user: {
@@ -946,6 +954,23 @@ export interface LeaveSubscription {
     name: string;
   };
 } 
+
+// Novos contratos para o fluxo de Licença baseado na doc subscription-management.md
+export interface LeaveRequestCreate {
+  reasonType: LeaveReasonType;
+  reasonDescription?: string;
+}
+
+export interface LeaveApprovalRequest {
+  startDate: string; // ISO string
+  endDate: string;   // ISO string
+  adminNotes?: string;
+}
+
+export interface LeaveExtendRequest {
+  newEndDate: string; // ISO string
+  notes?: string;
+}
 
 export interface DynamicTestResult {
   fieldName: string;        // Nome do campo (ex: "Tempo", "Sprint", "Velocidade")

@@ -65,6 +65,8 @@ export default function AdminLeavesPage() {
     open: boolean;
     leave: LeaveSubscription | null;
   }>({ open: false, leave: null });
+  const [extendDate, setExtendDate] = useState<Date | null>(null);
+  const [extending, setExtending] = useState(false);
 
   useEffect(() => {
     loadLeaves();
@@ -115,6 +117,7 @@ export default function AdminLeavesPage() {
 
   const handleCloseDetails = () => {
     setDetailsDialog({ open: false, leave: null });
+    setExtendDate(null);
   };
 
   const calculateDaysRemaining = (endDate: string) => {
@@ -158,6 +161,28 @@ export default function AdminLeavesPage() {
     const active = total - expired - expiringSoon;
 
     return { total, expired, expiringSoon, active };
+  };
+
+  const handleExtendLeave = async () => {
+    if (!detailsDialog.leave || !extendDate) {
+      toast.error('Selecione a nova data de término');
+      return;
+    }
+    try {
+      setExtending(true);
+      await enduranceApi.extendLeave(detailsDialog.leave.id, {
+        newEndDate: extendDate.toISOString(),
+        notes: 'Extensão manual pelo administrador',
+      });
+      toast.success('Período de licença estendido com sucesso!');
+      handleCloseDetails();
+      loadLeaves();
+    } catch (error) {
+      console.error('Erro ao estender licença:', error);
+      toast.error('Erro ao estender licença.');
+    } finally {
+      setExtending(false);
+    }
   };
 
   if (!auth.user) {
@@ -509,6 +534,32 @@ export default function AdminLeavesPage() {
                           size="small"
                         />
                       </Box>
+                    </Grid>
+
+                    {/* Extender Licença */}
+                    <Grid item xs={12} sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Extender Período
+                      </Typography>
+                      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                          <DatePicker
+                            label="Nova data de término"
+                            minDate={detailsDialog.leave.leaveEndDate ? new Date(detailsDialog.leave.leaveEndDate) : undefined}
+                            value={extendDate}
+                            onChange={(d) => setExtendDate(d)}
+                            slotProps={{ textField: { sx: { minWidth: 240 } } }}
+                          />
+                          <Button
+                            variant="contained"
+                            onClick={handleExtendLeave}
+                            disabled={extending || !extendDate}
+                            startIcon={extending ? <CircularProgress size={16} /> : undefined}
+                          >
+                            {extending ? 'Extendendo...' : 'Estender Licença'}
+                          </Button>
+                        </Box>
+                      </LocalizationProvider>
                     </Grid>
                   </Grid>
                 </DialogContent>
