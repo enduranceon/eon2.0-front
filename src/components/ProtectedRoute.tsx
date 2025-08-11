@@ -47,6 +47,11 @@ export default function ProtectedRoute({ children, allowedUserTypes }: Protected
 
       // Only check payment for students
       if (auth.user?.userType === 'FITNESS_STUDENT') {
+        // Aguarda até o AuthContext definir o subscriptionStatus para evitar redirecionamentos incorretos
+        if (!auth.subscriptionStatus) {
+          setCheckingPayment(true);
+          return;
+        }
         setCheckingPayment(true);
         
         try {
