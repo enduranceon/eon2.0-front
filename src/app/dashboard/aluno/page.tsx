@@ -255,7 +255,7 @@ export default function StudentDashboard() {
         </Box>
 
         {/* Status da Assinatura */}
-        {!subscription && (
+        {auth.subscriptionStatus !== 'ACTIVE' && !subscription && (
           <Alert severity="warning" sx={{ mb: 3 }}>
             Você não possui uma assinatura ativa. Escolha um plano para começar seu treinamento.
             <Button 

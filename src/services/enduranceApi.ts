@@ -253,7 +253,9 @@ export class EnduranceApiClient {
 
   async getActiveSubscription(): Promise<Subscription | null> {
     try {
-      return this.get<Subscription>('/subscriptions/active');
+      // Evita 304/ETag retornando corpo vazio adicionando um cache-buster
+      const result = await this.get<Subscription>('/subscriptions/active', { _t: Date.now() });
+      return result ?? null;
     } catch (error) {
       return null;
     }

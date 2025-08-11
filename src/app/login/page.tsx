@@ -83,18 +83,7 @@ export default function LoginPage() {
     }
   }, []);
 
-  // Prevenir reload durante submit
-  React.useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isSubmitting) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isSubmitting]);
+  // Removido: evitar alerta de "alterações podem não ser salvas" durante o redirecionamento pós-login
 
   const handleChange = (field: keyof typeof formData) => (
     event: React.ChangeEvent<HTMLInputElement>
