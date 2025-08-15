@@ -36,7 +36,7 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserType } from '../../types/api';
+import { UserType, Gender } from '../../types/api';
 import { enduranceTheme } from '../../theme/enduranceTheme';
 import { geocodingService } from '../../services/geocodingService';
 import { validateAndFormatCpf } from '../../utils/cpfUtils';
@@ -65,6 +65,8 @@ interface FormData {
   // Campos específicos
   cpf: string;
   phone: string;
+  birthDate?: string;
+  gender?: Gender | string;
   
   // Para alunos
   address?: AddressData;
@@ -116,6 +118,8 @@ export default function RegisterPage() {
     userType: UserType.FITNESS_STUDENT,
     cpf: '',
     phone: '',
+    birthDate: '',
+    gender: '',
     address: {
       street: '',
       number: '',
@@ -401,6 +405,8 @@ export default function RegisterPage() {
         userType: UserType.FITNESS_STUDENT,
         cpf: formData.cpf.replace(/\D/g, ''),
         phone: formData.phone.replace(/\D/g, ''),
+        birthDate: formData.birthDate ? `${formData.birthDate} 00:00:00.000` : undefined,
+        gender: formData.gender || undefined,
         address: {
           ...formData.address,
           // Incluir coordenadas validadas
@@ -524,6 +530,36 @@ export default function RegisterPage() {
                   }}
                   required
                 />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="birthDate"
+                  label="Data de Nascimento"
+                  type="date"
+                  fullWidth
+                  value={formData.birthDate || ''}
+                  onChange={handleChange('birthDate')}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="gender-label">Gênero</InputLabel>
+                  <Select
+                    labelId="gender-label"
+                    label="Gênero"
+                    value={formData.gender || ''}
+                    onChange={handleChange('gender')}
+                  >
+                    <MenuItem value=""><em>Selecione</em></MenuItem>
+                    <MenuItem value={Gender.MALE}>Masculino</MenuItem>
+                    <MenuItem value={Gender.FEMALE}>Feminino</MenuItem>
+                    <MenuItem value={Gender.OTHER}>Outro</MenuItem>
+                    <MenuItem value={Gender.PREFER_NOT_TO_SAY}>Prefiro não informar</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
               
               <Grid item xs={12} sm={6}>

@@ -1,5 +1,5 @@
 import { enduranceApi } from './enduranceApi';
-import { LeaveApprovalRequest, LeaveReasonType } from '@/types/api';
+import { LeaveApprovalRequest, LeaveReasonType, PlanPeriod } from '@/types/api';
 
 export interface PlanQuote {
   currentPlanValue: number;
@@ -51,8 +51,9 @@ export interface AdminRequestAction {
 
 class SubscriptionService {
   // Alteração de Planos
-  async getPlanQuote(planId: string): Promise<PlanQuote> {
-    return await enduranceApi.get<PlanQuote>(`/subscriptions/change-plan/${planId}/quote`);
+  async getPlanQuote(planId: string, period?: PlanPeriod): Promise<PlanQuote> {
+    const params = period ? { period } : undefined;
+    return await enduranceApi.get<PlanQuote>(`/subscriptions/change-plan/${planId}/quote`, params);
   }
 
   async changePlan(data: PlanChangeRequest): Promise<void> {

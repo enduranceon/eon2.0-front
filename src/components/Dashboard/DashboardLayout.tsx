@@ -423,7 +423,7 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
             theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.primary.main,
         }}
       >
-        <Link href="/dashboard" passHref>
+        <Link href={user.userType === UserType.ADMIN ? '/dashboard/admin' : user.userType === UserType.COACH ? '/dashboard/coach' : user.userType === UserType.FITNESS_STUDENT ? '/dashboard/aluno' : '/login'} passHref>
           <Image src={LogoHorizontal} alt="EnduranceOn Logo" width={180} />
         </Link>
       </Toolbar>

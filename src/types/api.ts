@@ -19,6 +19,13 @@ export enum PaymentMethod {
   BOLETO = 'BOLETO'
 }
 
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+  OTHER = 'OTHER',
+  PREFER_NOT_TO_SAY = 'PREFER_NOT_TO_SAY'
+}
+
 export enum PlanPeriod {
   WEEKLY = 'WEEKLY',
   BIWEEKLY = 'BIWEEKLY',
@@ -104,6 +111,8 @@ export interface RegisterRequest {
   coachLevel?: CoachLevel;
   address?: Address;
   image?: string;
+  birthDate?: string; // formato esperado: YYYY-MM-DD 00:00:00.000
+  gender?: Gender | string;
 }
 
 export interface ForgotPasswordRequest {
@@ -184,6 +193,7 @@ export interface CheckoutRequest {
   coachId?: string;
   billingType: PaymentMethod;
   period: PlanPeriod;
+  installmentCount?: number;
   creditCard?: AsaasCreditCardDto;
   creditCardHolderInfo?: AsaasCreditCardHolderInfoDto;
   remoteIp?: string;
@@ -613,6 +623,10 @@ export interface FinancialRecord {
   coachEarnings: number;
   platformEarnings: number;
   paymentStatus: PaymentStatus;
+  dueDate?: string;
+  installments?: number;
+  installmentAmount?: number;
+  receiptDate?: string;
   student: {
     id: string;
     name: string;
@@ -799,6 +813,11 @@ export interface FinancialTransaction {
     id: string;
     amount: number;
     status: PaymentStatus;
+    dueDate?: string;
+    installments?: number;
+    installmentNumber?: number;
+    installmentAmount?: number;
+    receiptDate?: string;
     createdAt: string;
     user: {
       id: string;

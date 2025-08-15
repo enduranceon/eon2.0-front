@@ -123,7 +123,7 @@ class NotificationService {
           timestamp: new Date(now.getTime() - 10 * 60000), // 10 min atrás
           read: false,
           userId: 'student',
-          actionUrl: '/dashboard',
+          actionUrl: '/dashboard/aluno',
           metadata: { sessionTime: '18:00', type: 'corrida' }
         },
         {
@@ -144,7 +144,7 @@ class NotificationService {
           timestamp: new Date(now.getTime() - 24 * 60 * 60000), // 1 dia atrás
           read: true,
           userId: 'student',
-          actionUrl: '/dashboard',
+          actionUrl: '/dashboard/aluno',
           metadata: { planType: 'Premium' }
         }
       );

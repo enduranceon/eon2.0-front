@@ -22,6 +22,10 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -33,7 +37,7 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { subscriptionService, PlanQuote } from '../../services/subscriptionService';
-import { Plan } from '../../types/api';
+import { Plan, PlanPeriod } from '../../types/api';
 
 interface ChangePlanModalProps {
   open: boolean;
@@ -57,6 +61,7 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
   const [quotingPlan, setQuotingPlan] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [planPeriodSelections, setPlanPeriodSelections] = useState<Record<string, PlanPeriod>>({});
 
   useEffect(() => {
     if (open && currentPlan) {
@@ -78,8 +83,20 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
       }
       
       // Filtrar planos diferentes do atual
-      const filteredPlans = currentPlan ? plans.filter(plan => plan.id !== currentPlan.id) : plans;
+      const filteredPlans = currentPlan ? plans.filter((plan: any) => plan.id !== currentPlan.id) : plans;
       setAvailablePlans(filteredPlans);
+      const defaultPeriod = (currentSubscription?.period as PlanPeriod) || PlanPeriod.MONTHLY;
+      const initialSelections: Record<string, PlanPeriod> = {};
+      filteredPlans.forEach((plan: any) => {
+        const hasDefault = Array.isArray(plan.prices) && plan.prices.some((p: any) => p.period === defaultPeriod && p.isActive !== false);
+        if (hasDefault) {
+          initialSelections[plan.id] = defaultPeriod;
+        } else {
+          const firstActive = Array.isArray(plan.prices) ? plan.prices.find((p: any) => p.isActive !== false) : null;
+          initialSelections[plan.id] = (firstActive?.period as PlanPeriod) || PlanPeriod.MONTHLY;
+        }
+      });
+      setPlanPeriodSelections(initialSelections);
     } catch (error) {
       console.error('Erro ao carregar planos:', error);
       setError('Erro ao carregar planos disponíveis');
@@ -88,11 +105,12 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
     }
   };
 
-  const getQuote = async (plan: Plan) => {
+  const getQuote = async (plan: Plan, periodOverride?: PlanPeriod) => {
     try {
       setQuotingPlan(plan.id);
       setError(null);
-      const quoteData = await subscriptionService.getPlanQuote(plan.id);
+      const selectedPeriod = periodOverride || planPeriodSelections[plan.id] || (currentSubscription?.period as PlanPeriod) || PlanPeriod.MONTHLY;
+      const quoteData = await subscriptionService.getPlanQuote(plan.id, selectedPeriod);
       setQuote(quoteData);
       setSelectedPlan(plan);
     } catch (error) {
@@ -173,6 +191,15 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
     return 'Mesmo valor';
   };
 
+  const periodMapping: { [key in PlanPeriod]?: string } = {
+    [PlanPeriod.WEEKLY]: 'Semanal',
+    [PlanPeriod.BIWEEKLY]: 'Quinzenal',
+    [PlanPeriod.MONTHLY]: 'Mensal',
+    [PlanPeriod.QUARTERLY]: 'Trimestral',
+    [PlanPeriod.SEMIANNUALLY]: 'Semestral',
+    [PlanPeriod.YEARLY]: 'Anual'
+  };
+
   // Não renderizar se não houver plano atual
   if (!currentPlan) {
     return null;
@@ -206,6 +233,12 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="h6">{currentPlan.name}</Typography>
             <Chip label={formatCurrency(getCurrentPlanPrice())} color="primary" />
+            <Chip 
+              label={`Periodicidade: ${periodMapping[currentSubscription?.period as PlanPeriod] || 'Mensal'}`} 
+              size="small" 
+              color="default" 
+              sx={{ ml: 1 }} 
+            />
           </Box>
         </Paper>
 
@@ -234,26 +267,51 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
                     onClick={() => getQuote(plan)}
                   >
                     <CardContent>
-                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
-                         <Typography variant="h6">{plan.name}</Typography>
-                         <Chip 
-                           label={getPlanTypeLabel(plan)}
-                           color={getPlanTypeColor(plan)}
-                           size="small"
-                         />
-                       </Box>
-                       <Typography variant="h5" color="primary" gutterBottom>
-                         {formatCurrency(getPlanPrice(plan, currentSubscription?.period || 'MONTHLY'))}
-                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {plan.description}
-                      </Typography>
-                      
-                      {quotingPlan === plan.id && (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                          <CircularProgress size={24} />
-                        </Box>
-                      )}
+                      {(() => {
+                        const selectedPeriod = planPeriodSelections[plan.id] || (currentSubscription?.period as PlanPeriod) || PlanPeriod.MONTHLY;
+                        return (
+                          <>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
+                              <Typography variant="h6">{plan.name}</Typography>
+                              <Chip 
+                                label={getPlanTypeLabel(plan, selectedPeriod)}
+                                color={getPlanTypeColor(plan, selectedPeriod)}
+                                size="small"
+                              />
+                            </Box>
+                            <Typography variant="h5" color="primary" gutterBottom>
+                              {formatCurrency(getPlanPrice(plan, selectedPeriod))}
+                            </Typography>
+                            <FormControl fullWidth size="small" sx={{ mt: 1 }} onClick={(e) => e.stopPropagation()}>
+                              <InputLabel>Periodicidade</InputLabel>
+                              <Select
+                                label="Periodicidade"
+                                value={selectedPeriod}
+                                onChange={(e) => {
+                                  const value = e.target.value as PlanPeriod;
+                                  setPlanPeriodSelections(prev => ({ ...prev, [plan.id]: value }));
+                                  // Atualiza a cotação ao trocar a periodicidade
+                                  getQuote(plan, value);
+                                }}
+                              >
+                                {(plan.prices || []).filter((p: any) => p.isActive !== false).map((p: any) => (
+                                  <MenuItem key={p.period} value={p.period}>
+                                    {periodMapping[p.period as PlanPeriod] || p.period} - {formatCurrency(Number(p.price))}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                              {plan.description}
+                            </Typography>
+                            {quotingPlan === plan.id && (
+                              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                                <CircularProgress size={24} />
+                              </Box>
+                            )}
+                          </>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 </Grid>

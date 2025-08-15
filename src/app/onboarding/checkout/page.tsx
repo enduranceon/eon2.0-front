@@ -78,6 +78,8 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
   const [period, setPeriod] = useState<PlanPeriod>(PlanPeriod.MONTHLY);
   const [remoteIp, setRemoteIp] = useState<string | null>(null);
+  const [paymentOption, setPaymentOption] = useState<'AVISTA' | 'PARCELADO'>('AVISTA');
+  const [installmentCount, setInstallmentCount] = useState<number>(0);
   
   const [paymentResult, setPaymentResult] = useState<CheckoutResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -186,6 +188,29 @@ export default function CheckoutPage() {
     loadInitialData();
   }, []);
 
+  // Ajustar parcelas com base na periodicidade e método de pagamento
+  useEffect(() => {
+    if (paymentMethod !== PaymentMethod.CREDIT_CARD) {
+      setPaymentOption('AVISTA');
+      setInstallmentCount(0);
+      return;
+    }
+    const max = getMaxInstallments(period);
+    if (max <= 1) {
+      setPaymentOption('AVISTA');
+      setInstallmentCount(0);
+      return;
+    }
+    if (paymentOption === 'PARCELADO') {
+      setInstallmentCount(prev => {
+        if (!prev || prev < 2) return Math.min(2, max);
+        return Math.min(prev, max);
+      });
+    } else {
+      setInstallmentCount(0);
+    }
+  }, [period, paymentMethod]);
+
   const handlePayment = async (formData: CheckoutCardFormData) => {
     if (!auth.user || !selectedPlan || !selectedModalidade) {
       setError('Dados da assinatura incompletos. Por favor, volte e selecione um plano.');
@@ -210,6 +235,7 @@ export default function CheckoutPage() {
       };
 
       if (paymentMethod === PaymentMethod.CREDIT_CARD) {
+        checkoutData.installmentCount = paymentOption === 'PARCELADO' ? installmentCount : 0;
         checkoutData.creditCard = formData.creditCard;
         checkoutData.creditCardHolderInfo = formData.creditCardHolderInfo;
         checkoutData.remoteIp = remoteIp;
@@ -228,7 +254,7 @@ export default function CheckoutPage() {
         localStorage.setItem('onboarding_step_3_completed', 'true');
         // Para cartão de crédito confirmado, redirecionar diretamente para dashboard
         if (paymentMethod === PaymentMethod.CREDIT_CARD) {
-          setTimeout(() => router.push('/dashboard/aluno'), 2000);
+          setTimeout(() => router.push('/dashboard/aluno'), 5000);
         }
       } else {
         enqueueSnackbar('Pagamento pendente. Siga as instruções.', { variant: 'info' });
@@ -269,6 +295,18 @@ export default function CheckoutPage() {
       case PlanPeriod.SEMIANNUALLY: return 'Semestral';
       case PlanPeriod.YEARLY: return 'Anual';
       default: return p;
+    }
+  };
+
+  const getMaxInstallments = (p: PlanPeriod): number => {
+    switch (p) {
+      case PlanPeriod.WEEKLY: return 1;
+      case PlanPeriod.BIWEEKLY: return 2;
+      case PlanPeriod.MONTHLY: return 12;
+      case PlanPeriod.QUARTERLY: return 3;
+      case PlanPeriod.SEMIANNUALLY: return 6;
+      case PlanPeriod.YEARLY: return 12;
+      default: return 1;
     }
   };
 
@@ -370,7 +408,12 @@ export default function CheckoutPage() {
                 <CardContent sx={{ textAlign: 'center', py: 6 }}>
                     <CheckIcon sx={{ fontSize: 80, color: theme.palette.success.main, mb: 2 }} />
                     <Typography variant="h4" gutterBottom>Pagamento Confirmado!</Typography>
-                    <Typography variant="body1" color="text.secondary" paragraph>Sua assinatura está ativa! Você será redirecionado em instantes.</Typography>
+                    <Typography variant="body1" color="text.secondary" paragraph>
+                      Sua assinatura está ativa! Você será redirecionado para o seu dashboard em até 5 segundos.
+                    </Typography>
+                    <Button variant="contained" onClick={() => router.push('/dashboard/aluno')}>
+                      Ir agora para o Dashboard
+                    </Button>
                 </CardContent>
              </Card>
         )}
@@ -574,6 +617,63 @@ export default function CheckoutPage() {
                           </Select>
                         </FormControl>
                       </ListItem>
+
+                      {paymentMethod === PaymentMethod.CREDIT_CARD && (
+                        <>
+                          <ListItem sx={{ px: 0, mt: 1 }}>
+                            <ListItemText primary="Pagamento no Cartão" />
+                          </ListItem>
+                          <ListItem sx={{ px: 0 }}>
+                            <RadioGroup
+                              row
+                              value={paymentOption}
+                              onChange={(e) => {
+                                const value = e.target.value as 'AVISTA' | 'PARCELADO';
+                                const max = getMaxInstallments(period);
+                                if (value === 'PARCELADO' && max <= 1) {
+                                  setPaymentOption('AVISTA');
+                                  setInstallmentCount(0);
+                                } else {
+                                  setPaymentOption(value);
+                                  if (value === 'PARCELADO') {
+                                    setInstallmentCount(prev => {
+                                      if (!prev || prev < 2) return Math.min(2, max);
+                                      return Math.min(prev, max);
+                                    });
+                                  } else {
+                                    setInstallmentCount(0);
+                                  }
+                                }
+                              }}
+                              sx={{ gap: 2 }}
+                            >
+                              <FormControlLabel value="AVISTA" control={<Radio />} label="À vista" />
+                              <FormControlLabel 
+                                value="PARCELADO" 
+                                control={<Radio />} 
+                                label="Parcelado"
+                                disabled={getMaxInstallments(period) <= 1}
+                              />
+                            </RadioGroup>
+                          </ListItem>
+                          {paymentOption === 'PARCELADO' && getMaxInstallments(period) > 1 && (
+                            <ListItem sx={{ px: 0 }}>
+                              <FormControl fullWidth>
+                                <InputLabel>Parcelas</InputLabel>
+                                <Select
+                                  value={installmentCount || ''}
+                                  label="Parcelas"
+                                  onChange={(e) => setInstallmentCount(Number(e.target.value))}
+                                >
+                                  {Array.from({ length: Math.max(0, getMaxInstallments(period) - 1) }, (_, i) => i + 2).map((n) => (
+                                    <MenuItem key={n} value={n}>{n}x</MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                            </ListItem>
+                          )}
+                        </>
+                      )}
                     </List>
                     
                     <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>

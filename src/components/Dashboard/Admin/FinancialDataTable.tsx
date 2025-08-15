@@ -242,6 +242,30 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
 
   const areFiltersActive = Object.values(filters).some(v => v) || searchTerm;
 
+  const getInstallmentPosition = (row: FinancialRecord, rows: FinancialRecord[]): number | null => {
+    const totalInstallments = row.installments;
+    const studentId = row.student?.id;
+    const coachId = row.coach?.id;
+    const planId = row.plan?.id;
+    if (!studentId || !planId || !coachId || !totalInstallments || totalInstallments <= 1) return null;
+
+    const sameSubscription = (rows || []).filter(r => (
+      r?.student?.id === studentId &&
+      r?.coach?.id === coachId &&
+      r?.plan?.id === planId &&
+      (r?.installments || 0) === totalInstallments
+    ));
+
+    const getSortTime = (r: FinancialRecord): number => {
+      const dateStr = (r.receiptDate || r.dueDate || r.nextPaymentDate);
+      return dateStr ? new Date(dateStr).getTime() : 0;
+    };
+
+    const sorted = [...sameSubscription].sort((a, b) => getSortTime(a) - getSortTime(b));
+    const index = sorted.findIndex(r => r.paymentId === row.paymentId);
+    return index >= 0 ? index + 1 : null;
+  };
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
       <Paper>
@@ -357,15 +381,17 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
                 <TableCell>Split Treinador</TableCell>
                 <TableCell>Split Plataforma</TableCell>
                 <TableCell>Método de Pgto.</TableCell>
+                <TableCell>Parcelamento</TableCell>
+                <TableCell>Recebimento</TableCell>
                 <TableCell>Próx. Pgto.</TableCell>
                 <TableCell>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={9} align="center"><CircularProgress /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} align="center"><CircularProgress /></TableCell></TableRow>
               ) : error ? (
-                <TableRow><TableCell colSpan={9} align="center"><Alert severity="error">{error}</Alert></TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} align="center"><Alert severity="error">{error}</Alert></TableCell></TableRow>
               ) : (Array.isArray(data) && data.length > 0) ? (
                 data.map((row) => (
                   <TableRow key={row.paymentId}>
@@ -376,6 +402,20 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
                     <TableCell>R$ {Number(row.coachEarnings || 0).toFixed(2)}</TableCell>
                     <TableCell>R$ {Number(row.platformEarnings || 0).toFixed(2)}</TableCell>
                     <TableCell>{row.paymentMethod || 'N/A'}</TableCell>
+                    <TableCell>
+                      {row.installments && row.installments > 1 ? (
+                        <Chip 
+                          label={`${getInstallmentPosition(row, data) || 1} de ${row.installments} parcelas`} 
+                          size="small" 
+                          color="info" 
+                        />
+                      ) : (
+                        <Chip label="À vista" size="small" />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {row.receiptDate ? format(new Date(row.receiptDate), 'dd/MM/yyyy') : '—'}
+                    </TableCell>
                     <TableCell>{row.nextPaymentDate ? format(new Date(row.nextPaymentDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
                     <TableCell>
                       <Chip 
@@ -388,7 +428,7 @@ export default function FinancialDataTable({ endpoint, tableTitle }: FinancialDa
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={11} align="center">
                     <Typography variant="body2" color="textSecondary">
                       Nenhum registro encontrado
                     </Typography>

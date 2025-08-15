@@ -282,6 +282,26 @@ export default function FinanceiroPage() {
     }
   };
 
+  const getInstallmentPosition = (transaction: FinancialTransaction, transactions: FinancialTransaction[]): number | null => {
+    const totalInstallments = transaction.payment?.installments;
+    const subscriptionId = transaction.payment?.subscription?.id;
+    if (!subscriptionId || !totalInstallments || totalInstallments <= 1) return null;
+
+    const sameSubscription = (transactions || []).filter(t => (
+      t?.payment?.subscription?.id === subscriptionId &&
+      (t?.payment?.installments || 0) === totalInstallments
+    ));
+
+    const getSortDate = (t: FinancialTransaction): number => {
+      const dateStr = t.payment?.receiptDate || t.payment?.dueDate || t.payment?.createdAt || t.createdAt;
+      return dateStr ? new Date(dateStr).getTime() : 0;
+    };
+
+    const sorted = [...sameSubscription].sort((a, b) => getSortDate(a) - getSortDate(b));
+    const index = sorted.findIndex(t => t.id === transaction.id);
+    return index >= 0 ? index + 1 : null;
+  };
+
   if (loading && !earnings) {
     return (
       <ProtectedRoute>
@@ -611,6 +631,8 @@ export default function FinanceiroPage() {
                         <TableCell>Valor Total</TableCell>
                         <TableCell>Seus Ganhos</TableCell>
                         <TableCell>Margem</TableCell>
+                        <TableCell>Parcelamento</TableCell>
+                        <TableCell>Recebimento</TableCell>
                         <TableCell>Status Pagamento</TableCell>
                         <TableCell>Status Assinatura</TableCell>
                         <TableCell>Data</TableCell>
@@ -662,6 +684,24 @@ export default function FinanceiroPage() {
                             />
                           </TableCell>
                           <TableCell>
+                            {transaction.payment?.installments && transaction.payment.installments > 1 ? (
+                              <Chip
+                                label={`${getInstallmentPosition(transaction, earnings?.data || []) || 1} de ${transaction.payment.installments} parcelas`}
+                                color="info"
+                                size="small"
+                              />
+                            ) : (
+                              <Chip label="À vista" size="small" />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption">
+                              {transaction.payment?.receiptDate
+                                ? format(new Date(transaction.payment.receiptDate), 'dd/MM/yyyy', { locale: ptBR })
+                                : '—'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
                             <Chip
                               label={getStatusLabel(transaction.payment?.status || 'UNKNOWN')}
                               color={getStatusColor(transaction.payment?.status || 'UNKNOWN')}
@@ -683,7 +723,7 @@ export default function FinanceiroPage() {
                         </TableRow>
                       )) : (
                         <TableRow>
-                          <TableCell colSpan={8} align="center">
+                          <TableCell colSpan={10} align="center">
                             <Typography variant="body2" color="text.secondary">
                               Carregando dados...
                             </Typography>
