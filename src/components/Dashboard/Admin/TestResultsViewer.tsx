@@ -77,18 +77,50 @@ export default function TestResultsViewer({ open, onClose, test }: TestResultsVi
     }
   };
 
-  const renderSingleResult = (result: TestResult) => (
-    <Box>
-      <Typography variant="body2" fontWeight="medium">
-        {result.value} {result.unit}
-      </Typography>
-      {result.notes && (
-        <Typography variant="caption" color="text.secondary">
-          {result.notes}
+  const renderSingleResult = (result: TestResult) => {
+    // Preferir novo padrão timeSeconds/generalRank/categoryRank
+    const fmtTime = (seconds?: number) => {
+      if (typeof seconds !== 'number' || isNaN(seconds)) return undefined;
+      const minutes = Math.floor(seconds / 60);
+      const rem = seconds - minutes * 60;
+      const secFixed = rem.toFixed(3);
+      const secStr = rem < 10 ? `0${secFixed}` : secFixed;
+      return `${minutes}:${secStr}`;
+    };
+    if (typeof result.timeSeconds === 'number') {
+      return (
+        <Box>
+          <Typography variant="body2" fontWeight="medium">
+            Tempo: {fmtTime(result.timeSeconds)}
+          </Typography>
+          {typeof result.generalRank === 'number' && (
+            <Typography variant="body2">Geral: {result.generalRank}</Typography>
+          )}
+          {typeof result.categoryRank === 'number' && (
+            <Typography variant="body2">Categoria: {result.categoryRank}</Typography>
+          )}
+          {result.notes && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              📝 {result.notes}
+            </Typography>
+          )}
+        </Box>
+      );
+    }
+    // Fallback para legado
+    return (
+      <Box>
+        <Typography variant="body2" fontWeight="medium">
+          {result.value} {result.unit}
         </Typography>
-      )}
-    </Box>
-  );
+        {result.notes && (
+          <Typography variant="caption" color="text.secondary">
+            {result.notes}
+          </Typography>
+        )}
+      </Box>
+    );
+  };
 
   const renderMultipleResults = (result: TestResult) => {
     if (!result.dynamicResults || result.dynamicResults.length === 0) {

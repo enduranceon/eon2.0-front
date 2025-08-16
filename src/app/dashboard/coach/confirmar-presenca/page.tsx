@@ -99,6 +99,9 @@ interface ExamRegistration {
   registeredAt: string;
   attendanceConfirmed?: boolean;
   result?: string;
+  timeSeconds?: number;
+  generalRank?: number;
+  categoryRank?: number;
   distance?: {
     id: string;
     distance: string;
@@ -118,7 +121,9 @@ export default function ConfirmarPresencaPage() {
   const [selectedRegistration, setSelectedRegistration] = useState<ExamRegistration | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
-  const [resultValue, setResultValue] = useState('');
+  const [timeSecondsInput, setTimeSecondsInput] = useState('');
+  const [generalRankInput, setGeneralRankInput] = useState('');
+  const [categoryRankInput, setCategoryRankInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const { user, logout } = useAuth();
@@ -178,6 +183,9 @@ export default function ConfirmarPresencaPage() {
           registeredAt: registration.createdAt,
           attendanceConfirmed: registration.attended,
           result: registration.result || undefined,
+          timeSeconds: registration.timeSeconds !== undefined && registration.timeSeconds !== null ? Number(registration.timeSeconds) : undefined,
+          generalRank: registration.generalRank ?? undefined,
+          categoryRank: registration.categoryRank ?? undefined,
           distance: registration.distance || null,
           category: registration.category || null
         };
@@ -263,10 +271,27 @@ export default function ConfirmarPresencaPage() {
     }
   };
 
-  const handleRegisterResult = async (registrationId: string, result: string) => {
+  const handleRegisterResult = async (registrationId: string) => {
     try {
-      if (!result.trim()) {
-        setError('O resultado não pode estar vazio');
+      const timeSeconds = timeSecondsInput.trim() !== '' ? Number(timeSecondsInput) : undefined;
+      const generalRank = generalRankInput.trim() !== '' ? parseInt(generalRankInput, 10) : undefined;
+      const categoryRank = categoryRankInput.trim() !== '' ? parseInt(categoryRankInput, 10) : undefined;
+
+      if (timeSecondsInput.trim() === '' && generalRankInput.trim() === '' && categoryRankInput.trim() === '') {
+        setError('Informe pelo menos um dos campos: Tempo (segundos), Classificação Geral ou Classificação na Categoria.');
+        return;
+      }
+
+      if (timeSecondsInput.trim() !== '' && (Number.isNaN(timeSeconds) || timeSeconds! < 0)) {
+        setError('Tempo (segundos) deve ser um número válido maior ou igual a 0.');
+        return;
+      }
+      if (generalRankInput.trim() !== '' && (Number.isNaN(generalRank) || generalRank! < 1)) {
+        setError('Classificação Geral deve ser um inteiro válido (≥ 1).');
+        return;
+      }
+      if (categoryRankInput.trim() !== '' && (Number.isNaN(categoryRank) || categoryRank! < 1)) {
+        setError('Classificação na Categoria deve ser um inteiro válido (≥ 1).');
         return;
       }
 
@@ -284,13 +309,21 @@ export default function ConfirmarPresencaPage() {
         if (registrationId.startsWith('temp-') || process.env.NODE_ENV === 'development') {
           setRegistrations(prev => prev.map(reg => 
             reg.id === registrationId 
-              ? { ...reg, result: result }
+              ? { 
+                  ...reg, 
+                  timeSeconds: timeSeconds !== undefined ? timeSeconds : reg.timeSeconds,
+                  generalRank: generalRank !== undefined ? generalRank : reg.generalRank,
+                  categoryRank: categoryRank !== undefined ? categoryRank : reg.categoryRank,
+                  attendanceConfirmed: true
+                }
               : reg
           ));
           setSuccess('Resultado registrado com sucesso! (Modo desenvolvimento)');
           setResultDialogOpen(false);
           setSelectedRegistration(null);
-          setResultValue('');
+          setTimeSecondsInput('');
+          setGeneralRankInput('');
+          setCategoryRankInput('');
           setTimeout(() => setSuccess(null), 3000);
           return;
         }
@@ -301,20 +334,30 @@ export default function ConfirmarPresencaPage() {
       
       // Chamar a API para registrar o resultado
       await enduranceApi.updateExamRegistration(registrationId, {
-        result: result,
-        attended: true // Confirmar presença também
+        attended: true,
+        ...(timeSeconds !== undefined ? { timeSeconds } : {}),
+        ...(generalRank !== undefined ? { generalRank } : {}),
+        ...(categoryRank !== undefined ? { categoryRank } : {}),
       });
       
       setRegistrations(prev => prev.map(reg => 
         reg.id === registrationId 
-          ? { ...reg, result: result, attendanceConfirmed: true }
+          ? { 
+              ...reg, 
+              timeSeconds: timeSeconds !== undefined ? timeSeconds : reg.timeSeconds,
+              generalRank: generalRank !== undefined ? generalRank : reg.generalRank,
+              categoryRank: categoryRank !== undefined ? categoryRank : reg.categoryRank,
+              attendanceConfirmed: true
+            }
           : reg
       ));
       
       setSuccess('Resultado registrado com sucesso!');
       setResultDialogOpen(false);
       setSelectedRegistration(null);
-      setResultValue('');
+      setTimeSecondsInput('');
+      setGeneralRankInput('');
+      setCategoryRankInput('');
       
       setTimeout(() => setSuccess(null), 3000);
     } catch (error: any) {
@@ -582,15 +625,33 @@ export default function ConfirmarPresencaPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      {registration.result ? (
-                        <Typography variant="body2" fontWeight="bold" color="success.main">
-                          {registration.result}
-                        </Typography>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          Não registrado
-                        </Typography>
-                      )}
+                      {(() => {
+                        const parts: string[] = [];
+                        if (registration.timeSeconds !== undefined && registration.timeSeconds !== null) {
+                          const total = Number(registration.timeSeconds);
+                          const abs = Math.abs(total);
+                          const hours = Math.floor(abs / 3600);
+                          const minutes = Math.floor((abs % 3600) / 60);
+                          const secondsFloat = abs % 60;
+                          const secondsInt = Math.floor(secondsFloat);
+                          const fraction = Number((secondsFloat - secondsInt).toFixed(1));
+                          const secondsStr = fraction > 0 ? (secondsInt + fraction).toFixed(1) : secondsInt.toString();
+                          const timeStr = `${hours}:${String(minutes).padStart(2, '0')}:${String(secondsStr).padStart(2, '0')}`;
+                          parts.push(`Tempo: ${timeStr}`);
+                        }
+                        if (registration.generalRank !== undefined && registration.generalRank !== null) {
+                          parts.push(`Geral: ${registration.generalRank}`);
+                        }
+                        if (registration.categoryRank !== undefined && registration.categoryRank !== null) {
+                          parts.push(`Categoria: ${registration.categoryRank}`);
+                        }
+                        const display = parts.length > 0 ? parts.join(' • ') : (registration.result || 'Não registrado');
+                        return (
+                          <Typography variant="body2" fontWeight={parts.length > 0 ? 'bold' : undefined} color={parts.length > 0 ? 'success.main' : 'text.secondary'}>
+                            {display}
+                          </Typography>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
@@ -626,11 +687,16 @@ export default function ConfirmarPresencaPage() {
                             startIcon={<EmojiEventsIcon />}
                             onClick={() => {
                               setSelectedRegistration(registration);
-                              setResultValue(registration.result || '');
+                              setTimeSecondsInput(registration.timeSeconds !== undefined && registration.timeSeconds !== null ? String(registration.timeSeconds) : '');
+                              setGeneralRankInput(registration.generalRank !== undefined && registration.generalRank !== null ? String(registration.generalRank) : '');
+                              setCategoryRankInput(registration.categoryRank !== undefined && registration.categoryRank !== null ? String(registration.categoryRank) : '');
                               setResultDialogOpen(true);
                             }}
                           >
-                            {registration.result ? 'Editar Resultado' : 'Registrar Resultado'}
+                            {(registration.timeSeconds !== undefined && registration.timeSeconds !== null) ||
+                             (registration.generalRank !== undefined && registration.generalRank !== null) ||
+                             (registration.categoryRank !== undefined && registration.categoryRank !== null) ||
+                             registration.result ? 'Editar Resultado' : 'Registrar Resultado'}
                           </Button>
                         )}
                       </Box>
@@ -705,7 +771,10 @@ export default function ConfirmarPresencaPage() {
       {/* Dialog de Registro de Resultado */}
       <Dialog open={resultDialogOpen} onClose={() => setResultDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {selectedRegistration?.result ? 'Editar Resultado' : 'Registrar Resultado'}
+          {(selectedRegistration?.timeSeconds !== undefined && selectedRegistration?.timeSeconds !== null) ||
+           (selectedRegistration?.generalRank !== undefined && selectedRegistration?.generalRank !== null) ||
+           (selectedRegistration?.categoryRank !== undefined && selectedRegistration?.categoryRank !== null) ||
+           selectedRegistration?.result ? 'Editar Resultado' : 'Registrar Resultado'}
         </DialogTitle>
         <DialogContent>
           {selectedRegistration && (
@@ -730,33 +799,65 @@ export default function ConfirmarPresencaPage() {
                 </Typography>
               )}
               
-              <TextField
-                fullWidth
-                label="Resultado"
-                variant="outlined"
-                value={resultValue}
-                onChange={(e) => setResultValue(e.target.value)}
-                placeholder="Ex: 1h 30min 45s, 42.2km, 3º lugar, etc."
-                multiline
-                rows={3}
-                sx={{ mt: 2 }}
-              />
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Tempo (segundos)"
+                    variant="outlined"
+                    type="number"
+                    inputProps={{ step: '0.1', min: '0' }}
+                    value={timeSecondsInput}
+                    onChange={(e) => setTimeSecondsInput(e.target.value)}
+                    placeholder="Ex: 5130.5"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Classificação Geral"
+                    variant="outlined"
+                    type="number"
+                    inputProps={{ step: '1', min: '1' }}
+                    value={generalRankInput}
+                    onChange={(e) => setGeneralRankInput(e.target.value)}
+                    placeholder="Ex: 42"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Classificação na Categoria"
+                    variant="outlined"
+                    type="number"
+                    inputProps={{ step: '1', min: '1' }}
+                    value={categoryRankInput}
+                    onChange={(e) => setCategoryRankInput(e.target.value)}
+                    placeholder="Ex: 5"
+                  />
+                </Grid>
+              </Grid>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => {
             setResultDialogOpen(false);
-            setResultValue('');
+            setTimeSecondsInput('');
+            setGeneralRankInput('');
+            setCategoryRankInput('');
           }}>
             Cancelar
           </Button>
           <Button 
-            onClick={() => selectedRegistration && handleRegisterResult(selectedRegistration.id, resultValue)}
+            onClick={() => selectedRegistration && handleRegisterResult(selectedRegistration.id)}
             variant="contained"
             color="primary"
           >
-            {selectedRegistration?.result ? 'Atualizar Resultado' : 'Registrar Resultado'}
+            {(selectedRegistration?.timeSeconds !== undefined && selectedRegistration?.timeSeconds !== null) ||
+             (selectedRegistration?.generalRank !== undefined && selectedRegistration?.generalRank !== null) ||
+             (selectedRegistration?.categoryRank !== undefined && selectedRegistration?.categoryRank !== null) ||
+             selectedRegistration?.result ? 'Atualizar Resultado' : 'Registrar Resultado'}
           </Button>
         </DialogActions>
       </Dialog>

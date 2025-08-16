@@ -230,23 +230,55 @@ const PastExams = ({ userExams }: any) => {
   };
 
   const filteredHistory = useMemo(() => {
-    // Filtra apenas os exames do usuário que já passaram
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    return userExams.filter((exam: any) => {
+    // Mostrar todas as provas que já possuem resultado (legado ou novo modelo)
+    return (userExams || []).filter((exam: any) => {
       const examDate = new Date(exam.date);
-      const isPastEvent = examDate < today;
-      
-      if (!isPastEvent) return false; // Só mostra provas passadas
+      const regs: any[] = Array.isArray(exam.registrations) ? exam.registrations : [];
+      const hasResult = regs.some((r: any) => {
+        const hasLegacy = r?.result && String(r.result).trim() !== '';
+        const hasTime = r?.timeSeconds !== undefined && r?.timeSeconds !== null && String(r.timeSeconds).trim() !== '';
+        const hasGeneral = r?.generalRank !== undefined && r?.generalRank !== null;
+        const hasCategory = r?.categoryRank !== undefined && r?.categoryRank !== null;
+        return hasLegacy || hasTime || hasGeneral || hasCategory;
+      });
+      if (!hasResult) return false;
 
       const searchMatch = filters.search ? exam.name.toLowerCase().includes(filters.search.toLowerCase()) : true;
       const startDateMatch = filters.startDate ? examDate >= filters.startDate : true;
       const endDateMatch = filters.endDate ? examDate <= filters.endDate : true;
-
       return searchMatch && startDateMatch && endDateMatch;
     });
   }, [userExams, filters]);
+
+  const formatTime = (value: any) => {
+    const n = Number(value);
+    if (!isFinite(n)) return null;
+    const abs = Math.abs(n);
+    const hours = Math.floor(abs / 3600);
+    const minutes = Math.floor((abs % 3600) / 60);
+    const secondsFloat = abs % 60;
+    const secondsInt = Math.floor(secondsFloat);
+    const fraction = Number((secondsFloat - secondsInt).toFixed(1));
+    const secondsStr = fraction > 0 ? (secondsInt + fraction).toFixed(1) : secondsInt.toString();
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secondsStr).padStart(2, '0')}`;
+  };
+
+  const formatResult = (registration: any) => {
+    if (!registration) return '';
+    const parts: string[] = [];
+    if (registration.timeSeconds !== undefined && registration.timeSeconds !== null && String(registration.timeSeconds).trim() !== '') {
+      const t = formatTime(registration.timeSeconds);
+      if (t) parts.push(`Tempo: ${t}`);
+    }
+    if (registration.generalRank !== undefined && registration.generalRank !== null) {
+      parts.push(`Geral: ${registration.generalRank}`);
+    }
+    if (registration.categoryRank !== undefined && registration.categoryRank !== null) {
+      parts.push(`Categoria: ${registration.categoryRank}`);
+    }
+    if (parts.length === 0 && registration.result) return String(registration.result);
+    return parts.join(' • ');
+  };
 
   return (
     <Box>
@@ -298,6 +330,14 @@ const PastExams = ({ userExams }: any) => {
                         <Typography component="span" variant="body2" color="text.secondary">
                           🏃 Modalidade: {exam.modalidade?.name}
                         </Typography>
+                        {userRegistration && (
+                          <>
+                            <br />
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              🏁 Resultado: {formatResult(userRegistration)}
+                            </Typography>
+                          </>
+                        )}
                         
                         {/* Informações de participação */}
                         {userRegistration && (
@@ -372,44 +412,56 @@ export default function EventsPage() {
       setError(null);
       
       // Buscar todas as provas e as provas em que o usuário está inscrito
-      const [allExamsResponse, userExamsResponse] = await Promise.all([
+      const [allExamsResponse, firstUserExamsPage] = await Promise.all([
         enduranceApi.getExams({ page: 1, limit: 100 }),
-        enduranceApi.getUserExams(auth.user.id)
+        enduranceApi.getUserExams(auth.user.id, { page: 1, limit: 50 })
       ]);
 
       const allExamsData = Array.isArray(allExamsResponse) ? allExamsResponse : allExamsResponse.data;
-      
-      // Processar userExamsResponse que pode ter estrutura aninhada
-      let userExamsData;
-      if (Array.isArray(userExamsResponse)) {
-        userExamsData = userExamsResponse;
-      } else if ((userExamsResponse as any)?.data?.data) {
-        // Estrutura: { data: { data: [...], pagination: {...} } }
-        userExamsData = (userExamsResponse as any).data.data;
-      } else if ((userExamsResponse as any)?.data) {
-        userExamsData = (userExamsResponse as any).data;
-      } else {
-        userExamsData = [];
+
+      // Normalizar primeira página do histórico do usuário
+      let userExamsData: any[] = [];
+      let pagination = (firstUserExamsPage as any)?.pagination;
+      if ((firstUserExamsPage as any)?.data && Array.isArray((firstUserExamsPage as any).data)) {
+        userExamsData = (firstUserExamsPage as any).data;
+      } else if (Array.isArray(firstUserExamsPage)) {
+        userExamsData = firstUserExamsPage as any[];
+      }
+
+      // Se houver mais páginas, buscar todas as demais e agregar
+      if (pagination?.totalPages && pagination.totalPages > 1) {
+        const remainingPages = Array.from({ length: pagination.totalPages - 1 }, (_, idx) => idx + 2);
+        const pageResults = await Promise.all(
+          remainingPages.map((pageNum) => enduranceApi.getUserExams(auth.user!.id, { page: pageNum, limit: pagination.limit || 50 }))
+        );
+        for (const pr of pageResults) {
+          if ((pr as any)?.data && Array.isArray((pr as any).data)) {
+            userExamsData = userExamsData.concat((pr as any).data);
+          } else if (Array.isArray(pr)) {
+            userExamsData = userExamsData.concat(pr as any[]);
+          }
+        }
       }
       
       
       
-      // Criar um mapa de exames em que o usuário está inscrito
+      // Marcar registros reais retornados pela API no conjunto allExams
       const userExamIds = new Set(userExamsData?.map((exam: any) => exam.id) || []);
-      
+
       setUserRegistrations(userExamsData || []);
-      
-      // Combinar dados de provas com informações de inscrição
-      const examsWithRegistrations = allExamsData?.map((exam: any) => ({
+
+      const examsWithRegistrations = (allExamsData || []).map((exam: any) => ({
         ...exam,
-        registrations: userExamIds.has(exam.id) ? [{
-          id: `registration-${exam.id}`,
-          userId: auth.user.id,
-          examId: exam.id,
-          status: 'registered',
-          createdAt: new Date().toISOString()
-        }] : []
-      })) || [];
+        registrations: (exam.registrations && Array.isArray(exam.registrations) && exam.registrations.length > 0)
+          ? exam.registrations
+          : (userExamIds.has(exam.id) ? [{
+              id: `registration-${exam.id}`,
+              userId: auth.user.id,
+              examId: exam.id,
+              status: 'registered',
+              createdAt: new Date().toISOString()
+            }] : [])
+      }));
 
       setAllExams(examsWithRegistrations);
       
@@ -545,7 +597,7 @@ export default function EventsPage() {
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
             <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} aria-label="abas de provas">
               <Tab label="Provas Disponíveis" id="tab-available" aria-controls="tabpanel-available" />
-              <Tab label="Histórico de Provas" id="tab-history" aria-controls="tabpanel-history" />
+              <Tab label="Resultado de Provas" id="tab-history" aria-controls="tabpanel-history" />
             </Tabs>
           </Box>
 

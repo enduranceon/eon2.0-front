@@ -34,10 +34,16 @@ import {
   CalendarToday as CalendarIcon,
   TrendingUp as TrendingUpIcon,
   Info as InfoIcon,
+  EventRepeat as PeriodIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { subscriptionService, PlanQuote } from '../../services/subscriptionService';
-import { Plan, PlanPeriod } from '../../types/api';
+import { Plan, PlanPeriod, PaymentMethod } from '../../types/api';
+import CheckoutCreditCardForm, { checkoutCardSchema, CheckoutCardFormData } from '../Forms/CheckoutCreditCardForm';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { notificationService } from '@/services/notificationService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ChangePlanModalProps {
   open: boolean;
@@ -62,6 +68,34 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [planPeriodSelections, setPlanPeriodSelections] = useState<Record<string, PlanPeriod>>({});
+  const [billingType, setBillingType] = useState<PaymentMethod>(PaymentMethod.PIX);
+  const [remoteIp, setRemoteIp] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  const [pendingPix, setPendingPix] = useState<{ copyPaste?: string; qrCode?: string; dueDate?: string } | null>(null);
+  const [pendingBoleto, setPendingBoleto] = useState<{ url?: string; dueDate?: string } | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const { control, handleSubmit, getValues } = useForm<CheckoutCardFormData>({
+    resolver: zodResolver(checkoutCardSchema),
+    defaultValues: {
+      creditCard: { holderName: '', number: '', expiryMonth: '', expiryYear: '', ccv: '' },
+      creditCardHolderInfo: { name: '', email: '', cpfCnpj: '', postalCode: '', addressNumber: '', phone: '' }
+    }
+  });
+
+  useEffect(() => {
+    const fetchIp = async () => {
+      try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        setRemoteIp(data.ip);
+      } catch (err) {
+        console.error('Falha ao obter IP do cliente:', err);
+      }
+    };
+    fetchIp();
+  }, []);
 
   useEffect(() => {
     if (open && currentPlan) {
@@ -129,18 +163,79 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
       setConfirming(true);
       setError(null);
 
-      await subscriptionService.changePlanAdvanced({
+      const newPeriod = planPeriodSelections[selectedPlan.id] || (currentSubscription?.period as PlanPeriod) || PlanPeriod.MONTHLY;
+
+      const payload: any = {
         newPlanId: selectedPlan.id,
+        newPeriod,
         confirmChange: true,
+      };
+
+      // Se houver cobrança da diferença, backend exigirá método de pagamento
+      // Permitimos escolha de método e, se cartão, coletamos dados
+      payload.billingType = billingType;
+      if (billingType === PaymentMethod.CREDIT_CARD) {
+        const formData = getValues();
+        payload.creditCard = formData.creditCard;
+        payload.creditCardHolderInfo = formData.creditCardHolderInfo;
+        payload.remoteIp = remoteIp;
+      }
+
+      const result: any = await subscriptionService.changePlanAdvanced(payload);
+
+      // Notificação push in-app
+      notificationService.addNotification({
+        type: 'success',
+        title: 'Alteração de Plano Solicitada',
+        message: `Sua alteração para ${selectedPlan.name} foi registrada.`,
+        userId: user?.id || 'student',
+        read: false,
+        actionUrl: '/dashboard/aluno/meu-plano'
       });
 
+      // Tratamento por método de pagamento
+      if (billingType === PaymentMethod.PIX) {
+        const dp = result?.differencePayment || result?.payment || result;
+        const pixCopyPaste = dp?.pixCopyPaste || dp?.pixCode || dp?.code || dp?.copyPaste || dp?.pixData?.payload;
+        const pixQrCode = dp?.pixQrCode || dp?.qrCode || dp?.pixBase64QrCode || dp?.pixData?.encodedImage;
+        const dueDate = dp?.dueDate || dp?.expiresAt || dp?.expirationDate || dp?.pixData?.expirationDate;
+        if (pixCopyPaste || pixQrCode) {
+          setPendingPix({ copyPaste: pixCopyPaste, qrCode: pixQrCode, dueDate });
+          setSubmitted(true);
+          // Não fecha o modal, exibe PIX
+          setConfirming(false);
+          return;
+        }
+        // Se esperado PIX mas não veio os dados, manter modal aberto e alertar
+        toast.error('Não foi possível gerar o PIX. Tente novamente.');
+        setConfirming(false);
+        return;
+      }
+      if (billingType === PaymentMethod.BOLETO) {
+        const dp = result?.differencePayment || result?.payment || result;
+        const bankSlipUrl = dp?.bankSlipUrl || dp?.boletoUrl || dp?.url;
+        const dueDate = dp?.dueDate || dp?.expiresAt || dp?.expirationDate;
+        if (bankSlipUrl) {
+          setPendingBoleto({ url: bankSlipUrl, dueDate });
+          setSubmitted(true);
+          // Não fecha o modal, exibe instrução do boleto
+          setConfirming(false);
+          return;
+        }
+        toast.error('Não foi possível gerar o boleto. Tente novamente.');
+        setConfirming(false);
+        return;
+      }
+
+      // Cartão de crédito: fechar modal
       toast.success('Plano alterado com sucesso!');
       onPlanChanged();
       handleClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao alterar plano:', error);
-      setError('Erro ao alterar plano. Tente novamente.');
-      toast.error('Erro ao alterar plano');
+      const message = error?.response?.data?.message || 'Erro ao alterar plano. Tente novamente.';
+      setError(message);
+      toast.error(message);
     } finally {
       setConfirming(false);
     }
@@ -320,7 +415,7 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
 
             {/* Cotação */}
             {quote && selectedPlan && (
-              <Paper sx={{ p: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+              <Paper sx={{ p: 3, color: 'white', background: 'linear-gradient(135deg, #0099cc, #ff9933)' }}>
                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
                   <InfoIcon sx={{ mr: 1 }} />
                   Detalhes da Alteração
@@ -334,8 +429,8 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
                           <MoneyIcon />
                         </ListItemIcon>
                         <ListItemText 
-                          primary="Plano atual"
-                          secondary={formatCurrency(quote.currentPlanValue)}
+                          primary={<Typography sx={{ color: 'white', fontWeight: 600 }}>Plano atual</Typography>}
+                          secondary={<Typography sx={{ color: 'white', fontSize: '1.05rem', fontWeight: 700 }}>{formatCurrency(quote.currentPlanValue)}</Typography>}
                         />
                       </ListItem>
                       <ListItem>
@@ -343,8 +438,26 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
                           <TrendingUpIcon />
                         </ListItemIcon>
                         <ListItemText 
-                          primary="Novo plano"
-                          secondary={formatCurrency(quote.newPlanValue)}
+                          primary={<Typography sx={{ color: 'white', fontWeight: 600 }}>Novo plano</Typography>}
+                          secondary={<Typography sx={{ color: 'white', fontSize: '1.05rem', fontWeight: 700 }}>{formatCurrency(quote.newPlanValue)}</Typography>}
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon sx={{ color: 'inherit' }}>
+                          <PeriodIcon />
+                        </ListItemIcon>
+                        <ListItemText 
+                          primary={<Typography sx={{ color: 'white', fontWeight: 600 }}>Periodicidade atual</Typography>}
+                          secondary={<Typography sx={{ color: 'white', fontSize: '1.05rem', fontWeight: 700 }}>{periodMapping[currentSubscription?.period as PlanPeriod] || '—'}</Typography>}
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon sx={{ color: 'inherit' }}>
+                          <PeriodIcon />
+                        </ListItemIcon>
+                        <ListItemText 
+                          primary={<Typography sx={{ color: 'white', fontWeight: 600 }}>Nova periodicidade</Typography>}
+                          secondary={<Typography sx={{ color: 'white', fontSize: '1.05rem', fontWeight: 700 }}>{periodMapping[(planPeriodSelections[selectedPlan.id] || currentSubscription?.period) as PlanPeriod] || '—'}</Typography>}
                         />
                       </ListItem>
                     </List>
@@ -356,8 +469,8 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
                           <CalendarIcon />
                         </ListItemIcon>
                         <ListItemText 
-                          primary="Dias utilizados"
-                          secondary={`${quote.daysUsed} de ${quote.totalDays} dias`}
+                          primary={<Typography sx={{ color: 'white', fontWeight: 600 }}>Dias utilizados</Typography>}
+                          secondary={<Typography sx={{ color: 'white', fontSize: '1.05rem', fontWeight: 700 }}>{`${quote.daysUsed} de ${quote.totalDays} dias`}</Typography>}
                         />
                       </ListItem>
                       <ListItem>
@@ -365,8 +478,8 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
                           <CheckIcon />
                         </ListItemIcon>
                         <ListItemText 
-                          primary="Saldo restante"
-                          secondary={formatCurrency(quote.remainingBalance)}
+                          primary={<Typography sx={{ color: 'white', fontWeight: 600 }}>Saldo restante</Typography>}
+                          secondary={<Typography sx={{ color: 'white', fontSize: '1.05rem', fontWeight: 700 }}>{formatCurrency(quote.remainingBalance)}</Typography>}
                         />
                       </ListItem>
                     </List>
@@ -390,6 +503,81 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
                     </Typography>
                   )}
                 </Box>
+
+                {/* Pagamento da diferença */}
+                {quote.amountToPay > 0 && (
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Selecione o método de pagamento para a diferença
+                    </Typography>
+                    <FormControl fullWidth size="small" sx={{ mb: 2, bgcolor: 'white', borderRadius: 1 }}>
+                      <InputLabel>Método de Pagamento</InputLabel>
+                      <Select
+                        label="Método de Pagamento"
+                        value={billingType}
+                        onChange={(e) => setBillingType(e.target.value as PaymentMethod)}
+                      >
+                        <MenuItem value={PaymentMethod.PIX}>PIX</MenuItem>
+                        <MenuItem value={PaymentMethod.BOLETO}>Boleto</MenuItem>
+                        <MenuItem value={PaymentMethod.CREDIT_CARD}>Cartão de Crédito</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    {billingType === PaymentMethod.CREDIT_CARD && (
+                      <Box sx={{ mt: 2, 
+                        '& .MuiFormControl-root': { bgcolor: 'white', borderRadius: 1 },
+                        '& .MuiInputBase-root': { bgcolor: 'white' },
+                        '& .MuiInputLabel-root': { color: 'text.primary' }
+                      }}>
+                        <CheckoutCreditCardForm control={control} />
+                      </Box>
+                    )}
+                  </Box>
+                )}
+                {/* PIX Info */}
+                {pendingPix && (
+                  <Box sx={{ mt: 3, p: 2, bgcolor: 'rgba(255,255,255,0.9)', borderRadius: 2, color: 'text.primary' }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Pague a diferença via PIX
+                    </Typography>
+                    {pendingPix.qrCode && (
+                      <Box sx={{ textAlign: 'center', my: 2 }}>
+                        <img src={`data:image/png;base64,${pendingPix.qrCode}`} alt="PIX QR Code" style={{ maxWidth: 240 }} />
+                      </Box>
+                    )}
+                    <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                      {pendingPix.copyPaste}
+                    </Typography>
+                    {pendingPix.dueDate && (
+                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                        Vencimento: {new Date(pendingPix.dueDate).toLocaleDateString('pt-BR')}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+
+                {/* Boleto Info */}
+                {pendingBoleto && (
+                  <Box sx={{ mt: 3, p: 2, bgcolor: 'rgba(255,255,255,0.9)', borderRadius: 2, color: 'text.primary' }}>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Boleto gerado
+                    </Typography>
+                    <Typography variant="body2">Clique para baixar e pagar o boleto:</Typography>
+                    <Button 
+                      variant="contained" 
+                      href={pendingBoleto.url} target="_blank" rel="noopener noreferrer" 
+                      sx={{ mt: 1 }}
+                    >
+                      Baixar Boleto (PDF)
+                    </Button>
+                    {pendingBoleto.dueDate && (
+                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                        Vencimento: {new Date(pendingBoleto.dueDate).toLocaleDateString('pt-BR')}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+
               </Paper>
             )}
           </>
@@ -398,16 +586,18 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
 
       <DialogActions>
         <Button onClick={handleClose} disabled={confirming}>
-          Cancelar
+          {submitted ? 'Fechar' : 'Cancelar'}
         </Button>
-        <Button
-          onClick={confirmChange}
-          variant="contained"
-          disabled={!selectedPlan || confirming}
-          startIcon={confirming ? <CircularProgress size={16} /> : null}
-        >
-          {confirming ? 'Processando...' : 'Confirmar Alteração'}
-        </Button>
+        {!submitted && (
+          <Button
+            onClick={confirmChange}
+            variant="contained"
+            disabled={!selectedPlan || confirming}
+            startIcon={confirming ? <CircularProgress size={16} /> : null}
+          >
+            {confirming ? 'Processando...' : 'Confirmar Alteração'}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

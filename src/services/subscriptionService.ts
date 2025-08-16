@@ -1,5 +1,5 @@
 import { enduranceApi } from './enduranceApi';
-import { LeaveApprovalRequest, LeaveReasonType, PlanPeriod } from '@/types/api';
+import { LeaveApprovalRequest, LeaveReasonType, PlanPeriod, PaymentMethod, AsaasCreditCardDto, AsaasCreditCardHolderInfoDto } from '@/types/api';
 
 export interface PlanQuote {
   currentPlanValue: number;
@@ -38,7 +38,13 @@ export interface SubscriptionRequest {
 
 export interface PlanChangeRequest {
   newPlanId: string;
+  newPeriod?: PlanPeriod;
   confirmChange?: boolean;
+  differenceAmount?: number;
+  billingType?: PaymentMethod;
+  creditCard?: AsaasCreditCardDto;
+  creditCardHolderInfo?: AsaasCreditCardHolderInfoDto;
+  remoteIp?: string;
 }
 
 export interface SubscriptionRequestCreate {

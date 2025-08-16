@@ -307,8 +307,12 @@ export class EnduranceApiClient {
     return this.delete<any>(`/exams/${examId}/register`);
   }
 
-  async getUserExams(userId: string): Promise<PaginatedResponse<Exam>> {
-    return this.get<PaginatedResponse<Exam>>(`/exams/user/${userId}`);
+  async getUserExams(userId: string, params?: { page?: number; limit?: number }): Promise<PaginatedResponse<Exam>> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.get<PaginatedResponse<Exam>>(`/exams/user/${userId}${qs ? `?${qs}` : ''}`);
   }
 
   async getExamStats(): Promise<any> {
@@ -739,6 +743,16 @@ export class EnduranceApiClient {
     return this.post<void>(`/subscriptions/${id}/reactivate`);
   }
 
+  // ADMIN - Alteração avançada de plano para um aluno
+  async adminChangePlanAdvanced(userId: string, data: any): Promise<any> {
+    return this.patch<any>(`/subscriptions/admin/${userId}/change-plan-advanced`, data);
+  }
+
+  // ADMIN - Cotação de alteração de plano
+  async adminChangePlanQuote(userId: string, planId: string, params?: { period?: string }): Promise<any> {
+    return this.get<any>(`/subscriptions/admin/${userId}/change-plan/${planId}/quote`, params);
+  }
+
   // DASHBOARD E ESTATÍSTICAS
   async getDashboardStats(): Promise<DashboardStats> {
     return this.get<DashboardStats>('/dashboard/stats');
@@ -1103,8 +1117,11 @@ export class EnduranceApiClient {
 
   // Dashboard do Coach - Atualizar Registro de Prova (Presença + Resultado)
   async updateExamRegistration(registrationId: string, data: {
-    result?: string;
+    result?: string; // legado
     attended?: boolean;
+    timeSeconds?: number;
+    generalRank?: number;
+    categoryRank?: number;
   }): Promise<any> {
     return this.patch<any>(`/exams/registration/${registrationId}`, data);
   }

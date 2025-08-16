@@ -122,10 +122,15 @@ const TestHistory = ({ history, loading, error }: { history: any[], loading: boo
       const secStr = rem < 10 ? `0${secFixed}` : secFixed;
       return `${minutes}:${secStr}`;
     };
-    // Preferir novo padrão
+    // Preferir resultados dinâmicos
+    const dr = test.dynamicResults;
+    const dynamicList = Array.isArray(dr?.multipleResults)
+      ? dr.multipleResults
+      : (Array.isArray(dr) ? dr : []);
+    const hasDynamic = Array.isArray(dynamicList) && dynamicList.length > 0;
     const hasStandard = toNumber(test.timeSeconds) !== undefined;
-    const hasLegacy = test.dynamicResults || test.value;
-    if (!hasStandard && !hasLegacy) {
+
+    if (!hasDynamic && !hasStandard && !test.value) {
       return (
         <Box sx={{ mt: 2 }}>
           <Typography variant="body2" color="text.secondary">
@@ -147,7 +152,15 @@ const TestHistory = ({ history, loading, error }: { history: any[], loading: boo
           <Box sx={{ p: 2, border: '2px solid', borderColor: 'primary.main', borderRadius: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} sm={6}>
-                {hasStandard ? (
+                {hasDynamic ? (
+                  <Box>
+                    {dynamicList.map((result: any, index: number) => (
+                      <Typography key={index} variant="body2">
+                        {result.fieldName}: {result.value} {result.unit}
+                      </Typography>
+                    ))}
+                  </Box>
+                ) : hasStandard ? (
                   <Box>
                     <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Tempo: {formatTime(toNumber(test.timeSeconds))}</Typography>
                     {toNumber(test.generalRank) !== undefined && (
@@ -156,14 +169,6 @@ const TestHistory = ({ history, loading, error }: { history: any[], loading: boo
                     {toNumber(test.categoryRank) !== undefined && (
                       <Typography variant="body1">Classificação na Categoria: {toNumber(test.categoryRank)}</Typography>
                     )}
-                  </Box>
-                ) : test.dynamicResults ? (
-                  <Box>
-                    {test.dynamicResults.multipleResults?.map((result: any, index: number) => (
-                      <Typography key={index} variant="body2">
-                        {result.fieldName}: {result.value} {result.unit}
-                      </Typography>
-                    ))}
                   </Box>
                 ) : (
                   <Typography variant="body2">{test.value} {test.unit}</Typography>

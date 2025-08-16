@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -17,15 +17,28 @@ import {
   Select,
   MenuItem,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  IconButton,
+  Typography,
+  Box
 } from '@mui/material';
-import { AvailableTest, TestType } from '../../../types/api';
+import { AvailableTest, TestDynamicField, TestType } from '../../../types/api';
+import { enduranceApi } from '../../../services/enduranceApi';
+import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+
+const dynamicFieldSchema = z.object({
+  id: z.string().optional(),
+  fieldName: z.string().min(1, 'Informe o nome do campo'),
+  metric: z.string().optional(),
+  value: z.string().optional(),
+});
 
 const testSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres'),
   description: z.string().optional(),
   type: z.nativeEnum(TestType, { errorMap: () => ({ message: 'Selecione um tipo válido.' }) }),
   isActive: z.boolean(),
+  dynamicFields: z.array(dynamicFieldSchema).default([]),
 });
 
 type TestFormData = z.infer<typeof testSchema>;
@@ -33,7 +46,7 @@ type TestFormData = z.infer<typeof testSchema>;
 interface TestFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: TestFormData) => Promise<void>;
+  onSubmit: (data: TestFormData & { removedDynamicFieldIds?: string[] }) => Promise<void>;
   test?: AvailableTest | null;
   loading: boolean;
   error: string | null;
@@ -42,15 +55,26 @@ interface TestFormProps {
 export default function TestForm({ open, onClose, onSubmit, test, loading, error }: TestFormProps) {
   const isEditMode = !!test;
 
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm<TestFormData>({
+  const [initialDynamicFields, setInitialDynamicFields] = useState<TestDynamicField[]>([]);
+  const [loadingDynamicFields, setLoadingDynamicFields] = useState<boolean>(false);
+
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<TestFormData>({
     resolver: zodResolver(testSchema),
     defaultValues: { 
       name: '', 
       description: '', 
       type: TestType.PERFORMANCE, 
-      isActive: true
+      isActive: true,
+      dynamicFields: []
     },
   });
+
+  const { fields, append, remove, update } = useFieldArray({
+    control,
+    name: 'dynamicFields'
+  });
+
+  const [removedDynamicFieldIds, setRemovedDynamicFieldIds] = useState<string[]>([]);
 
 
   useEffect(() => {
@@ -60,21 +84,45 @@ export default function TestForm({ open, onClose, onSubmit, test, loading, error
           name: test.name,
           description: test.description || '',
           type: test.type,
-          isActive: test.isActive
+          isActive: test.isActive,
+          dynamicFields: []
         });
+        // Carregar campos dinâmicos existentes do teste
+        setLoadingDynamicFields(true);
+        enduranceApi.getTestDynamicFields(test.id)
+          .then((df) => {
+            const mapped = (df || []).map((f) => ({
+              id: f.id,
+              fieldName: f.fieldName,
+              metric: f.metric,
+              value: f.value || ''
+            }));
+            setInitialDynamicFields(df || []);
+            reset({
+              name: test.name,
+              description: test.description || '',
+              type: test.type,
+              isActive: test.isActive,
+              dynamicFields: mapped
+            });
+          })
+          .finally(() => setLoadingDynamicFields(false));
       } else {
         reset({ 
           name: '', 
           description: '', 
           type: TestType.PERFORMANCE, 
-          isActive: true
+          isActive: true,
+          dynamicFields: []
         });
+        setInitialDynamicFields([]);
+        setRemovedDynamicFieldIds([]);
       }
     }
   }, [open, test, isEditMode, reset]);
 
   const handleFormSubmit = (data: TestFormData) => {
-    return onSubmit(data);
+    return onSubmit({ ...data, removedDynamicFieldIds });
   };
 
   return (
@@ -119,6 +167,78 @@ export default function TestForm({ open, onClose, onSubmit, test, loading, error
                   />
                 )}
               />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mt: 1, mb: 1 }}>Campos Dinâmicos</Typography>
+              {loadingDynamicFields && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <CircularProgress size={20} />
+                  <Typography variant="body2">Carregando campos...</Typography>
+                </Box>
+              )}
+              <Grid container spacing={2}>
+                {fields.map((item, index) => (
+                  <React.Fragment key={item.id}>
+                    <Grid item xs={12} sm={4}>
+                      <Controller
+                        name={`dynamicFields.${index}.fieldName` as const}
+                        control={control}
+                        render={({ field }) => (
+                          <TextField {...field} label="Nome do campo" fullWidth required />
+                        )}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <Controller
+                        name={`dynamicFields.${index}.metric` as const}
+                        control={control}
+                        render={({ field }) => (
+                          <TextField {...field} label="Métrica/Unidade" fullWidth />
+                        )}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <Controller
+                        name={`dynamicFields.${index}.value` as const}
+                        control={control}
+                        render={({ field }) => (
+                          <TextField {...field} label="Valor padrão" fullWidth />
+                        )}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={2} sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Controller
+                        name={`dynamicFields.${index}.id` as const}
+                        control={control}
+                        render={({ field }) => (
+                          <IconButton
+                            aria-label="Remover campo"
+                            color="error"
+                            onClick={() => {
+                              if (field.value) {
+                                setRemovedDynamicFieldIds((prev) => Array.from(new Set([...prev, field.value as string])));
+                              }
+                              remove(index);
+                            }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        )}
+                      />
+                    </Grid>
+                  </React.Fragment>
+                ))}
+                <Grid item xs={12}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={() => append({ fieldName: '', metric: '', value: '' })}
+                  >
+                    Adicionar Campo
+                  </Button>
+                </Grid>
+              </Grid>
             </Grid>
           </Grid>
         </DialogContent>

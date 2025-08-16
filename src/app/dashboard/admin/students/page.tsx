@@ -35,6 +35,7 @@ import {
   Checkbox,
   FormControlLabel,
   Tooltip,
+  Menu,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -43,15 +44,19 @@ import {
   Delete as DeleteIcon,
   Clear as ClearIcon,
   SwapHoriz as SwapHorizIcon,
+  MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
 import { useAuth } from '../../../../contexts/AuthContext';
 import PageHeader from '../../../../components/Dashboard/PageHeader';
 import { enduranceApi } from '../../../../services/enduranceApi';
-import { User, UserType, Modalidade, PaginatedResponse, Plan } from '../../../../types/api';
+import { User, UserType, Modalidade, PaginatedResponse, Plan, PlanPeriod, PaymentMethod, Subscription } from '../../../../types/api';
 import StudentForm from '../../../../components/Dashboard/Admin/StudentForm';
 import { useDebounce } from '../../../../hooks/useDebounce'; // Assuming a debounce hook exists
+import CheckoutCreditCardForm, { checkoutCardSchema, CheckoutCardFormData } from '../../../../components/Forms/CheckoutCreditCardForm';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 const calculateAge = (birthDate: string | null) => {
   if (!birthDate) return null;
@@ -91,6 +96,38 @@ export default function AdminStudentsPage() {
   const [changeCoachLoading, setChangeCoachLoading] = useState<boolean>(false);
   const [changeCoachError, setChangeCoachError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Row actions menu
+  const [actionsAnchorEl, setActionsAnchorEl] = useState<null | HTMLElement>(null);
+  const [actionsStudent, setActionsStudent] = useState<User | null>(null);
+  const openActionsMenu = Boolean(actionsAnchorEl);
+  const handleOpenActionsMenu = (student: User, event: React.MouseEvent<HTMLElement>) => {
+    setActionsStudent(student);
+    setActionsAnchorEl(event.currentTarget);
+  };
+  const handleCloseActionsMenu = () => {
+    setActionsAnchorEl(null);
+    setActionsStudent(null);
+  };
+
+  // Change Plan (Admin) state
+  const [isChangePlanOpen, setIsChangePlanOpen] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [selectedPeriod, setSelectedPeriod] = useState<PlanPeriod>(PlanPeriod.MONTHLY);
+  const [billingType, setBillingType] = useState<PaymentMethod>(PaymentMethod.PIX);
+  const [remoteIp, setRemoteIp] = useState<string | null>(null);
+  const [changePlanLoading, setChangePlanLoading] = useState(false);
+  const [changePlanError, setChangePlanError] = useState<string | null>(null);
+  const [adminPix, setAdminPix] = useState<{ copyPaste?: string; qrCode?: string; dueDate?: string } | null>(null);
+  const [adminBoleto, setAdminBoleto] = useState<{ url?: string; dueDate?: string } | null>(null);
+  const [adminQuote, setAdminQuote] = useState<any | null>(null);
+  const [adminCurrentSubscription, setAdminCurrentSubscription] = useState<Subscription | null>(null);
+  const { control, getValues } = useForm<CheckoutCardFormData>({
+    resolver: zodResolver(checkoutCardSchema),
+    defaultValues: {
+      creditCard: { holderName: '', number: '', expiryMonth: '', expiryYear: '', ccv: '' },
+      creditCardHolderInfo: { name: '', email: '', cpfCnpj: '', postalCode: '', addressNumber: '', phone: '' }
+    }
+  });
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState('');
@@ -182,6 +219,98 @@ export default function AdminStudentsPage() {
     setChangeCoachError(null);
   };
 
+  const handleOpenChangePlan = async (student: User) => {
+    setTargetStudent(student);
+    setSelectedPlanId('');
+    setSelectedPeriod(PlanPeriod.MONTHLY);
+    setBillingType(PaymentMethod.PIX);
+    setChangePlanError(null);
+    setAdminPix(null);
+    setAdminBoleto(null);
+    setAdminQuote(null);
+    setIsChangePlanOpen(true);
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      setRemoteIp(data.ip);
+    } catch {}
+    // Buscar assinatura ativa do aluno para obter periodicidade atual
+    try {
+      const sub = await enduranceApi.get<Subscription>('/subscriptions/active', { userId: student.id });
+      setAdminCurrentSubscription(sub || null);
+    } catch (e) {
+      setAdminCurrentSubscription(null);
+    }
+  };
+
+  const handleCloseChangePlan = () => {
+    setIsChangePlanOpen(false);
+    setTargetStudent(null);
+  };
+
+  const handleConfirmChangePlan = async () => {
+    if (!targetStudent || !selectedPlanId) return;
+    setChangePlanLoading(true);
+    setChangePlanError(null);
+    setAdminPix(null);
+    setAdminBoleto(null);
+    try {
+      const payload: any = {
+        newPlanId: selectedPlanId,
+        newPeriod: selectedPeriod,
+        confirmChange: true,
+        billingType,
+      };
+      if (billingType === PaymentMethod.CREDIT_CARD) {
+        const formData = getValues();
+        payload.creditCard = formData.creditCard;
+        payload.creditCardHolderInfo = formData.creditCardHolderInfo;
+        payload.remoteIp = remoteIp;
+      }
+      const result: any = await enduranceApi.adminChangePlanAdvanced(targetStudent.id, payload);
+      const dp = result?.differencePayment || result?.payment || result;
+      if (billingType === PaymentMethod.PIX) {
+        const pixCopyPaste = dp?.pixCopyPaste || dp?.pixCode || dp?.code || dp?.copyPaste || dp?.pixData?.payload;
+        const pixQrCode = dp?.pixQrCode || dp?.qrCode || dp?.pixBase64QrCode || dp?.pixData?.encodedImage;
+        const dueDate = dp?.dueDate || dp?.expiresAt || dp?.expirationDate || dp?.pixData?.expirationDate;
+        if (pixCopyPaste || pixQrCode) {
+          setAdminPix({ copyPaste: pixCopyPaste, qrCode: pixQrCode, dueDate });
+        }
+      } else if (billingType === PaymentMethod.BOLETO) {
+        const bankSlipUrl = dp?.bankSlipUrl || dp?.boletoUrl || dp?.url;
+        const dueDate = dp?.dueDate || dp?.expiresAt || dp?.expirationDate;
+        if (bankSlipUrl) {
+          setAdminBoleto({ url: bankSlipUrl, dueDate });
+        }
+      }
+      setSuccessMessage('Plano do aluno alterado com sucesso.');
+      await loadStudents();
+    } catch (err: any) {
+      console.error('Erro ao alterar plano do aluno:', err);
+      setChangePlanError(err?.response?.data?.message || 'Não foi possível alterar o plano.');
+    } finally {
+      setChangePlanLoading(false);
+    }
+  };
+
+  // Buscar cotação quando selecionar plano ou periodicidade
+  useEffect(() => {
+    const fetchQuote = async () => {
+      if (!isChangePlanOpen || !targetStudent || !selectedPlanId || !selectedPeriod) {
+        setAdminQuote(null);
+        return;
+      }
+      try {
+        const quote = await enduranceApi.adminChangePlanQuote(targetStudent.id, selectedPlanId, { period: selectedPeriod });
+        setAdminQuote(quote);
+      } catch (err) {
+        console.error('Erro ao buscar cotação do admin:', err);
+        setAdminQuote(null);
+      }
+    };
+    fetchQuote();
+  }, [isChangePlanOpen, targetStudent, selectedPlanId, selectedPeriod]);
+
   const handleConfirmChangeCoach = async () => {
     if (!targetStudent || !selectedNewCoachId) return;
     setChangeCoachLoading(true);
@@ -208,17 +337,33 @@ export default function AdminStudentsPage() {
     setFormError(null);
     try {
       if (editingStudent) {
-        await enduranceApi.updateUser(editingStudent.id, {
+        const payload: any = {
           name: data.name,
+          email: data.email,
           phone: data.phone,
           cpfCnpj: data.cpfCnpj,
           birthDate: data.birthDate || null,
-        });
+          gender: data.gender || undefined,
+        };
+        if (data.address && (data.address.street || data.address.number || data.address.city || data.address.state || data.address.zipCode)) {
+          payload.addresses = [{ ...data.address, isMain: true }];
+        }
+        await enduranceApi.updateUser(editingStudent.id, payload);
       } else {
-        await enduranceApi.createUser({
-          ...data,
+        const payload: any = {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          cpfCnpj: data.cpfCnpj,
+          birthDate: data.birthDate || null,
+          gender: data.gender || undefined,
           userType: UserType.FITNESS_STUDENT,
-        });
+          password: data.password,
+        };
+        if (data.address && (data.address.street || data.address.number || data.address.city || data.address.state || data.address.zipCode)) {
+          payload.addresses = [{ ...data.address, isMain: true }];
+        }
+        await enduranceApi.createUser(payload);
       }
       handleCloseModal();
       loadStudents(); // Recarrega os dados para mostrar as mudanças
@@ -448,16 +593,8 @@ export default function AdminStudentsPage() {
                             </Typography>
                           </TableCell>
                           <TableCell align="center">
-                            <Tooltip title="Alterar Treinador">
-                              <IconButton size="small" color="primary" onClick={() => handleOpenChangeCoach(student)}>
-                                <SwapHorizIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <IconButton size="small" onClick={() => handleOpenModal(student)}>
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton size="small" color="error" onClick={() => handleDeleteRequest(student)}>
-                              <DeleteIcon />
+                            <IconButton size="small" onClick={(e) => handleOpenActionsMenu(student, e)}>
+                              <MoreVertIcon />
                             </IconButton>
                           </TableCell>
                         </TableRow>
@@ -553,7 +690,141 @@ export default function AdminStudentsPage() {
             </DialogActions>
           </Dialog>
 
+          {/* Change Plan Dialog (Admin) */}
+          <Dialog open={isChangePlanOpen} onClose={handleCloseChangePlan} fullWidth maxWidth="sm">
+            <DialogTitle>Alterar Plano do Aluno</DialogTitle>
+            <DialogContent>
+              {changePlanError && <Alert severity="error" sx={{ mb: 2 }}>{changePlanError}</Alert>}
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Aluno: <strong>{targetStudent?.name}</strong> ({targetStudent?.email})
+              </Typography>
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel>Novo Plano</InputLabel>
+                <Select label="Novo Plano" value={selectedPlanId} onChange={(e) => setSelectedPlanId(String(e.target.value))}>
+                  {plans.map(p => (
+                    <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel>Periodicidade</InputLabel>
+                <Select label="Periodicidade" value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value as PlanPeriod)}>
+                  {Object.values(PlanPeriod).map(period => (
+                    <MenuItem key={period} value={period}>
+                      {period === PlanPeriod.WEEKLY ? 'Semanal' :
+                       period === PlanPeriod.BIWEEKLY ? 'Quinzenal' :
+                       period === PlanPeriod.MONTHLY ? 'Mensal' :
+                       period === PlanPeriod.QUARTERLY ? 'Trimestral' :
+                       period === PlanPeriod.SEMIANNUALLY ? 'Semestral' :
+                       period === PlanPeriod.YEARLY ? 'Anual' : period}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel>Método de Pagamento</InputLabel>
+                <Select label="Método de Pagamento" value={billingType} onChange={(e) => setBillingType(e.target.value as PaymentMethod)}>
+                  <MenuItem value={PaymentMethod.PIX}>PIX</MenuItem>
+                  <MenuItem value={PaymentMethod.BOLETO}>Boleto</MenuItem>
+                  <MenuItem value={PaymentMethod.CREDIT_CARD}>Cartão de Crédito</MenuItem>
+                </Select>
+              </FormControl>
+              {billingType === PaymentMethod.CREDIT_CARD && (
+                <Box sx={{ '& .MuiFormControl-root': { bgcolor: 'white', borderRadius: 1 }, '& .MuiInputBase-root': { bgcolor: 'white' } }}>
+                  <CheckoutCreditCardForm control={control} />
+                </Box>
+              )}
+              {adminPix && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0,0,0,0.04)', borderRadius: 1 }}>
+                  <Typography variant="subtitle1">PIX gerado</Typography>
+                  {adminPix.qrCode && (
+                    <Box sx={{ textAlign: 'center', my: 1 }}>
+                      <img src={`data:image/png;base64,${adminPix.qrCode}`} alt="PIX QR Code" style={{ maxWidth: 200 }} />
+                    </Box>
+                  )}
+                  <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{adminPix.copyPaste}</Typography>
+                </Box>
+              )}
+              {adminBoleto && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0,0,0,0.04)', borderRadius: 1 }}>
+                  <Typography variant="subtitle1">Boleto gerado</Typography>
+                  <Button variant="contained" href={adminBoleto.url} target="_blank" rel="noopener noreferrer" sx={{ mt: 1 }}>Baixar Boleto</Button>
+                </Box>
+              )}
+
+              {/* Resumo (similar ao modal do aluno) */}
+              {targetStudent && (
+                <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                  <Typography variant="subtitle1" gutterBottom>Resumo</Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="body2" color="text.secondary">Periodicidade atual</Typography>
+                      <Typography variant="body1">
+                        {(() => {
+                          const periodFromList = ((targetStudent as any)?.subscriptions?.[0]?.period as PlanPeriod | undefined) || undefined;
+                          const period = periodFromList || (adminCurrentSubscription?.period as PlanPeriod | undefined);
+                          return period === PlanPeriod.WEEKLY ? 'Semanal' : period === PlanPeriod.BIWEEKLY ? 'Quinzenal' : period === PlanPeriod.MONTHLY ? 'Mensal' : period === PlanPeriod.QUARTERLY ? 'Trimestral' : period === PlanPeriod.SEMIANNUALLY ? 'Semestral' : period === PlanPeriod.YEARLY ? 'Anual' : '—';
+                        })()}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="body2" color="text.secondary">Nova periodicidade</Typography>
+                      <Typography variant="body1">
+                        {selectedPeriod === PlanPeriod.WEEKLY ? 'Semanal' : selectedPeriod === PlanPeriod.BIWEEKLY ? 'Quinzenal' : selectedPeriod === PlanPeriod.MONTHLY ? 'Mensal' : selectedPeriod === PlanPeriod.QUARTERLY ? 'Trimestral' : selectedPeriod === PlanPeriod.SEMIANNUALLY ? 'Semestral' : 'Anual'}
+                      </Typography>
+                    </Grid>
+                    {adminQuote && (
+                      <>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2" color="text.secondary">Valor atual</Typography>
+                          <Typography variant="body1">R$ {Number(adminQuote.currentPlanValue || adminQuote?.billing?.currentPlanValue || 0).toFixed(2)}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2" color="text.secondary">Novo valor</Typography>
+                          <Typography variant="body1">R$ {Number(adminQuote.newPlanValue || adminQuote?.billing?.newPlanValue || 0).toFixed(2)}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2" color="text.secondary">Dias utilizados</Typography>
+                          <Typography variant="body1">{(adminQuote.daysUsed || adminQuote?.billing?.daysUsed || 0)} de {(adminQuote.totalDays || adminQuote?.billing?.totalDays || 0)} dias</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2" color="text.secondary">Saldo/Diferença</Typography>
+                          <Typography variant="body1">
+                            {(() => {
+                              const amt = Number(adminQuote.amountToPay || adminQuote?.billing?.amountToPay || 0);
+                              if (amt > 0) return `Diferença a pagar: R$ ${amt.toFixed(2)}`;
+                              if (amt < 0) return `Crédito: R$ ${Math.abs(amt).toFixed(2)}`;
+                              return 'Sem diferença';
+                            })()}
+                          </Typography>
+                        </Grid>
+                      </>
+                    )}
+                  </Grid>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                    Os valores exatos (atual, novo e diferença/crédito) são exibidos e calculados no fluxo de cotação/alteração do aluno e no backend. Para aplicar a troca agora, confirme acima.
+                  </Typography>
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseChangePlan} disabled={changePlanLoading}>Fechar</Button>
+              <Button variant="contained" onClick={handleConfirmChangePlan} disabled={!selectedPlanId || changePlanLoading}>
+                {changePlanLoading ? <CircularProgress size={20} /> : 'Confirmar'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
         </Container>
+
+        {/* Row Actions Menu */}
+        <Menu anchorEl={actionsAnchorEl} open={openActionsMenu} onClose={handleCloseActionsMenu}>
+          <MenuItem onClick={() => { if (actionsStudent) handleOpenModal(actionsStudent); handleCloseActionsMenu(); }}>Editar dados</MenuItem>
+          <MenuItem onClick={() => { if (actionsStudent) handleOpenChangePlan(actionsStudent); handleCloseActionsMenu(); }}>Alterar plano</MenuItem>
+          <MenuItem onClick={() => { if (actionsStudent) handleOpenChangeCoach(actionsStudent); handleCloseActionsMenu(); }}>Alterar treinador</MenuItem>
+          <MenuItem onClick={() => { if (actionsStudent) handleToggleStatus(actionsStudent.id, actionsStudent.isActive); handleCloseActionsMenu(); }}>{actionsStudent?.isActive ? 'Desativar' : 'Ativar'}</MenuItem>
+          <MenuItem onClick={() => { if (actionsStudent) handleDeleteRequest(actionsStudent); handleCloseActionsMenu(); }}>Excluir</MenuItem>
+        </Menu>
       </DashboardLayout>
     </ProtectedRoute>
   );

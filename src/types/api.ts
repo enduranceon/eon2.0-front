@@ -68,7 +68,9 @@ export interface User {
   walletId?: string;
   cpfCnpj?: string; // Consolidado de 'cpf' e 'cpfCnpj'
   birthDate?: string | null;
+  gender?: Gender | string;
   address?: Address;
+  addresses?: (Address & { isMain?: boolean })[];
   specialties?: string[];
   certifications?: string[];
   emailVerified?: boolean;

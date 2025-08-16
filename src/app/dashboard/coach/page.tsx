@@ -59,8 +59,18 @@ interface CoachAnalytics {
     studentName?: string;
     modalidade?: string;
     plan?: string;
+    period?: string;
     startDate?: string;
     status?: string;
+    planChanged?: boolean;
+    planChangedAt?: string;
+    changeType?: string;
+    planChangeInfo?: {
+      previousPlan?: string;
+      newPlan?: string;
+      previousPeriod?: string;
+      newPeriod?: string;
+    } | null;
   }>;
 }
 
@@ -173,6 +183,38 @@ export default function CoachDashboard() {
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+
+  const translateStatus = (status?: string) => {
+    if (!status) return '—';
+    switch (status) {
+      case 'ACTIVE': return 'Ativa';
+      case 'INACTIVE': return 'Inativa';
+      case 'CANCELLED': return 'Cancelada';
+      case 'EXPIRED': return 'Expirada';
+      default: return status;
+    }
+  };
+
+  const translatePeriod = (period?: string) => {
+    switch (period) {
+      case 'WEEKLY': return 'Semanal';
+      case 'BIWEEKLY': return 'Quinzenal';
+      case 'MONTHLY': return 'Mensal';
+      case 'QUARTERLY': return 'Trimestral';
+      case 'SEMIANNUALLY': return 'Semestral';
+      case 'YEARLY': return 'Anual';
+      default: return period || '—';
+    }
+  };
+
+  const getActivityIcon = (changeType?: string) => {
+    switch (changeType) {
+      case 'PLAN_CHANGED':
+        return <SubscriptionsIcon color="primary" />;
+      default:
+        return <StudentsIcon color="primary" />;
+    }
+  };
 
   const handleLogout = () => auth.logout();
 
@@ -334,18 +376,47 @@ export default function CoachDashboard() {
                   <Typography variant="h6" gutterBottom>Atividades Recentes</Typography>
                   <Divider sx={{ mb: 2 }} />
                   {analytics?.recentActivities && analytics.recentActivities.length > 0 ? (
-                    <List>
-                      {analytics.recentActivities.slice(0, 8).map((act) => (
-                        <ListItem key={act.id} sx={{ px: 0 }}>
-                          <ListItemIcon>
-                            <StudentsIcon color="primary" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={act.studentName || 'Aluno(a)'}
-                            secondary={`${act.modalidade || 'Modalidade'} • ${act.plan || 'Plano'} • ${act.status || 'STATUS'}`}
-                          />
-                        </ListItem>
-                      ))}
+                    <List sx={{ pt: 0 }}>
+                      {analytics.recentActivities.slice(0, 8).map((act) => {
+                        const periodPt = translatePeriod(act.period);
+                        const startDatePt = act.startDate ? new Date(act.startDate).toLocaleDateString('pt-BR') : '—';
+                        const changedAtPt = act.planChangedAt ? new Date(act.planChangedAt).toLocaleString('pt-BR') : null;
+                        const changeLabel = act.changeType === 'PLAN_CHANGED' ? 'Plano alterado' : act.changeType;
+                        return (
+                          <ListItem key={act.id} sx={{ px: 0, py: 1.25, alignItems: 'flex-start' }}>
+                            <ListItemIcon sx={{ mt: 0.5 }}>
+                              {getActivityIcon(act.changeType)}
+                            </ListItemIcon>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+                              <Box sx={{ flexGrow: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
+                                  <Typography variant="subtitle2" fontWeight="bold">
+                                    {act.studentName || 'Aluno(a)'}
+                                  </Typography>
+                                  {changeLabel && (
+                                    <Chip size="small" color="warning" label={changeLabel} />
+                                  )}
+                                </Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  {(act.modalidade || 'Modalidade')} • {(act.plan || 'Plano')}{periodPt ? ` (${periodPt})` : ''}
+                                </Typography>
+                                {act.planChangeInfo && (
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    {`De ${act.planChangeInfo.previousPlan || '—'} (${translatePeriod(act.planChangeInfo.previousPeriod)}) para ${act.planChangeInfo.newPlan || '—'} (${translatePeriod(act.planChangeInfo.newPeriod)})`}
+                                  </Typography>
+                                )}
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  {`Início: ${startDatePt}${changedAtPt ? ` • Atualizado: ${changedAtPt}` : ''}`}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ ml: 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+                                {periodPt && <Chip size="small" variant="outlined" label={periodPt} />}
+                                {act.status && <Chip size="small" color="default" label={translateStatus(act.status)} />}
+                              </Box>
+                            </Box>
+                          </ListItem>
+                        );
+                      })}
                     </List>
                   ) : (
                     <Typography variant="body2" color="text.secondary">Nenhuma atividade recente encontrada.</Typography>

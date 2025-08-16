@@ -123,12 +123,54 @@ export default function AdminTestsPage() {
         isActive: data.isActive
       };
 
-     
-
+      // Criar ou atualizar teste
+      let savedTest = editingTest as AvailableTest | null;
       if (editingTest) {
-        await enduranceApi.updateTest(editingTest.id, processedData);
+        savedTest = await enduranceApi.updateTest(editingTest.id, processedData);
       } else {
-        await enduranceApi.createTest(processedData);
+        savedTest = await enduranceApi.createTest(processedData);
+      }
+
+      // Sincronizar campos dinâmicos se fornecidos
+      try {
+        const testId = savedTest?.id || editingTest?.id;
+        if (testId) {
+          // Carregar campos atuais do servidor para comparar
+          const currentServerFields = await enduranceApi.getTestDynamicFields(testId);
+          const currentById: Record<string, typeof currentServerFields[number]> = {};
+          currentServerFields.forEach(f => { currentById[f.id] = f; });
+
+          const formFields: Array<{ id?: string; fieldName: string; metric?: string; value?: string }>
+            = Array.isArray(data.dynamicFields) ? data.dynamicFields : [];
+
+          // Atualizar ou criar conforme necessário
+          for (const f of formFields) {
+            if (f.id && currentById[f.id]) {
+              await enduranceApi.updateTestDynamicField(testId, f.id, {
+                fieldName: f.fieldName,
+                metric: f.metric,
+                value: f.value
+              });
+            } else {
+              await enduranceApi.addTestDynamicField(testId, {
+                fieldName: f.fieldName,
+                metric: f.metric,
+                value: f.value || ''
+              } as any);
+            }
+          }
+
+          // Remover os que foram explicitamente marcados para remoção
+          const removedIds: string[] = Array.isArray(data.removedDynamicFieldIds) ? data.removedDynamicFieldIds : [];
+          for (const id of removedIds) {
+            if (id && currentById[id]) {
+              await enduranceApi.deleteTestDynamicField(testId, id);
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.error('Erro ao sincronizar campos dinâmicos:', syncErr);
+        // Não bloquear o salvamento do teste por erro de sync de campos, mas exibir mensagem
       }
       handleCloseModal();
       loadTests();
