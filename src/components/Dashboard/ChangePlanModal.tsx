@@ -255,7 +255,7 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
     }).format(value);
   };
 
-  const getPlanPrice = (plan: Plan, period: string = 'MONTHLY') => {
+  const getPlanPrice = (plan: Plan, period: PlanPeriod | string = 'MONTHLY') => {
     if (!plan || !plan.prices || !Array.isArray(plan.prices)) {
       return 0;
     }
@@ -270,16 +270,18 @@ const ChangePlanModal: React.FC<ChangePlanModalProps> = ({
     return getPlanPrice(currentPlan, currentSubscription?.period || 'MONTHLY');
   };
 
-  const getPlanTypeColor = (plan: Plan) => {
-    const planPrice = getPlanPrice(plan, currentSubscription?.period || 'MONTHLY');
+  const getPlanTypeColor = (plan: Plan, selectedPeriod?: PlanPeriod) => {
+    const period = selectedPeriod || currentSubscription?.period || 'MONTHLY';
+    const planPrice = getPlanPrice(plan, period);
     const currentPrice = getCurrentPlanPrice();
     if (planPrice > currentPrice) return 'success'; // Upgrade
     if (planPrice < currentPrice) return 'warning'; // Downgrade
     return 'default';
   };
 
-  const getPlanTypeLabel = (plan: Plan) => {
-    const planPrice = getPlanPrice(plan, currentSubscription?.period || 'MONTHLY');
+  const getPlanTypeLabel = (plan: Plan, selectedPeriod?: PlanPeriod) => {
+    const period = selectedPeriod || currentSubscription?.period || 'MONTHLY';
+    const planPrice = getPlanPrice(plan, period);
     const currentPrice = getCurrentPlanPrice();
     if (planPrice > currentPrice) return 'Upgrade';
     if (planPrice < currentPrice) return 'Downgrade';
