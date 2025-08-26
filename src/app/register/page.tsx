@@ -22,6 +22,8 @@ import {
   StepLabel,
   useTheme,
   CircularProgress,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   Visibility,
@@ -36,51 +38,28 @@ import {
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserType, Gender } from '../../types/api';
+import { UserType, Gender, ConsentTerm } from '../../types/api';
+import { FormData } from '../../types/formData';
 import { enduranceTheme } from '../../theme/enduranceTheme';
 import { geocodingService } from '../../services/geocodingService';
 import { validateAndFormatCpf } from '../../utils/cpfUtils';
 import { validateAndFormatEmail } from '../../utils/emailUtils';
+import { consentService } from '../../services/consentService';
+import { formStorageService } from '../../services/formStorageService';
+import ConsentTermModal from '../../components/ConsentTermModal';
 import toast from 'react-hot-toast';
 
-interface AddressData {
-  street: string;
-  number: string;
-  complement?: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-}
-
-interface FormData {
-  // Campos básicos
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  userType: UserType;
-  
-  // Campos específicos
-  cpf: string;
-  phone: string;
-  birthDate?: string;
-  gender?: Gender | string;
-  
-  // Para alunos
-  address?: AddressData;
-  avatar?: string;
-}
-
-const steps = ['Bem-vindo', 'Dados Pessoais', 'Endereço'];
+const steps = ['Bem-vindo', 'Dados Pessoais', 'Endereço', 'Termo de Aceite'];
 
 export default function RegisterPage() {
   const theme = useTheme();
   const router = useRouter();
   const auth = useAuth();
 
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeStep, setActiveStep] = useState(() => {
+    // Tentar carregar o passo atual salvo
+    return formStorageService.getCurrentStep();
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -109,27 +88,42 @@ export default function RegisterPage() {
   }>({
     isValid: false,
   });
+
+  const [consentTerm, setConsentTerm] = useState<ConsentTerm | null>(null);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [consentModalOpen, setConsentModalOpen] = useState(false);
+  const [consentLoading, setConsentLoading] = useState(false);
+  const [consentError, setConsentError] = useState('');
   
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    userType: UserType.FITNESS_STUDENT,
-    cpf: '',
-    phone: '',
-    birthDate: '',
-    gender: '',
-    address: {
-      street: '',
-      number: '',
-      complement: '',
-      neighborhood: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: 'Brasil',
-    },
+  const [formData, setFormData] = useState<FormData>(() => {
+    // Tentar carregar dados salvos do localStorage
+    const savedData = formStorageService.getFormData();
+    if (savedData) {
+      return savedData;
+    }
+    
+    // Dados padrão se não houver dados salvos
+    return {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      userType: UserType.FITNESS_STUDENT,
+      cpf: '',
+      phone: '',
+      birthDate: '',
+      gender: '',
+      address: {
+        street: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: 'Brasil',
+      },
+    };
   });
 
   // Redirecionar se já autenticado
@@ -148,6 +142,47 @@ export default function RegisterPage() {
     }
   }, [auth.isAuthenticated, auth.user, router]);
 
+  // Carregar termo de consentimento quando chegar no passo 3
+  React.useEffect(() => {
+    if (activeStep === 3 && !consentTerm) {
+      loadConsentTerm();
+    }
+  }, [activeStep, consentTerm]);
+
+  // Salvar o passo atual no localStorage sempre que mudar
+  React.useEffect(() => {
+    formStorageService.saveCurrentStep(activeStep);
+  }, [activeStep]);
+
+  // Salvar dados do formulário no localStorage sempre que mudarem
+  React.useEffect(() => {
+    formStorageService.saveFormData(formData);
+  }, [formData]);
+
+  // Mostrar alerta se houver dados salvos
+  React.useEffect(() => {
+    if (formStorageService.hasStoredData()) {
+      toast.success('Dados do formulário restaurados! Você pode continuar de onde parou.', {
+        duration: 5000,
+      });
+    }
+  }, []);
+
+  const loadConsentTerm = async () => {
+    try {
+      setConsentLoading(true);
+      setConsentError('');
+      const term = await consentService.getLatestConsent();
+      setConsentTerm(term);
+    } catch (error: any) {
+      const errorMessage = error.message || 'Erro desconhecido';
+      setConsentError(`Erro ao carregar o termo de consentimento: ${errorMessage}. Tente novamente.`);
+      console.error('Erro ao carregar termo:', error);
+    } finally {
+      setConsentLoading(false);
+    }
+  };
+
   const handleChange = (field: keyof FormData | string) => (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any
   ) => {
@@ -155,13 +190,18 @@ export default function RegisterPage() {
     
     if (field.startsWith('address.')) {
       const addressField = field.replace('address.', '');
-      setFormData(prev => ({
-        ...prev,
-        address: {
-          ...prev.address!,
-          [addressField]: value,
-        },
-      }));
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          address: {
+            ...prev.address!,
+            [addressField]: value,
+          },
+        };
+        // Salvar no localStorage
+        formStorageService.saveFormData(newData);
+        return newData;
+      });
       
       // Resetar validação de endereço quando mudança ocorrer
       if (addressValidation.isValid) {
@@ -174,10 +214,15 @@ export default function RegisterPage() {
     } else if (field === 'cpf') {
       // Aplicar máscara e validação para CPF
       const cpfResult = validateAndFormatCpf(value);
-      setFormData(prev => ({
-        ...prev,
-        [field]: cpfResult.formatted,
-      }));
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          [field]: cpfResult.formatted,
+        };
+        // Salvar no localStorage
+        formStorageService.saveFormData(newData);
+        return newData;
+      });
       
       // Atualizar estado de validação do CPF
       setCpfValidation({
@@ -187,10 +232,15 @@ export default function RegisterPage() {
     } else if (field === 'email') {
       // Validar e formatar e-mail
       const emailResult = validateAndFormatEmail(value);
-      setFormData(prev => ({
-        ...prev,
-        [field]: emailResult.formatted,
-      }));
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          [field]: emailResult.formatted,
+        };
+        // Salvar no localStorage
+        formStorageService.saveFormData(newData);
+        return newData;
+      });
       
       // Atualizar estado de validação do e-mail
       setEmailValidation({
@@ -198,10 +248,15 @@ export default function RegisterPage() {
         error: emailResult.error,
       });
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-      }));
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          [field]: value,
+        };
+        // Salvar no localStorage
+        formStorageService.saveFormData(newData);
+        return newData;
+      });
     }
     setError('');
   };
@@ -216,16 +271,21 @@ export default function RegisterPage() {
       const result = await geocodingService.getAddressByCep(cep);
       
       if (result.isValid) {
-        setFormData(prev => ({
-          ...prev,
-          address: {
-            ...prev.address!,
-            street: result.street || prev.address!.street,
-            neighborhood: result.neighborhood || prev.address!.neighborhood,
-            city: result.city || prev.address!.city,
-            state: result.state || prev.address!.state,
-          },
-        }));
+        setFormData(prev => {
+          const newData = {
+            ...prev,
+            address: {
+              ...prev.address!,
+              street: result.street || prev.address!.street,
+              neighborhood: result.neighborhood || prev.address!.neighborhood,
+              city: result.city || prev.address!.city,
+              state: result.state || prev.address!.state,
+            },
+          };
+          // Salvar no localStorage
+          formStorageService.saveFormData(newData);
+          return newData;
+        });
         toast.success(result.message);
       } else {
         toast.error(result.message);
@@ -318,6 +378,8 @@ export default function RegisterPage() {
           formData.address?.zipCode &&
           addressValidation.isValid
         );
+      case 3:
+        return consentAccepted;
       default:
         return false;
     }
@@ -351,15 +413,29 @@ export default function RegisterPage() {
       }
     }
 
+    // Validar termo de consentimento no step 3
+    if (activeStep === 3) {
+      if (!consentAccepted) {
+        setError('Você deve aceitar o termo de consentimento para continuar.');
+        return;
+      }
+    }
+
     if (activeStep === steps.length - 1) {
       handleSubmit();
     } else {
-      setActiveStep(prev => prev + 1);
+      const nextStep = activeStep + 1;
+      setActiveStep(nextStep);
+      // Salvar o passo atual no localStorage
+      formStorageService.saveCurrentStep(nextStep);
     }
   };
 
   const handleBack = () => {
-    setActiveStep(prev => prev - 1);
+    const prevStep = activeStep - 1;
+    setActiveStep(prevStep);
+    // Salvar o passo atual no localStorage
+    formStorageService.saveCurrentStep(prevStep);
   };
 
   const handleSubmit = async () => {
@@ -414,7 +490,39 @@ export default function RegisterPage() {
         },
       };
 
-      await auth.register(registerData);
+      const registerResponse = await auth.register(registerData);
+      
+      console.log('Resposta completa do registro:', registerResponse);
+      
+      // Após criar a conta, aceitar o termo de consentimento
+      // Usar o userId real retornado pelo registro
+      if (consentTerm && registerResponse) {
+        try {
+          console.log('Registro bem-sucedido, aceitando termo de consentimento...');
+          console.log('userId:', registerResponse.userId);
+          console.log('consentTermVersion:', consentTerm.version);
+          
+          // O usuário será redirecionado automaticamente após o registro
+          // O termo será aceito em background
+          consentService.acceptConsent({
+            userId: registerResponse.userId, // Usar o userId real retornado
+            consentTermVersion: consentTerm.version,
+            ipAddress: undefined, // Será capturado pelo backend
+            userAgent: navigator.userAgent,
+          }).catch((consentError) => {
+            console.error('Erro ao aceitar termo de consentimento:', consentError);
+            // Não falhar o registro se houver erro no consentimento
+            // O usuário pode aceitar posteriormente
+          });
+        } catch (consentError) {
+          console.error('Erro ao aceitar termo de consentimento:', consentError);
+          // Não falhar o registro se houver erro no consentimento
+        }
+      }
+      
+      // Limpar dados do localStorage após sucesso do registro
+      formStorageService.clearFormData();
+      formStorageService.clearCurrentStep();
       
       // O AuthContext já gerencia o redirecionamento
     } catch (error: any) {
@@ -750,11 +858,111 @@ export default function RegisterPage() {
             
             <Alert severity={addressValidation.isValid ? "success" : "warning"} sx={{ mt: 2 }}>
               {addressValidation.isValid ? (
-                'Endereço validado! ✅ Clique em "Criar Conta" para finalizar.'
+                'Endereço validado! ✅ Clique em "Próximo" para continuar.'
               ) : (
                 'Por favor, valide seu endereço antes de prosseguir. É obrigatório para cadastro de alunos.'
               )}
             </Alert>
+          </Box>
+        );
+
+      case 3:
+        return (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Termo de Consentimento LGPD
+            </Typography>
+            
+            <Alert severity="info" sx={{ mb: 3 }}>
+              <Typography variant="body2">
+                Para finalizar seu cadastro, você deve ler e aceitar nosso Termo de Consentimento LGPD. 
+                Este documento explica como seus dados pessoais serão tratados em nossa plataforma.
+              </Typography>
+            </Alert>
+
+            {consentLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+                <Typography variant="body2" sx={{ ml: 2 }}>
+                  Carregando termo de consentimento...
+                </Typography>
+              </Box>
+            ) : consentError ? (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {consentError}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={loadConsentTerm}
+                  sx={{ ml: 2 }}
+                >
+                  Tentar Novamente
+                </Button>
+              </Alert>
+            ) : consentTerm ? (
+              <Box>
+                                 <Box
+                   sx={{
+                     maxHeight: '40vh',
+                     overflow: 'auto',
+                     border: '1px solid',
+                     borderColor: 'divider',
+                     borderRadius: 1,
+                     p: 2,
+                     backgroundColor: 'background.paper',
+                     mb: 3,
+                   }}
+                 >
+                   <Typography variant="subtitle2" gutterBottom>
+                     {consentTerm.title} - Versão {consentTerm.version}
+                   </Typography>
+                   <Typography
+                     variant="body2"
+                     component="div"
+                     sx={{
+                       whiteSpace: 'pre-wrap',
+                       lineHeight: 1.6,
+                       fontFamily: 'monospace',
+                       fontSize: '0.875rem',
+                     }}
+                   >
+                     {consentTerm.content}
+                   </Typography>
+                 </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={consentAccepted}
+                        onChange={(e) => setConsentAccepted(e.target.checked)}
+                        disabled={loading}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2">
+                        Li e aceito o Termo de Consentimento LGPD acima
+                      </Typography>
+                    }
+                  />
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={() => setConsentModalOpen(true)}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Ler completo
+                  </Button>
+                </Box>
+
+                <Alert severity="success" sx={{ mt: 2 }}>
+                  <Typography variant="body2">
+                    <strong>Importante:</strong> Ao aceitar este termo, você concorda com o tratamento de seus dados pessoais 
+                    conforme a Lei Geral de Proteção de Dados (LGPD).
+                  </Typography>
+                </Alert>
+              </Box>
+            ) : null}
           </Box>
         );
 
@@ -861,8 +1069,61 @@ export default function RegisterPage() {
               </Link>
             </Typography>
           </Box>
+
+          {/* Botão para limpar dados salvos */}
+          {formStorageService.hasStoredData() && (
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => {
+                  formStorageService.clearFormData();
+                  formStorageService.clearCurrentStep();
+                  setActiveStep(0);
+                  setFormData({
+                    name: '',
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    userType: UserType.FITNESS_STUDENT,
+                    cpf: '',
+                    phone: '',
+                    birthDate: '',
+                    gender: '',
+                    address: {
+                      street: '',
+                      number: '',
+                      complement: '',
+                      neighborhood: '',
+                      city: '',
+                      state: '',
+                      zipCode: '',
+                      country: 'Brasil',
+                    },
+                  });
+                  toast.success('Dados limpos! Começando do início.');
+                }}
+                sx={{ textTransform: 'none' }}
+              >
+                Limpar dados salvos e começar do zero
+              </Button>
+            </Box>
+          )}
         </CardContent>
       </Card>
+
+      {/* Modal do Termo de Consentimento */}
+      <ConsentTermModal
+        open={consentModalOpen}
+        onClose={() => setConsentModalOpen(false)}
+        onAccept={() => {
+          setConsentAccepted(true);
+          setConsentModalOpen(false);
+        }}
+        consentTerm={consentTerm}
+        loading={consentLoading}
+        error={consentError}
+      />
     </Box>
   );
 } 

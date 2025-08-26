@@ -481,6 +481,8 @@ export interface AvailableTest {
   name: string;
   description: string;
   type: TestType;
+  modalidadeId?: string;
+  modalidade?: Modalidade;
   specificData?: any;
   examId?: string;
   exam?: Exam;
@@ -1324,4 +1326,31 @@ export interface VideoCallsResponse {
     hasPrev: boolean;
   };
   summary?: VideoCallStats;
+} 
+
+export interface ConsentTerm {
+  id: string;
+  version: string;
+  title: string;
+  content: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConsentAcceptance {
+  id: string;
+  userId: string;
+  consentTermId: string;
+  consentTermVersion: string;
+  acceptedAt: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface ConsentAcceptanceRequest {
+  userId: string;
+  consentTermVersion: string;
+  ipAddress?: string;
+  userAgent?: string;
 } 

@@ -22,13 +22,13 @@ import {
   Typography,
   Box
 } from '@mui/material';
-import { AvailableTest, TestDynamicField, TestType } from '../../../types/api';
+import { AvailableTest, TestDynamicField, TestType, Modalidade } from '../../../types/api';
 import { enduranceApi } from '../../../services/enduranceApi';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
 const dynamicFieldSchema = z.object({
   id: z.string().optional(),
-  fieldName: z.string().min(1, 'Informe o nome do campo'),
+  fieldName: z.string().optional(),
   metric: z.string().optional(),
   value: z.string().optional(),
 });
@@ -37,6 +37,7 @@ const testSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres'),
   description: z.string().optional(),
   type: z.nativeEnum(TestType, { errorMap: () => ({ message: 'Selecione um tipo válido.' }) }),
+  modalidadeId: z.string().optional(),
   isActive: z.boolean(),
   dynamicFields: z.array(dynamicFieldSchema).default([]),
 });
@@ -57,6 +58,8 @@ export default function TestForm({ open, onClose, onSubmit, test, loading, error
 
   const [initialDynamicFields, setInitialDynamicFields] = useState<TestDynamicField[]>([]);
   const [loadingDynamicFields, setLoadingDynamicFields] = useState<boolean>(false);
+  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
+  const [loadingModalidades, setLoadingModalidades] = useState<boolean>(false);
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<TestFormData>({
     resolver: zodResolver(testSchema),
@@ -64,6 +67,7 @@ export default function TestForm({ open, onClose, onSubmit, test, loading, error
       name: '', 
       description: '', 
       type: TestType.PERFORMANCE, 
+      modalidadeId: '',
       isActive: true,
       dynamicFields: []
     },
@@ -79,11 +83,23 @@ export default function TestForm({ open, onClose, onSubmit, test, loading, error
 
   useEffect(() => {
     if (open) {
+      // Carregar modalidades sempre que o modal abrir
+      setLoadingModalidades(true);
+      enduranceApi.getModalidades({ limit: 100 })
+        .then((response) => {
+          setModalidades(response.data || []);
+        })
+        .catch((error) => {
+          console.error('Erro ao carregar modalidades:', error);
+        })
+        .finally(() => setLoadingModalidades(false));
+
       if (isEditMode && test) {
         reset({
           name: test.name,
           description: test.description || '',
           type: test.type,
+          modalidadeId: test.modalidadeId || '',
           isActive: test.isActive,
           dynamicFields: []
         });
@@ -102,6 +118,7 @@ export default function TestForm({ open, onClose, onSubmit, test, loading, error
               name: test.name,
               description: test.description || '',
               type: test.type,
+              modalidadeId: test.modalidadeId || '',
               isActive: test.isActive,
               dynamicFields: mapped
             });
@@ -112,6 +129,7 @@ export default function TestForm({ open, onClose, onSubmit, test, loading, error
           name: '', 
           description: '', 
           type: TestType.PERFORMANCE, 
+          modalidadeId: '',
           isActive: true,
           dynamicFields: []
         });
@@ -122,7 +140,18 @@ export default function TestForm({ open, onClose, onSubmit, test, loading, error
   }, [open, test, isEditMode, reset]);
 
   const handleFormSubmit = (data: TestFormData) => {
-    return onSubmit({ ...data, removedDynamicFieldIds });
+    // Filtrar campos dinâmicos válidos antes de enviar
+    const validDynamicFields = data.dynamicFields.filter(field => 
+      field.fieldName && field.fieldName.trim().length > 0
+    );
+    
+    const processedData = {
+      ...data,
+      dynamicFields: validDynamicFields,
+      removedDynamicFieldIds
+    };
+    
+    return onSubmit(processedData);
   };
 
   return (
@@ -156,6 +185,20 @@ export default function TestForm({ open, onClose, onSubmit, test, loading, error
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
+              <FormControl fullWidth error={!!errors.modalidadeId}>
+                <InputLabel>Modalidade</InputLabel>
+                <Controller name="modalidadeId" control={control} render={({ field }) => (
+                  <Select {...field} label="Modalidade" disabled={loadingModalidades}>
+                    <MenuItem value=""><em>Selecione uma modalidade (opcional)</em></MenuItem>
+                    {modalidades.map((modalidade) => ( 
+                      <MenuItem key={modalidade.id} value={modalidade.id}>{modalidade.name}</MenuItem> 
+                    ))}
+                  </Select>
+                )}/>
+                {errors.modalidadeId && <Alert severity="error" sx={{ mt: 1 }}>{errors.modalidadeId.message}</Alert>}
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
               <Controller
                 name="isActive"
                 control={control}

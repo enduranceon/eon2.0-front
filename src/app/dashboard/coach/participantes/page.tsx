@@ -44,6 +44,7 @@ import {
   Event as EventIcon,
   Category as CategoryIcon,
   Straighten as DistanceIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../../../contexts/AuthContext';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
@@ -58,6 +59,9 @@ interface Participant {
     id: string;
     name: string;
     email: string;
+    birthDate?: string;
+    gender?: string;
+    age?: number;
   };
   exam: {
     id: string;
@@ -121,7 +125,21 @@ export default function ParticipantsPage() {
           modalidadeId: modalidadeFilter || undefined,
           attended: attendedFilter === 'true' ? true : attendedFilter === 'false' ? false : undefined,
         }),
-        enduranceApi.getCoachExams(),
+        fetch('/api/exams').then(res => {
+          if (!res.ok) {
+            throw new Error(`Erro ao buscar provas: ${res.status}`);
+          }
+          return res.json();
+        }).catch(error => {
+          console.error('Erro ao buscar provas:', error);
+          // Retornar dados vazios em caso de erro
+          return {
+            success: false,
+            data: [],
+            total: 0,
+            message: 'Erro ao carregar provas'
+          };
+        }),
       ]);
 
       // Carregar modalidades separadamente para melhor tratamento de erro
@@ -136,7 +154,14 @@ export default function ParticipantsPage() {
 
       setParticipants(participantsResponse.data || []);
       setTotal(participantsResponse.pagination?.total || 0);
-      setExams(examsResponse.data || []);
+      // Usar o novo endpoint público de provas
+      if (examsResponse.success && Array.isArray(examsResponse.data)) {
+        setExams(examsResponse.data);
+        console.log('Provas carregadas com sucesso:', examsResponse.data.length, 'provas');
+      } else {
+        setExams([]);
+        console.warn('Erro ao carregar provas:', examsResponse.message);
+      }
       // Verificar se modalidadesResponse tem estrutura de resposta paginada
       let modalidadesData = modalidadesResponse?.data || modalidadesResponse;
       
@@ -179,7 +204,13 @@ export default function ParticipantsPage() {
         response: err.response?.data,
         status: err.response?.status
       });
-      setError('Erro ao carregar dados dos participantes.');
+      
+      // Verificar se o erro é específico do endpoint de provas
+      if (err.message && err.message.includes('provas')) {
+        setError('Erro ao carregar lista de provas. O filtro de provas pode não funcionar corretamente.');
+      } else {
+        setError('Erro ao carregar dados dos participantes.');
+      }
     } finally {
       setLoading(false);
     }
@@ -232,11 +263,23 @@ export default function ParticipantsPage() {
     document.body.removeChild(link);
   };
 
+  const handleClearFilters = () => {
+    setExamFilter('');
+    setModalidadeFilter('');
+    setAttendedFilter('');
+    setSearchTerm('');
+    setPage(0); // Resetar para primeira página
+  };
+
   const generateCSV = () => {
-    const headers = ['Nome', 'Email', 'Prova', 'Modalidade', 'Distância/Categoria', 'Data da Prova', 'Local', 'Presença Confirmada', 'Data da Confirmação'];
+    const headers = ['Nome', 'Email', 'Idade', 'Gênero', 'Prova', 'Modalidade', 'Distância/Categoria', 'Data da Prova', 'Local', 'Presença Confirmada', 'Data da Confirmação'];
     const rows = participants.map(p => [
       p.user.name,
       p.user.email,
+      p.user.age || 'N/A',
+      p.user.gender === 'MALE' ? 'Masculino' : 
+      p.user.gender === 'FEMALE' ? 'Feminino' : 
+      p.user.gender === 'OTHER' ? 'Outro' : 'N/A',
       p.exam.name,
       p.exam.modalidade.name,
       p.distance ? `${p.distance.distance}${p.distance.unit}` : p.category ? p.category.name : 'N/A',
@@ -349,27 +392,37 @@ export default function ParticipantsPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={3}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<CopyIcon />}
-                    onClick={handleCopyList}
-                    size="small"
-                  >
-                    Copiar Lista
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<DownloadIcon />}
-                    onClick={handleExportCSV}
-                    size="small"
-                  >
-                    Exportar CSV
-                  </Button>
-                </Box>
-              </Grid>
             </Grid>
+            
+            {/* Botões de Ação */}
+            <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-start' }}>
+              <Button
+                variant="outlined"
+                startIcon={<CopyIcon />}
+                onClick={handleCopyList}
+                size="small"
+              >
+                Copiar Lista
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleExportCSV}
+                size="small"
+              >
+                Exportar CSV
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<ClearIcon />}
+                onClick={handleClearFilters}
+                size="small"
+                color="secondary"
+                disabled={!examFilter && !modalidadeFilter && !attendedFilter && !searchTerm}
+              >
+                Limpar Filtros
+              </Button>
+            </Box>
           </Paper>
 
           {/* Tabela de Participantes */}
@@ -387,6 +440,8 @@ export default function ParticipantsPage() {
                     <TableHead>
                       <TableRow>
                         <TableCell>Participante</TableCell>
+                        <TableCell>Idade</TableCell>
+                        <TableCell>Gênero</TableCell>
                         <TableCell>Prova</TableCell>
                         <TableCell>Modalidade</TableCell>
                         <TableCell>Distância/Categoria</TableCell>
@@ -408,6 +463,18 @@ export default function ParticipantsPage() {
                                 {participant.user.email}
                               </Typography>
                             </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" align="center">
+                              {participant.user.age || 'N/A'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" align="center">
+                              {participant.user.gender === 'MALE' ? 'Masculino' : 
+                               participant.user.gender === 'FEMALE' ? 'Feminino' : 
+                               participant.user.gender === 'OTHER' ? 'Outro' : 'N/A'}
+                            </Typography>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" fontWeight="medium">
@@ -531,6 +598,18 @@ export default function ParticipantsPage() {
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="body2" color="text.secondary">Email</Typography>
                         <Typography variant="body1">{selectedParticipant.user.email}</Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">Idade</Typography>
+                        <Typography variant="body1">{selectedParticipant.user.age || 'N/A'}</Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">Gênero</Typography>
+                        <Typography variant="body1">
+                          {selectedParticipant.user.gender === 'MALE' ? 'Masculino' : 
+                           selectedParticipant.user.gender === 'FEMALE' ? 'Feminino' : 
+                           selectedParticipant.user.gender === 'OTHER' ? 'Outro' : 'N/A'}
+                        </Typography>
                       </Box>
                     </Grid>
                     <Grid item xs={12} md={6}>

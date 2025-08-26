@@ -45,7 +45,7 @@ import ProtectedRoute from '../../../../components/ProtectedRoute';
 import { useAuth } from '../../../../contexts/AuthContext';
 import PageHeader from '../../../../components/Dashboard/PageHeader';
 import { enduranceApi } from '../../../../services/enduranceApi';
-import { AvailableTest, TestType, PaginatedResponse } from '../../../../types/api';
+import { AvailableTest, TestType, PaginatedResponse, Modalidade } from '../../../../types/api';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import TestForm from '../../../../components/Dashboard/Admin/TestForm';
 import TestResultsViewer from '../../../../components/Dashboard/Admin/TestResultsViewer';
@@ -68,6 +68,8 @@ export default function AdminTestsPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [testTypeFilter, setTestTypeFilter] = useState('');
+  const [modalidadeFilter, setModalidadeFilter] = useState('');
+  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -78,12 +80,17 @@ export default function AdminTestsPage() {
     setLoading(true);
     setError(null);
     try {
-      const filters = { 
+      const filters: any = { 
         page: page + 1, 
         limit: rowsPerPage,
         search: debouncedSearchTerm || undefined,
-        testType: testTypeFilter || undefined,
+        type: testTypeFilter || undefined,
       };
+
+      // Adicionar modalidadeId apenas se foi selecionada
+      if (modalidadeFilter) {
+        filters.modalidadeId = modalidadeFilter;
+      }
       
       const response = await enduranceApi.getAvailableTests(filters);
       setTests(response.data);
@@ -94,11 +101,24 @@ export default function AdminTestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, debouncedSearchTerm, testTypeFilter]);
+  }, [page, rowsPerPage, debouncedSearchTerm, testTypeFilter, modalidadeFilter]);
 
   useEffect(() => { 
     loadTests();
   }, [loadTests]);
+
+  // Carregar modalidades para o filtro
+  useEffect(() => {
+    const loadModalidades = async () => {
+      try {
+        const response = await enduranceApi.getModalidades({ limit: 100 });
+        setModalidades(response.data || []);
+      } catch (error) {
+        console.error('Erro ao carregar modalidades:', error);
+      }
+    };
+    loadModalidades();
+  }, []);
 
   const handleOpenModal = (test: AvailableTest | null = null) => {
     setEditingTest(test);
@@ -111,17 +131,39 @@ export default function AdminTestsPage() {
     setEditingTest(null);
   };
 
-  const handleFormSubmit = async (data: any) => {
+    const handleFormSubmit = async (data: any) => {
     setFormLoading(true);
     setFormError(null);
+    
     try {
       // Processar dados antes de enviar
-      const processedData = {
+      const processedData: any = {
         name: data.name,
         description: data.description,
-        testType: String(data.type), // Converter para string
+        type: data.type,
         isActive: data.isActive
       };
+
+      // Adicionar modalidadeId apenas se foi selecionada
+      if (data.modalidadeId) {
+        processedData.modalidadeId = data.modalidadeId;
+      }
+
+      // Adicionar campos dinâmicos se fornecidos
+      if (Array.isArray(data.dynamicFields) && data.dynamicFields.length > 0) {
+        // Filtrar campos dinâmicos válidos (com nome preenchido)
+        const validDynamicFields = data.dynamicFields
+          .filter(f => f.fieldName && f.fieldName.trim().length > 0)
+          .map(f => ({
+            fieldName: f.fieldName,
+            metric: f.metric || '',
+            value: f.value || ''
+          }));
+        
+        if (validDynamicFields.length > 0) {
+          processedData.dynamicFields = validDynamicFields;
+        }
+      }
 
       // Criar ou atualizar teste
       let savedTest = editingTest as AvailableTest | null;
@@ -131,12 +173,11 @@ export default function AdminTestsPage() {
         savedTest = await enduranceApi.createTest(processedData);
       }
 
-      // Sincronizar campos dinâmicos se fornecidos
-      try {
-        const testId = savedTest?.id || editingTest?.id;
-        if (testId) {
+      // Para edição, sincronizar campos dinâmicos se necessário
+      if (editingTest && savedTest?.id) {
+        try {
           // Carregar campos atuais do servidor para comparar
-          const currentServerFields = await enduranceApi.getTestDynamicFields(testId);
+          const currentServerFields = await enduranceApi.getTestDynamicFields(savedTest.id);
           const currentById: Record<string, typeof currentServerFields[number]> = {};
           currentServerFields.forEach(f => { currentById[f.id] = f; });
 
@@ -146,13 +187,14 @@ export default function AdminTestsPage() {
           // Atualizar ou criar conforme necessário
           for (const f of formFields) {
             if (f.id && currentById[f.id]) {
-              await enduranceApi.updateTestDynamicField(testId, f.id, {
+              await enduranceApi.updateTestDynamicField(savedTest.id, f.id, {
                 fieldName: f.fieldName,
                 metric: f.metric,
                 value: f.value
               });
-            } else {
-              await enduranceApi.addTestDynamicField(testId, {
+            } else if (!f.id) {
+              // Apenas criar novos campos se não tiver ID
+              await enduranceApi.addTestDynamicField(savedTest.id, {
                 fieldName: f.fieldName,
                 metric: f.metric,
                 value: f.value || ''
@@ -164,14 +206,15 @@ export default function AdminTestsPage() {
           const removedIds: string[] = Array.isArray(data.removedDynamicFieldIds) ? data.removedDynamicFieldIds : [];
           for (const id of removedIds) {
             if (id && currentById[id]) {
-              await enduranceApi.deleteTestDynamicField(testId, id);
+              await enduranceApi.deleteTestDynamicField(savedTest.id, id);
             }
           }
+        } catch (syncErr) {
+          console.error('Erro ao sincronizar campos dinâmicos:', syncErr);
+          // Não bloquear o salvamento do teste por erro de sync de campos, mas exibir mensagem
         }
-      } catch (syncErr) {
-        console.error('Erro ao sincronizar campos dinâmicos:', syncErr);
-        // Não bloquear o salvamento do teste por erro de sync de campos, mas exibir mensagem
       }
+
       handleCloseModal();
       loadTests();
     } catch (err: any) {
@@ -245,7 +288,7 @@ export default function AdminTestsPage() {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} sm={6} md={4}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Tipo de Teste</InputLabel>
                   <Select
@@ -258,9 +301,26 @@ export default function AdminTestsPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              {(searchTerm || testTypeFilter) && (
+              <Grid item xs={12} sm={6} md={4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Modalidade</InputLabel>
+                  <Select
+                    value={modalidadeFilter}
+                    label="Modalidade"
+                    onChange={(e) => setModalidadeFilter(e.target.value)}
+                  >
+                    <MenuItem value=""><em>Todas</em></MenuItem>
+                    {modalidades.map(modalidade => (
+                      <MenuItem key={modalidade.id} value={modalidade.id}>
+                        {modalidade.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              {(searchTerm || testTypeFilter || modalidadeFilter) && (
                  <Grid item xs="auto">
-                    <Button onClick={() => { setSearchTerm(''); setTestTypeFilter(''); }} startIcon={<ClearIcon />}>Limpar Filtros</Button>
+                    <Button onClick={() => { setSearchTerm(''); setTestTypeFilter(''); setModalidadeFilter(''); }} startIcon={<ClearIcon />}>Limpar Filtros</Button>
                 </Grid>
               )}
             </Grid>
@@ -277,6 +337,7 @@ export default function AdminTestsPage() {
                       <TableRow>
                         <TableCell>Nome do Teste</TableCell>
                         <TableCell>Tipo</TableCell>
+                        <TableCell>Modalidade</TableCell>
                         <TableCell align="center">Status</TableCell>
                         <TableCell align="center">Ações</TableCell>
                       </TableRow>
@@ -294,6 +355,20 @@ export default function AdminTestsPage() {
                           </TableCell>
                           <TableCell>
                             <Chip label={test.type} size="small" />
+                          </TableCell>
+                          <TableCell>
+                            {test.modalidade ? (
+                              <Chip 
+                                label={test.modalidade.name} 
+                                size="small" 
+                                variant="outlined"
+                                color="primary"
+                              />
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">
+                                Não especificada
+                              </Typography>
+                            )}
                           </TableCell>
                           <TableCell align="center">
                             {rowLoading[test.id] ? (

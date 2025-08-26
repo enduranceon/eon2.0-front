@@ -86,13 +86,14 @@ const getStatusChip = (status: string) => {
 const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId }: any) => {
   const getExamStatusForUser = (exam: any): 'INSCRITO' | 'DISPONÍVEL' | 'ENCERRADA' | 'PARTICIPOU' => {
     // Verifica se o usuário está inscrito baseado na presença de registrations
-    const isRegistered = exam.registrations && exam.registrations.length > 0;
+    // IMPORTANTE: Verificar se o usuário atual está inscrito, não apenas se há registrations
+    const isRegistered = exam.registrations && exam.registrations.some((reg: any) => 
+      reg.userId === userId && reg.deletedAt === null
+    );
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const examDate = new Date(exam.date);
-
-    // Log removido para produção
 
     // Se o usuário está inscrito
     if (isRegistered) {
@@ -222,7 +223,7 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
   );
 };
 
-const PastExams = ({ userExams }: any) => {
+const PastExams = ({ userExams, userId }: any) => {
   const [filters, setFilters] = useState({ search: '', startDate: null, endDate: null });
 
   const handleFilterChange = (field: string, value: any) => {
@@ -292,8 +293,10 @@ const PastExams = ({ userExams }: any) => {
       {filteredHistory.length > 0 ? (
         <List>
           {filteredHistory.map((exam: any) => {
-            // Buscar informações de inscrição do usuário para esta prova
-            const userRegistration = exam.registrations?.[0];
+            // Buscar informações de inscrição do usuário atual para esta prova
+            const userRegistration = exam.registrations?.find((reg: any) => 
+              reg.userId === userId && reg.deletedAt === null
+            );
             
             return (
               <React.Fragment key={exam.id}>
@@ -445,22 +448,13 @@ export default function EventsPage() {
       
       
       
-      // Marcar registros reais retornados pela API no conjunto allExams
-      const userExamIds = new Set(userExamsData?.map((exam: any) => exam.id) || []);
-
       setUserRegistrations(userExamsData || []);
 
+      // Manter apenas as registrations reais da API, sem criar registrations artificiais
       const examsWithRegistrations = (allExamsData || []).map((exam: any) => ({
         ...exam,
-        registrations: (exam.registrations && Array.isArray(exam.registrations) && exam.registrations.length > 0)
-          ? exam.registrations
-          : (userExamIds.has(exam.id) ? [{
-              id: `registration-${exam.id}`,
-              userId: auth.user.id,
-              examId: exam.id,
-              status: 'registered',
-              createdAt: new Date().toISOString()
-            }] : [])
+        // Manter apenas as registrations reais da API
+        registrations: exam.registrations && Array.isArray(exam.registrations) ? exam.registrations : []
       }));
 
       setAllExams(examsWithRegistrations);
@@ -616,7 +610,7 @@ export default function EventsPage() {
 
           <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-history" aria-labelledby="tab-history">
             {activeTab === 1 && (loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : 
-              <PastExams userExams={userRegistrations} />
+              <PastExams userExams={userRegistrations} userId={auth.user.id} />
             )}
           </Box>
         </LocalizationProvider>

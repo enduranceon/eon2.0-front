@@ -20,7 +20,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (credentials: LoginRequest) => Promise<LoginResponse>;
   logout: () => void;
-  register: (userData: any) => Promise<void>;
+  register: (userData: any) => Promise<{ userId: string; access_token: string; user: User }>;
   verifyEmail: (token: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<void>;
@@ -283,15 +283,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     toast.success('Logout realizado com sucesso');
   };
 
-  const register = async (userData: any): Promise<void> => {
+  const register = async (userData: any): Promise<{ userId: string; access_token: string; user: User }> => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
       
-      await enduranceApi.register(userData);
+      const response = await enduranceApi.register(userData);
+      
+      console.log('Resposta bruta do registro:', response);
+      
+      // Extrair dados da resposta
+      // A API retorna { access_token, user: { id, name, email, userType, has2FA } }
+      const { access_token, user } = response;
+      const userId = user?.id;
+      
+      console.log('Dados extraídos:', { userId, access_token, user });
       
       // Temporariamente desabilitado - sempre redirecionar para login
       toast.success('Conta criada com sucesso! Faça login para acessar o dashboard.');
       router.push('/login');
+      
+      // Retornar dados para uso externo (como aceitar termo de consentimento)
+      return { userId, access_token, user };
     } catch (error: any) {
       const message = error.response?.data?.message || 'Erro ao criar conta';
       toast.error(message);

@@ -67,7 +67,7 @@ export class EnduranceApiClient {
   private api: AxiosInstance;
   private token?: string;
 
-  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000') {
+  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') {
     this.api = axios.create({
       baseURL,
       timeout: 30000,
@@ -223,8 +223,8 @@ export class EnduranceApiClient {
     this.clearToken();
   }
 
-  async register(userData: RegisterRequest): Promise<void> {
-    return this.post('/auth/register', userData);
+  async register(userData: RegisterRequest): Promise<{ access_token: string; user: User }> {
+    return this.post<{ access_token: string; user: User }>('/auth/register', userData);
   }
 
   async verifyEmail(token: string): Promise<void> {
@@ -563,8 +563,12 @@ export class EnduranceApiClient {
   async getUserTests(filters?: {
     page?: number;
     limit?: number;
-    status?: string;
+    testName?: string;
     testId?: string;
+    testType?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
   }): Promise<{
     data: any[];
     pagination: {
@@ -587,8 +591,12 @@ export class EnduranceApiClient {
     
     if (filters?.page) queryParams.append('page', filters.page.toString());
     if (filters?.limit) queryParams.append('limit', filters.limit.toString());
-    if (filters?.status) queryParams.append('status', filters.status);
+    if (filters?.testName) queryParams.append('testName', filters.testName);
     if (filters?.testId) queryParams.append('testId', filters.testId);
+    if (filters?.testType) queryParams.append('testType', filters.testType);
+    if (filters?.status) queryParams.append('status', filters.status);
+    if (filters?.startDate) queryParams.append('startDate', filters.startDate);
+    if (filters?.endDate) queryParams.append('endDate', filters.endDate);
     
     const url = `/users/dashboard/my-tests${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return this.get<any>(url);
