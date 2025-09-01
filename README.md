@@ -152,7 +152,7 @@ npm run lint
 npm run format
 ```
 
-A aplicação estará disponível em `http://localhost:3000`
+A aplicação estará disponível em `http://localhost:3000` (frontend) e a API em `http://localhost:3001`
 
 ---
 

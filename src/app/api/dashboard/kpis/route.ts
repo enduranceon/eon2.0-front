@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     // Estratégia baseada no module-stats que funciona bem
     const moduleStatsResponse = await safeFetch(
-      () => fetch(`http://localhost:3000/api/dashboard/module-stats`).then(res => res.json()),
+      () => fetch(`http://localhost:3001/api/dashboard/module-stats`).then(res => res.json()),
       [],
       'ModuleStats'
     );

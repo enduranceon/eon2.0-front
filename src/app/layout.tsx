@@ -7,6 +7,9 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ColorModeProvider } from '@/contexts/ThemeContext';
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import { AINotificationProvider } from '@/contexts/AINotificationContext';
+import { WebSocketProvider } from '@/contexts/WebSocketContext';
+import { WebSocketDebugger } from '@/components/WebSocketDebugger';
+import { WebSocketConnectionMonitor } from '@/components/WebSocketConnectionMonitor';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
 import { BrowserExtensionProtection } from '@/components/BrowserExtensionProtection';
@@ -59,19 +62,23 @@ export default function RootLayout({
           <ColorModeProvider>
             <LoadingProvider>
               <AINotificationProvider>
-                <NextTopLoader
-                  color="#FF8012"
-                  initialPosition={0.08}
-                  crawlSpeed={200}
-                  height={3}
-                  crawl={true}
-                  showSpinner={false}
-                  easing="ease"
-                  speed={200}
-                  shadow="0 0 10px #FF8012,0 0 5px #FF8012"
-                />
-                {children}
-                <Toaster richColors position="top-right" />
+                <WebSocketProvider>
+                  <NextTopLoader
+                    color="#FF8012"
+                    initialPosition={0.08}
+                    crawlSpeed={200}
+                    height={3}
+                    crawl={true}
+                    showSpinner={false}
+                    easing="ease"
+                    speed={200}
+                    shadow="0 0 10px #FF8012,0 0 5px #FF8012"
+                  />
+                  {children}
+                  <Toaster richColors position="top-right" />
+                  <WebSocketDebugger />
+                  <WebSocketConnectionMonitor />
+                </WebSocketProvider>
               </AINotificationProvider>
             </LoadingProvider>
           </ColorModeProvider>

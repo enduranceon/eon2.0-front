@@ -14,7 +14,6 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  Avatar,
   IconButton,
   Tooltip,
   Divider,
@@ -29,6 +28,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../../contexts/AuthContext';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
+import WebSocketAvatar from '../../../../components/WebSocketAvatar';
 import {
   Edit as EditIcon,
   PhotoCamera as PhotoCameraIcon,
@@ -143,7 +143,7 @@ export default function StudentProfilePage() {
     }
 
     // Obtenha a origem da API (ex: http://localhost:3001)
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     const origin = new URL(apiUrl).origin;
 
     // Normalize o caminho da imagem para garantir que comece com /api/uploads/...
@@ -333,9 +333,12 @@ export default function StudentProfilePage() {
             <Grid item xs={12} md={4}>
               <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
                 <Box sx={{ mb: 2 }}>
-                  <Avatar
-                    src={getAbsoluteImageUrl(profile.image || profile.avatar)}
+                  <WebSocketAvatar
+                    userId={profile.id}
+                    user={profile}
+                    defaultPhoto={getAbsoluteImageUrl(profile.image || profile.avatar)}
                     sx={{ width: 120, height: 120, margin: '0 auto', mb: 2 }}
+                    showUpdateIndicator={true}
                   />
                   <input
                     type="file"

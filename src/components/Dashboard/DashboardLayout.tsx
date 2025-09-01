@@ -15,7 +15,6 @@ import {
   ListItemText,
   Toolbar,
   Typography,
-  Avatar,
   Menu,
   MenuItem,
   Badge,
@@ -66,6 +65,7 @@ import Link from 'next/link';
 import NavigationLoader from '../NavigationLoader';
 import { useLoading } from '@/contexts/LoadingContext';
 import { useAINotifications } from '../../contexts/AINotificationContext';
+import WebSocketAvatar from '../WebSocketAvatar';
 import LogoHorizontal from '@/assets/images/logo/logo-new-white.png';
 import LogoSymbol from '@/assets/images/logo/logo-symbol.svg';
 import LogoSimboloPreto from '@/assets/images/logo/logo_simbolo_preto.png';
@@ -724,9 +724,15 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
               onClick={handleProfileMenuOpen}
               color="inherit"
             >
-              <Avatar src={getAbsoluteImageUrl(user.image)} sx={{ width: 32, height: 32 }}>
+              <WebSocketAvatar 
+                userId={user.id}
+                user={user}
+                defaultPhoto={getAbsoluteImageUrl(user.image)}
+                sx={{ width: 32, height: 32 }}
+                showUpdateIndicator={true}
+              >
                 {!user.image && <AccountCircleIcon />}
-              </Avatar>
+              </WebSocketAvatar>
             </IconButton>
           </Box>
         </Toolbar>

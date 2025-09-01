@@ -1353,4 +1353,124 @@ export interface ConsentAcceptanceRequest {
   consentTermVersion: string;
   ipAddress?: string;
   userAgent?: string;
+}
+
+// Interfaces para WebSocket
+export interface UserPhotoUpdateEvent {
+  userId: string;
+  imageUrl: string;
+  updatedAt: string;
+  userType: string;
+  timestamp: string;
+  receivedAt?: string; // Timestamp de quando o evento foi recebido no frontend
+}
+
+export interface UserProfileUpdateEvent {
+  userId: string;
+  updatedFields: string[];
+  updatedAt: string;
+  userType: string;
+  timestamp: string;
+}
+
+export interface UserStatusChangeEvent {
+  userId: string;
+  status: string;
+  previousStatus: string;
+  updatedAt: string;
+  userType: string;
+  timestamp: string;
+}
+
+export interface WebSocketEvent {
+  type: 'user:photo:updated' | 'user:profile:updated' | 'user:status:changed' | 'user:connected' | 'user:disconnected' | 'pong';
+  data: UserPhotoUpdateEvent | UserProfileUpdateEvent | UserStatusChangeEvent | any;
+  timestamp: string;
+}
+
+export interface WebSocketConnectionStatus {
+  isConnected: boolean;
+  lastConnected?: string;
+  lastDisconnected?: string;
+  reconnectAttempts: number;
+  maxReconnectAttempts: number;
+}
+
+// Novos eventos WebSocket implementados
+export interface ExamResultRegisteredEvent {
+  userId: string;
+  examId: string;
+  examName: string;
+  result: any;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface TestResultRegisteredEvent {
+  userId: string;
+  testId: string;
+  testName: string;
+  result: any;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface NewExamCreatedEvent {
+  examId: string;
+  examName: string;
+  modalidade: string;
+  coachId: string;
+  coachName: string;
+  students: string[];
+  timestamp: string;
+}
+
+export interface PlanChangeEvent {
+  userId: string;
+  studentName: string;
+  oldPlanId: string;
+  oldPlanName: string;
+  newPlanId: string;
+  newPlanName: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface StudentAccountCreatedEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface LeaveRequestEvent {
+  userId: string;
+  studentName: string;
+  requestId: string;
+  reason: string;
+  startDate: string;
+  endDate: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+// Atualizar interface WebSocketEvent para incluir novos eventos
+export interface WebSocketEvent {
+  type: 'user:photo:updated' | 'user:profile:updated' | 'user:status:changed' | 'user:connected' | 'user:disconnected' | 'pong' | 
+        'exam:result:registered' | 'exam:result:registered:coach' | 
+        'test:result:registered' | 'test:result:registered:coach' |
+        'exam:created' | 'exam:created:coach' |
+        'plan:changed' | 'plan:changed:coach' |
+        'account:created' | 'student:account:created' |
+        'leave:requested' | 'leave:requested:coach';
+  data: UserPhotoUpdateEvent | UserProfileUpdateEvent | UserStatusChangeEvent | 
+        ExamResultRegisteredEvent | TestResultRegisteredEvent | NewExamCreatedEvent |
+        PlanChangeEvent | StudentAccountCreatedEvent | LeaveRequestEvent | any;
+  timestamp: string;
 } 

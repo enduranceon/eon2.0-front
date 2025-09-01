@@ -346,7 +346,8 @@ export class EnduranceApiClient {
   }
 
   async recordCoachDynamicTestResult(data: RecordDynamicTestResultRequest): Promise<TestResult> {
-    return this.post<TestResult>('/coaches/dashboard/record-dynamic-test-result', data);
+    // Usar endpoint local que emite eventos WebSocket
+    return this.post<TestResult>('/tests/record-result', data);
   }
 
   // Gerenciamento de Campos Dinâmicos
@@ -1175,7 +1176,8 @@ export class EnduranceApiClient {
 
   // Adicionar Resultados (método legado)
   async addExamResult(examId: string, data: any): Promise<any> {
-    return this.post<any>(`/coaches/exams/${examId}/results`, data);
+    // Usar endpoint local que emite eventos WebSocket
+    return this.post<any>('/exams/record-result', data);
   }
 
   // Relatórios Financeiros
