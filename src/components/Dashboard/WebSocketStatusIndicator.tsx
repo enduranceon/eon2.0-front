@@ -2,10 +2,9 @@
 
 import React from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
-import { 
-  WifiIcon, 
-  WifiSlashIcon,
-  ExclamationTriangleIcon 
+import {
+  WifiIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
 interface WebSocketStatusIndicatorProps {
@@ -65,7 +64,7 @@ export const WebSocketStatusIndicator: React.FC<WebSocketStatusIndicatorProps> =
     }
 
     return {
-      icon: WifiSlashIcon,
+      icon: ExclamationTriangleIcon,
       color: 'text-red-500',
       bgColor: 'bg-red-100 dark:bg-red-900/20',
       text: 'Desconectado',

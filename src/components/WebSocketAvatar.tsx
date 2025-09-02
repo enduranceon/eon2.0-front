@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Avatar as MuiAvatar, AvatarProps as MuiAvatarProps } from '@mui/material';
-import { useRealTimePhoto } from '../hooks/useRealTimePhoto';
 import { User } from '../types/api';
 
 interface WebSocketAvatarProps extends Omit<MuiAvatarProps, 'src'> {
@@ -52,24 +51,7 @@ export const WebSocketAvatar: React.FC<WebSocketAvatarProps> = ({
   
   // Usar foto do usuário ou foto padrão
   const userPhoto = user?.image || defaultPhoto;
-  
-  // Callback estável para evitar loops
-  const handlePhotoUpdate = useCallback((newPhotoUrl: string) => {
-    // Resetar erro de imagem quando receber nova foto
-    setImageError(false);
-    console.log('🖼️ WebSocketAvatar: Nova foto recebida:', newPhotoUrl);
-  }, []);
-  
-  // Hook para atualização em tempo real
-  const { currentPhoto, isPhotoUpdated } = useRealTimePhoto({
-    userId,
-    defaultPhoto: userPhoto,
-    onPhotoUpdate: handlePhotoUpdate,
-  });
-
-  // Determinar qual foto usar e processar URL
-  const rawPhotoUrl = currentPhoto || userPhoto;
-  const photoUrl = getAbsoluteImageUrl(rawPhotoUrl);
+  const photoUrl = getAbsoluteImageUrl(userPhoto);
   
   // Texto de fallback baseado no nome do usuário
   const fallbackText = user?.name ? user.name.charAt(0).toUpperCase() : '?';
@@ -82,19 +64,19 @@ export const WebSocketAvatar: React.FC<WebSocketAvatarProps> = ({
     setImageError(false);
   };
 
-  // Estilos customizados para indicador de atualização
+  // Estilos do avatar com indicador de atualização
   const avatarSx = {
     ...sx,
-    position: 'relative',
-    ...(showUpdateIndicator && isPhotoUpdated && {
+    position: 'relative' as const,
+    ...(showUpdateIndicator && {
       '&::after': {
         content: '""',
         position: 'absolute',
-        top: '-2px',
-        right: '-2px',
-        width: '12px',
-        height: '12px',
-        backgroundColor: '#4CAF50',
+        top: 0,
+        right: 0,
+        width: '20%',
+        height: '20%',
+        backgroundColor: '#4ade80',
         borderRadius: '50%',
         border: '2px solid white',
         animation: 'pulse 2s infinite',
@@ -107,7 +89,7 @@ export const WebSocketAvatar: React.FC<WebSocketAvatarProps> = ({
     <MuiAvatar
       {...props}
       src={photoUrl && !imageError ? photoUrl : undefined}
-      sx={avatarSx}
+      sx={avatarSx as any}
       imgProps={{
         onError: handleImageError,
         onLoad: handleImageLoad,

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ImmediateAvatar } from '../ImmediateAvatar';
+import { WebSocketAvatar } from '../WebSocketAvatar';
 import { WebSocketStatusIndicator } from './WebSocketStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -89,11 +89,11 @@ export const OptimizedUserAvatar: React.FC<OptimizedUserAvatarProps> = ({
           className="relative group"
           aria-label="Perfil do usuário"
         >
-          <ImmediateAvatar
+          <WebSocketAvatar
             userId={user.id}
             user={user}
-            size={40}
             showUpdateIndicator={true}
+            sx={{ width: 40, height: 40 }}
             className="ring-2 ring-transparent group-hover:ring-green-200 dark:group-hover:ring-green-800 transition-all"
           />
         </button>

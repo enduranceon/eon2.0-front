@@ -25,22 +25,19 @@ class WebSocketService {
       });
 
       this.socket.on('connect', () => {
-        console.log('🔌 [WebSocketService] Conectado ao servidor WebSocket');
         this.isConnected = true;
       });
 
       this.socket.on('disconnect', () => {
-        console.log('🔌 [WebSocketService] Desconectado do servidor WebSocket');
         this.isConnected = false;
       });
 
       this.socket.on('connect_error', (error) => {
-        console.error('❌ [WebSocketService] Erro de conexão:', error);
         this.isConnected = false;
       });
 
     } catch (error) {
-      console.error('❌ [WebSocketService] Erro ao inicializar socket:', error);
+      // Erro ao inicializar socket
     }
   }
 
@@ -60,16 +57,12 @@ class WebSocketService {
       timestamp: new Date().toISOString()
     };
 
-    console.log('📡 [WebSocketService] Emitindo evento test:result:registered:', eventData);
-
     if (this.socket && this.isConnected) {
       // Emitir para o aluno
       this.socket.emit('test:result:registered', eventData);
       
       // Emitir para o treinador
       this.socket.emit('test:result:registered:coach', eventData);
-    } else {
-      console.warn('⚠️ [WebSocketService] Socket não conectado, evento não foi emitido');
     }
   }
 
@@ -89,16 +82,12 @@ class WebSocketService {
       timestamp: new Date().toISOString()
     };
 
-    console.log('📡 [WebSocketService] Emitindo evento exam:result:registered:', eventData);
-
     if (this.socket && this.isConnected) {
       // Emitir para o aluno
       this.socket.emit('exam:result:registered', eventData);
       
       // Emitir para o treinador
       this.socket.emit('exam:result:registered:coach', eventData);
-    } else {
-      console.warn('⚠️ [WebSocketService] Socket não conectado, evento não foi emitido');
     }
   }
 
@@ -118,16 +107,12 @@ class WebSocketService {
       timestamp: new Date().toISOString()
     };
 
-    console.log('📡 [WebSocketService] Emitindo evento exam:created:', eventData);
-
     if (this.socket && this.isConnected) {
       // Emitir para os alunos
       this.socket.emit('exam:created', eventData);
       
       // Emitir para o treinador
       this.socket.emit('exam:created:coach', eventData);
-    } else {
-      console.warn('⚠️ [WebSocketService] Socket não conectado, evento não foi emitido');
     }
   }
 
@@ -149,16 +134,12 @@ class WebSocketService {
       timestamp: new Date().toISOString()
     };
 
-    console.log('📡 [WebSocketService] Emitindo evento plan:changed:', eventData);
-
     if (this.socket && this.isConnected) {
       // Emitir para o aluno
       this.socket.emit('plan:changed', eventData);
       
       // Emitir para o treinador
       this.socket.emit('plan:changed:coach', eventData);
-    } else {
-      console.warn('⚠️ [WebSocketService] Socket não conectado, evento não foi emitido');
     }
   }
 
@@ -177,16 +158,12 @@ class WebSocketService {
       timestamp: new Date().toISOString()
     };
 
-    console.log('📡 [WebSocketService] Emitindo evento student:account:created:', eventData);
-
     if (this.socket && this.isConnected) {
       // Emitir para o aluno
       this.socket.emit('account:created', eventData);
       
       // Emitir para o treinador
       this.socket.emit('student:account:created', eventData);
-    } else {
-      console.warn('⚠️ [WebSocketService] Socket não conectado, evento não foi emitido');
     }
   }
 
@@ -208,16 +185,12 @@ class WebSocketService {
       timestamp: new Date().toISOString()
     };
 
-    console.log('📡 [WebSocketService] Emitindo evento leave:requested:', eventData);
-
     if (this.socket && this.isConnected) {
       // Emitir para o aluno
       this.socket.emit('leave:requested', eventData);
       
       // Emitir para o treinador
       this.socket.emit('leave:requested:coach', eventData);
-    } else {
-      console.warn('⚠️ [WebSocketService] Socket não conectado, evento não foi emitido');
     }
   }
 

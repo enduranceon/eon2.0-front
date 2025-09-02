@@ -1382,11 +1382,7 @@ export interface UserStatusChangeEvent {
   timestamp: string;
 }
 
-export interface WebSocketEvent {
-  type: 'user:photo:updated' | 'user:profile:updated' | 'user:status:changed' | 'user:connected' | 'user:disconnected' | 'pong';
-  data: UserPhotoUpdateEvent | UserProfileUpdateEvent | UserStatusChangeEvent | any;
-  timestamp: string;
-}
+// Interface WebSocketEvent movida para baixo com novos eventos
 
 export interface WebSocketConnectionStatus {
   isConnected: boolean;

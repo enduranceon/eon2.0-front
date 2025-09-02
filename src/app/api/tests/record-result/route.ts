@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enduranceApi } from '@/services/enduranceApi';
 import { websocketService } from '@/services/websocketService';
+import { TestResult } from '@/types/api';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { testId, userId, resultType, singleResult, multipleResults, notes } = body;
 
-    console.log('🎯 [API] Registrando resultado de teste:', {
-      testId,
-      userId,
-      resultType,
-      singleResult,
-      multipleResults,
-      notes,
-      timestamp: new Date().toISOString()
-    });
+    // Registrando resultado de teste
 
     // Chamar o backend real diretamente para evitar loop infinito
     const result = await enduranceApi.post<TestResult>('/coaches/dashboard/record-dynamic-test-result', {
@@ -27,7 +20,7 @@ export async function POST(request: NextRequest) {
       notes
     });
 
-    console.log('✅ [API] Resultado registrado com sucesso:', result);
+    // Resultado registrado com sucesso
 
     // Emitir evento WebSocket
     const eventData = {
@@ -55,7 +48,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ [API] Erro ao registrar resultado de teste:', error);
     return NextResponse.json(
       { 
         success: false,

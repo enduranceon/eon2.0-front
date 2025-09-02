@@ -7,14 +7,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { examId, registrationId, timeSeconds, generalRank, categoryRank, notes } = body;
 
-    console.log('🎯 [API] Registrando resultado de prova:', {
-      registrationId,
-      timeSeconds,
-      generalRank,
-      categoryRank,
-      notes,
-      timestamp: new Date().toISOString()
-    });
+    // Registrando resultado de prova
 
     // Chamar o backend real diretamente para evitar loop infinito
     const result = await enduranceApi.post<any>(`/coaches/exams/${examId}/results`, {
@@ -25,7 +18,7 @@ export async function POST(request: NextRequest) {
       notes
     });
 
-    console.log('✅ [API] Resultado de prova registrado com sucesso:', result);
+    // Resultado de prova registrado com sucesso
 
     // Emitir evento WebSocket
     const eventData = {
@@ -51,7 +44,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ [API] Erro ao registrar resultado de prova:', error);
     return NextResponse.json(
       { 
         success: false,

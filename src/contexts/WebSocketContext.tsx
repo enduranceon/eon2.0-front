@@ -159,14 +159,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
 
       newSocket.on('connect_error', (error) => {
-        console.error('❌ Erro de conexão WebSocket:', {
-          error: error.message,
-          description: error.description,
-          context: error.context,
-          type: error.type,
-          url: WEBSOCKET_URL,
-          timestamp: new Date().toISOString()
-        });
+        // Erro de conexão WebSocket
         setConnectionStatus(prev => ({
           ...prev,
           reconnectAttempts: prev.reconnectAttempts + 1,

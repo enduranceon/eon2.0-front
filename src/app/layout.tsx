@@ -8,8 +8,7 @@ import { ColorModeProvider } from '@/contexts/ThemeContext';
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import { AINotificationProvider } from '@/contexts/AINotificationContext';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
-import { WebSocketDebugger } from '@/components/WebSocketDebugger';
-import { WebSocketConnectionMonitor } from '@/components/WebSocketConnectionMonitor';
+// Componentes de debug removidos para produção
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
 import { BrowserExtensionProtection } from '@/components/BrowserExtensionProtection';
@@ -76,8 +75,7 @@ export default function RootLayout({
                   />
                   {children}
                   <Toaster richColors position="top-right" />
-                  <WebSocketDebugger />
-                  <WebSocketConnectionMonitor />
+                  {/* Componentes de debug removidos para produção */}
                 </WebSocketProvider>
               </AINotificationProvider>
             </LoadingProvider>

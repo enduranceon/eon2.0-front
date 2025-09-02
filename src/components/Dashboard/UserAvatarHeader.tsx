@@ -4,7 +4,7 @@ import React from 'react';
 import { Avatar } from '@/components/Avatar';
 import { WebSocketStatusIndicator } from './WebSocketStatusIndicator';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRealTimePhoto } from '@/hooks/useRealTimePhoto';
+// Hook removido - usando apenas Avatar simples
 import { 
   UserCircleIcon,
   BellIcon,
@@ -31,10 +31,6 @@ export const UserAvatarHeader: React.FC<UserAvatarHeaderProps> = ({
   onSettingsClick,
 }) => {
   const { user } = useAuth();
-  const { isPhotoUpdated } = useRealTimePhoto({
-    userId: user?.id || '',
-    defaultPhoto: user?.image,
-  });
 
   if (!user) {
     return null;
@@ -100,12 +96,7 @@ export const UserAvatarHeader: React.FC<UserAvatarHeaderProps> = ({
             className="ring-2 ring-transparent group-hover:ring-blue-200 dark:group-hover:ring-blue-800 transition-all"
           />
           
-          {/* Indicador de foto atualizada */}
-          {isPhotoUpdated && (
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-            </div>
-          )}
+          {/* Indicador de foto atualizada removido para produção */}
         </button>
       </div>
 

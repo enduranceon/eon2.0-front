@@ -335,7 +335,15 @@ export default function StudentProfilePage() {
                 <Box sx={{ mb: 2 }}>
                   <WebSocketAvatar
                     userId={profile.id}
-                    user={profile}
+                    user={{
+                      id: profile.id,
+                      name: profile.name,
+                      email: profile.email,
+                      userType: 'FITNESS_STUDENT' as any,
+                      isActive: true,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString()
+                    }}
                     defaultPhoto={getAbsoluteImageUrl(profile.image || profile.avatar)}
                     sx={{ width: 120, height: 120, margin: '0 auto', mb: 2 }}
                     showUpdateIndicator={true}
