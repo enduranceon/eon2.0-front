@@ -107,6 +107,18 @@ export default function CheckoutPage() {
     fetchIp();
   }, []);
 
+  // Definir valor padrão para parcelas quando a opção "Parcelado" for selecionada
+  useEffect(() => {
+    if (paymentOption === 'PARCELADO' && installmentCount === 0) {
+      const maxInstallments = getMaxInstallments(period);
+      if (maxInstallments > 1) {
+        setInstallmentCount(2); // Valor padrão de 2 parcelas
+      }
+    } else if (paymentOption === 'AVISTA') {
+      setInstallmentCount(0);
+    }
+  }, [paymentOption, period, installmentCount]);
+
   // Outros useEffects...
   const loadInitialData = async () => {
     try {
@@ -661,7 +673,7 @@ export default function CheckoutPage() {
                               <FormControl fullWidth>
                                 <InputLabel>Parcelas</InputLabel>
                                 <Select
-                                  value={installmentCount || ''}
+                                  value={installmentCount}
                                   label="Parcelas"
                                   onChange={(e) => setInstallmentCount(Number(e.target.value))}
                                 >
