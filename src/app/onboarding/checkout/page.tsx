@@ -386,7 +386,11 @@ export default function CheckoutPage() {
   };
 
   const getTotalAmount = () => {
-    return getCurrentPrice() + getEnrollmentFeeAmount();
+    const planPrice = getCurrentPrice();
+    const enrollmentFeeAmount = getEnrollmentFeeAmount();
+    const totalDiscount = couponDiscount?.isValid ? couponDiscount.totalDiscount : 0;
+    
+    return planPrice + enrollmentFeeAmount - totalDiscount;
   };
   
   const getPeriodLabel = (p: PlanPeriod) => {
