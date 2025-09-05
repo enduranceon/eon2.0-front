@@ -320,17 +320,14 @@ const questions: QuizQuestion[] = [
 const calculatePlan = (answers: Record<string, any>, plans: Plan[], modalidades: Modalidade[]): { plan: Plan; modalidade: Modalidade } | null => {
   // Verificações defensivas
   if (!Array.isArray(plans) || plans.length === 0) {
-    console.error('❌ Plans não é um array válido:', plans);
     return null;
   }
   
   if (!Array.isArray(modalidades) || modalidades.length === 0) {
-    console.error('❌ Modalidades não é um array válido:', modalidades);
     return null;
   }
 
   if (!answers || !answers.modalidade) {
-    console.error('❌ Respostas inválidas:', answers);
     return null;
   }
 
@@ -379,7 +376,6 @@ const calculatePlan = (answers: Record<string, any>, plans: Plan[], modalidades:
   }
 
   if (!plan) {
-    console.error('❌ Nenhum plano ativo encontrado!');
     return null;
   }
 
@@ -395,7 +391,6 @@ const calculatePlan = (answers: Record<string, any>, plans: Plan[], modalidades:
   }
   
   if (!modalidade) {
-    console.error('❌ Nenhuma modalidade ativa encontrada!');
     return null;
   }
 

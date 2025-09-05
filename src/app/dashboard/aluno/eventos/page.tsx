@@ -59,6 +59,7 @@ import {
 import { enduranceApi } from '../../../../services/enduranceApi';
 import { handleApiError } from '../../../../utils/errors';
 import DistanceSelectionModal from '../../../../components/Dashboard/Aluno/DistanceSelectionModal';
+import ExternalExamsTab from '../../../../components/Dashboard/Aluno/ExternalExamsTab';
 // import { enduranceApi } from '../../../../services/enduranceApi';
 // import dayjs from 'dayjs';
 
@@ -589,28 +590,57 @@ export default function EventsPage() {
         
         <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} aria-label="abas de provas">
+            <Tabs 
+              value={activeTab} 
+              onChange={(e, newValue) => setActiveTab(newValue)} 
+              aria-label="abas de provas"
+            >
               <Tab label="Provas Disponíveis" id="tab-available" aria-controls="tabpanel-available" />
+              <Tab label="Provas Externas" id="tab-external" aria-controls="tabpanel-external" />
               <Tab label="Resultado de Provas" id="tab-history" aria-controls="tabpanel-history" />
             </Tabs>
           </Box>
 
           <Box role="tabpanel" hidden={activeTab !== 0} id="tabpanel-available" aria-labelledby="tab-available">
-            {activeTab === 0 && (loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : 
-              allExams.length > 0 ?
-              <AvailableExams
-                exams={allExams}
-                userId={auth.user.id}
-                onRegister={handleRegister}
-                onOpenDetails={handleOpenDetailsModal}
-                processingId={processingId}
-              /> : <Alert severity="info">Nenhuma prova disponível no momento.</Alert>
+            {activeTab === 0 && (
+              <>
+                {loading && <CircularProgress />}
+                {error && <Alert severity="error">{error}</Alert>}
+                {!loading && !error && allExams.length > 0 && (
+                  <AvailableExams
+                    exams={allExams}
+                    userId={auth.user.id}
+                    onRegister={handleRegister}
+                    onOpenDetails={handleOpenDetailsModal}
+                    processingId={processingId}
+                  />
+                )}
+                {!loading && !error && allExams.length === 0 && (
+                  <Alert severity="info">Nenhuma prova disponível no momento.</Alert>
+                )}
+              </>
             )}
           </Box>
 
-          <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-history" aria-labelledby="tab-history">
-            {activeTab === 1 && (loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : 
-              <PastExams userExams={userRegistrations} userId={auth.user.id} />
+          <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-external" aria-labelledby="tab-external">
+            {activeTab === 1 && (
+              <ExternalExamsTab
+                onExamClick={(exam) => {
+                  // Aqui você pode implementar uma ação quando clicar em uma prova externa
+                }}
+              />
+            )}
+          </Box>
+
+          <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-history" aria-labelledby="tab-history">
+            {activeTab === 2 && (
+              <>
+                {loading && <CircularProgress />}
+                {error && <Alert severity="error">{error}</Alert>}
+                {!loading && !error && (
+                  <PastExams userExams={userRegistrations} userId={auth.user.id} />
+                )}
+              </>
             )}
           </Box>
         </LocalizationProvider>

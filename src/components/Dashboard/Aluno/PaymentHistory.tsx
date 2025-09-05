@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Typography,
   Card,
@@ -12,6 +12,8 @@ import {
   Chip,
   Box,
   Alert,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   CreditCard as CreditCardIcon,
@@ -20,9 +22,11 @@ import {
   HourglassEmpty as PendingIcon,
   CheckCircle as ActiveIcon,
   Cancel as InactiveIcon,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import { Payment, PaymentStatus, PaymentMethod } from '@/types/api';
 import { format } from 'date-fns';
+import PaymentDetailsModal from './PaymentDetailsModal';
 
 const StatusChip = ({ status }: { status: PaymentStatus }) => {
   const statusMap = {
@@ -49,11 +53,24 @@ interface PaymentHistoryProps {
 }
 
 const PaymentHistory: React.FC<PaymentHistoryProps> = ({ payments }) => {
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
   const processPayments = (payments: Payment[]) => {
     const paidPayments = payments.filter(payment => payment.status === 'CONFIRMED');
     const otherPayments = payments.filter(payment => payment.status !== 'CONFIRMED');
     
     return { paidPayments, otherPayments };
+  };
+
+  const handleViewDetails = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedPayment(null);
   };
 
   const { paidPayments, otherPayments } = processPayments(payments);
@@ -106,6 +123,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ payments }) => {
                 <TableCell align="right">Valor</TableCell>
                 <TableCell>Data Vencimento</TableCell>
                 <TableCell>Data Pagamento</TableCell>
+                <TableCell align="center">Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -130,11 +148,22 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ payments }) => {
                     <TableCell>
                       {payment.paidAt ? format(new Date(payment.paidAt), 'dd/MM/yyyy') : '-'}
                     </TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Ver detalhes do pagamento">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleViewDetails(payment)}
+                          color="primary"
+                        >
+                          <VisibilityIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <Typography variant="body1" color="text.secondary">
                       Nenhum pagamento encontrado.
                     </Typography>
@@ -148,6 +177,13 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({ payments }) => {
           </Table>
         </TableContainer>
       </CardContent>
+      
+      {/* Modal de detalhes do pagamento */}
+      <PaymentDetailsModal
+        open={modalOpen}
+        onClose={handleCloseModal}
+        payment={selectedPayment}
+      />
     </Card>
   );
 };

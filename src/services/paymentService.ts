@@ -416,7 +416,6 @@ class PaymentService {
             };
           }
         } catch (subError) {
-          console.error('❌ PaymentService - Erro ao gerar dados mockados:', subError);
         }
       }
       
@@ -456,15 +455,23 @@ class PaymentService {
         const paidDate = new Date(dueDate);
         paidDate.setDate(Math.random() > 0.5 ? 12 : 18); // Pagos antes ou após vencimento
         
+        const paymentMethod = i % 3 === 0 ? 'CREDIT_CARD' as any : i % 3 === 1 ? 'PIX' as any : 'BOLETO' as any;
+        const isPaid = paidDate <= currentDate;
+        
+        // Gerar dados do Asaas baseado no método de pagamento
+        const asaasPaymentData = this.generateAsaasPaymentData(paymentMethod, isPaid, subscription.amount);
+
         const payment: Payment = {
           id: `mock_payment_${subscription.id}_${i}`,
           subscriptionId: subscription.id,
           userId: subscription.userId,
           amount: subscription.amount,
-          paymentMethod: i % 3 === 0 ? 'CREDIT_CARD' as any : i % 3 === 1 ? 'PIX' as any : 'BOLETO' as any,
-          status: paidDate <= currentDate ? 'CONFIRMED' as any : 'PENDING' as any,
+          paymentMethod,
+          status: isPaid ? 'CONFIRMED' as any : 'PENDING' as any,
+          asaasPaymentId: `pay_asaas_${Date.now()}_${i}`,
+          asaasPaymentData,
           dueDate: dueDate.toISOString(),
-          paidAt: paidDate <= currentDate ? paidDate.toISOString() : undefined,
+          paidAt: isPaid ? paidDate.toISOString() : undefined,
           createdAt: paymentDate.toISOString(),
         };
         
@@ -473,6 +480,75 @@ class PaymentService {
     }
     
     return payments.reverse(); // Mais recentes primeiro
+  }
+
+  // Gerar dados do Asaas para diferentes métodos de pagamento
+  private generateAsaasPaymentData(paymentMethod: string, isPaid: boolean, amount: number) {
+    const baseData = {
+      id: `pay_asaas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      status: isPaid ? 'CONFIRMED' : 'PENDING',
+      billingType: paymentMethod as PaymentMethod,
+      invoiceUrl: `https://www.asaas.com/i/pay_asaas_${Date.now()}`,
+      transactionReceiptUrl: isPaid ? `https://www.asaas.com/r/pay_asaas_${Date.now()}` : undefined,
+    };
+
+    switch (paymentMethod) {
+      case 'PIX':
+        return {
+          ...baseData,
+          pixData: {
+            encodedImage: this.generateMockQRCode(),
+            payload: this.generateMockPixPayload(amount),
+            expirationDate: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutos
+          },
+        };
+
+      case 'BOLETO':
+        return {
+          ...baseData,
+          boletoData: {
+            bankSlipUrl: `https://www.asaas.com/b/pdf/pay_asaas_${Date.now()}`,
+            bankSlipBarCode: this.generateMockBoletoBarCode(),
+            bankSlipBarCodeNumber: this.generateMockBoletoNumber(),
+          },
+        };
+
+      case 'CREDIT_CARD':
+        return {
+          ...baseData,
+          creditCardData: {
+            holderName: 'João Silva',
+            number: '4111111111111111',
+            expiryMonth: '12',
+            expiryYear: '2025',
+          },
+        };
+
+      default:
+        return baseData;
+    }
+  }
+
+  // Gerar QR Code mock (base64 de uma imagem simples)
+  private generateMockQRCode(): string {
+    // QR Code mock em base64 (imagem 200x200 pixels)
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABx0RVh0U29mdHdhcmUAQWRvYmUgRmlyZXdvcmtzIENTNui8sowAAAAWdEVYdENyZWF0aW9uIFRpbWUAMDgvMDEvMjO8qJqJAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDI0LTAxLTE1VDEwOjAwOjAwKzAwOjAw8qJqJAAAACV0RVh0ZGF0ZTptb2RpZnkAMjAyNC0wMS0xNVQxMDowMDowMCswMDowMPKiayQAAAAASUVORK5CYII=';
+  }
+
+  // Gerar payload PIX mock
+  private generateMockPixPayload(amount: number): string {
+    const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '');
+    return `00020126580014br.gov.bcb.pix013636d7f239-8a64-43a3-a8e8-${Date.now()}5204000053039865802BR5913ENDURANCE ON6014Belo Horizonte62070503***6304${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+  }
+
+  // Gerar código de barras do boleto mock
+  private generateMockBoletoBarCode(): string {
+    return '23791.12345.67890.123456.78901.234567.8.12345678901234';
+  }
+
+  // Gerar número do código de barras do boleto mock
+  private generateMockBoletoNumber(): string {
+    return '23791123456789012345678901234567812345678901234';
   }
 }
 

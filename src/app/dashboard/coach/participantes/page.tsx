@@ -157,10 +157,8 @@ export default function ParticipantsPage() {
       // Usar o novo endpoint público de provas
       if (examsResponse.success && Array.isArray(examsResponse.data)) {
         setExams(examsResponse.data);
-        console.log('Provas carregadas com sucesso:', examsResponse.data.length, 'provas');
       } else {
         setExams([]);
-        console.warn('Erro ao carregar provas:', examsResponse.message);
       }
       // Verificar se modalidadesResponse tem estrutura de resposta paginada
       let modalidadesData = modalidadesResponse?.data || modalidadesResponse;

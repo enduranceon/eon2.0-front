@@ -6,14 +6,14 @@ import {
   CircularProgress, Alert, Chip, Avatar, Divider, 
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   LinearProgress, Accordion, AccordionSummary, AccordionDetails, TextField,
-  Button, Select, MenuItem, FormControl, InputLabel
+  Button, Select, MenuItem, FormControl, InputLabel, Tabs, Tab
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { enduranceApi } from '@/services/enduranceApi';
-import { UserTest, TestType } from '@/types/api';
+import { UserTest, TestType, TestReportRequest } from '@/types/api';
 import ScienceIcon from '@mui/icons-material/Science';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
@@ -22,10 +22,14 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SearchIcon from '@mui/icons-material/Search';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import GetAppIcon from '@mui/icons-material/GetApp';
 import PageHeader from '@/components/Dashboard/PageHeader';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/Dashboard/DashboardLayout';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import TestReportRequestModal from '@/components/TestReportRequestModal';
+import MyTestReportRequests from '@/components/MyTestReportRequests';
 
 const getTestIcon = (type: TestType) => {
   switch (type) {
@@ -46,7 +50,10 @@ const TestHistory = ({
   setFilters, 
   onClearFilters,
   onApplyFilters,
-  appliedFilters
+  appliedFilters,
+  onRequestReport,
+  canRequestReport,
+  onDownloadReport
 }: { 
   history: any[], 
   loading: boolean, 
@@ -55,11 +62,13 @@ const TestHistory = ({
   setFilters: (filters: any) => void,
   onClearFilters: () => void,
   onApplyFilters: () => void,
-  appliedFilters: any
+  appliedFilters: any,
+  onRequestReport: (test: any) => void,
+  canRequestReport: (test: any) => boolean,
+  onDownloadReport: (reportUrl: string, testName: string) => void
 }) => {
 
   const handleFilterChange = (field: string, value: any) => {
-    console.log(`Mudando filtro ${field}:`, value);
     // Garantir que os valores sejam definidos corretamente
     let cleanValue = value;
     if (field === 'testName') {
@@ -67,7 +76,6 @@ const TestHistory = ({
     } else if (field === 'testType' || field === 'status') {
       cleanValue = value || 'all';
     }
-    console.log(`Filtro ${field} definido como:`, cleanValue);
     setFilters(prev => ({ ...prev, [field]: cleanValue }));
   };
 
@@ -77,7 +85,6 @@ const TestHistory = ({
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
-      console.log('Enter pressionado, aplicando filtros');
       event.preventDefault(); // Prevenir comportamento padrão
       onApplyFilters();
     }
@@ -195,6 +202,20 @@ const TestHistory = ({
                 <Typography variant="body2">📅 {formatDate(test.executionDate || test.recordedAt || test.createdAt)}</Typography>
                 {test.notes && <Typography variant="body2">📝 {test.notes}</Typography>}
                 {test.recorder && <Typography variant="body2">👨‍🏫 Registrado por: {test.recorder.name}</Typography>}
+                {test.reportUrl && (
+                  <Box sx={{ mt: 1 }}>
+                    <Button
+                      variant="text"
+                      color="primary"
+                      size="small"
+                      startIcon={<GetAppIcon />}
+                      onClick={() => onDownloadReport(test.reportUrl, test.test?.name || test.name || 'Teste')}
+                      sx={{ p: 0, minWidth: 'auto', textTransform: 'none' }}
+                    >
+                      📄 Baixar Relatório
+                    </Button>
+                  </Box>
+                )}
               </Grid>
             </Grid>
           </Box>
@@ -451,6 +472,55 @@ const TestHistory = ({
                   )}
 
                   {test.type === 'RESULT' && renderTestResults(test)}
+                  
+                  {/* Botão de solicitar relatório */}
+                  {test.type === 'RESULT' && canRequestReport(test) && (
+                    <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        startIcon={<RequestQuoteIcon />}
+                        onClick={() => onRequestReport(test)}
+                        size="small"
+                      >
+                        Solicitar Relatório
+                      </Button>
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                        Solicite um relatório detalhado deste teste
+                      </Typography>
+                    </Box>
+                  )}
+                  
+                  {/* Indicador de relatório já disponível */}
+                  {test.type === 'RESULT' && test.reportUrl && (
+                    <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Alert severity="success" sx={{ mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <DescriptionIcon sx={{ mr: 1 }} />
+                            <Box>
+                              <Typography variant="body2" fontWeight="bold">
+                                Relatório disponível
+                              </Typography>
+                              <Typography variant="caption">
+                                Este teste já possui um relatório anexado
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            startIcon={<GetAppIcon />}
+                            onClick={() => onDownloadReport(test.reportUrl, test.test?.name || test.name || 'Teste')}
+                            sx={{ ml: 2 }}
+                          >
+                            Baixar Relatório
+                          </Button>
+                        </Box>
+                      </Alert>
+                    </Box>
+                  )}
                 </Box>
               </AccordionDetails>
             </Accordion>
@@ -481,6 +551,12 @@ export default function StudentTestsPage() {
     status: 'all'
   });
 
+  // Estados para solicitação de relatório
+  const [currentTab, setCurrentTab] = useState(0);
+  const [reportRequestModalOpen, setReportRequestModalOpen] = useState(false);
+  const [selectedTestForReport, setSelectedTestForReport] = useState<any>(null);
+  const [userPlan, setUserPlan] = useState<string>('');
+
   // Função utilitária para verificar se há filtros ativos
   const hasActiveFilters = (filters: any) => {
     return Object.entries(filters).some(([key, value]) => {
@@ -507,49 +583,33 @@ export default function StudentTestsPage() {
       // Adicionar filtros apenas se estiverem preenchidos
       if (filtersToUse.testName && filtersToUse.testName.trim() !== '') {
         apiFilters.testName = filtersToUse.testName.trim();
-        console.log('✅ Adicionando filtro testName:', apiFilters.testName);
       }
       if (filtersToUse.testType && filtersToUse.testType !== 'all') {
         apiFilters.testType = filtersToUse.testType;
-        console.log('✅ Adicionando filtro testType:', apiFilters.testType);
       }
       if (filtersToUse.status && filtersToUse.status !== 'all') {
         apiFilters.status = filtersToUse.status;
-        console.log('✅ Adicionando filtro status:', apiFilters.status);
       }
       if (filtersToUse.startDate) {
         apiFilters.startDate = filtersToUse.startDate.toISOString();
-        console.log('✅ Adicionando filtro startDate:', apiFilters.startDate);
       }
       if (filtersToUse.endDate) {
         apiFilters.endDate = filtersToUse.endDate.toISOString();
-        console.log('✅ Adicionando filtro endDate:', apiFilters.endDate);
       }
-      
-      // Debug: Log dos filtros sendo enviados
-      console.log('🔍 Filtros aplicados:', filtersToUse);
-      console.log('🚀 Filtros para API:', apiFilters);
       
       // Usar o novo endpoint específico para alunos com filtros
       const response = await enduranceApi.getUserTests(apiFilters);
-      
-      // Debug: Log da resposta da API
-      console.log('📡 Resposta da API:', response);
       
       // Processar a resposta da API
       let testData = [];
       
       if (response && response.data) {
         testData = response.data;
-        console.log('📊 Dados dos testes:', testData);
-      } else {
-        console.log('⚠️ Resposta da API não contém dados');
       }
       
       setUserTests(testData || []);
       
     } catch (err) {
-      console.error('❌ Erro ao carregar testes:', err);
       setError('Erro ao carregar histórico de testes.');
       setUserTests([]);
     } finally {
@@ -558,7 +618,6 @@ export default function StudentTestsPage() {
   }, [appliedFilters]); // Incluir appliedFilters nas dependências
 
   const clearFilters = () => {
-    console.log('Limpando filtros');
     const emptyFilters = {
       testName: '',
       startDate: null,
@@ -576,7 +635,6 @@ export default function StudentTestsPage() {
   };
 
   const applyFilters = () => {
-    console.log('Aplicando filtros:', filters);
     // Garantir que os filtros sejam aplicados corretamente
     const cleanFilters = {
       testName: filters.testName || '',
@@ -585,7 +643,6 @@ export default function StudentTestsPage() {
       testType: filters.testType || 'all',
       status: filters.status || 'all'
     };
-    console.log('Filtros limpos:', cleanFilters);
     setAppliedFilters(cleanFilters);
     
     // Recarregar dados com os novos filtros imediatamente
@@ -594,9 +651,36 @@ export default function StudentTestsPage() {
     }
   };
 
+  // Funções para solicitação de relatório
+  const handleRequestReport = (test: any) => {
+    setSelectedTestForReport(test);
+    setReportRequestModalOpen(true);
+  };
+
+  const handleCloseReportModal = () => {
+    setReportRequestModalOpen(false);
+    setSelectedTestForReport(null);
+  };
+
+  const handleReportRequestSuccess = (request: TestReportRequest) => {
+    // Mudar para a aba de solicitações após sucesso
+    setCurrentTab(1);
+  };
+
+  const canRequestReport = (test: any) => {
+    // Verificar se o teste está concluído e não tem relatório já anexado
+    const isCompleted = typeof test.timeSeconds === 'number' || test.type === 'RESULT';
+    const hasReport = test.reportUrl;
+    return isCompleted && !hasReport;
+  };
+
+  const handleDownloadReport = (reportUrl: string, testName: string) => {
+    // Abrir o relatório em nova aba para download
+    window.open(reportUrl, '_blank');
+  };
+
   useEffect(() => {
     if (auth.user) {
-      console.log('Usuário autenticado, carregando dados iniciais');
       // Carregar dados iniciais sem filtros
       loadData(auth.user.id, {
         testName: '',
@@ -605,6 +689,10 @@ export default function StudentTestsPage() {
         testType: 'all',
         status: 'all'
       });
+      
+      // Carregar plano do usuário
+      const userPlan = auth.user.subscriptions?.[0]?.plan?.name || '';
+      setUserPlan(userPlan);
     }
   }, [auth.user]); // Carregar apenas quando o usuário mudar
 
@@ -618,7 +706,7 @@ export default function StudentTestsPage() {
 
   return (
     <ProtectedRoute allowedUserTypes={['FITNESS_STUDENT']}>
-      <DashboardLayout user={auth.user} onLogout={auth.logout}>
+      <DashboardLayout user={auth.user} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
         <Container maxWidth={false} sx={{ mt: 4, mb: 4 }}>
           <PageHeader
             title="Histórico de Testes"
@@ -626,17 +714,53 @@ export default function StudentTestsPage() {
           />
           
           <Box sx={{ mt: 4 }}>
-            <TestHistory 
-              history={userTests}
-              loading={loading}
-              error={error}
-              filters={filters}
-              setFilters={setFilters}
-              onClearFilters={clearFilters}
-              onApplyFilters={applyFilters}
-              appliedFilters={appliedFilters}
-            />
+            <Paper sx={{ mb: 3 }}>
+              <Tabs 
+                value={currentTab} 
+                onChange={(e, newValue) => setCurrentTab(newValue)}
+                sx={{ borderBottom: 1, borderColor: 'divider' }}
+              >
+                <Tab label="Histórico de Testes" />
+                <Tab label="Solicitações de Relatório" />
+              </Tabs>
+            </Paper>
+
+            {currentTab === 0 && (
+              <TestHistory 
+                history={userTests}
+                loading={loading}
+                error={error}
+                filters={filters}
+                setFilters={setFilters}
+                onClearFilters={clearFilters}
+                onApplyFilters={applyFilters}
+                appliedFilters={appliedFilters}
+                onRequestReport={handleRequestReport}
+                canRequestReport={canRequestReport}
+                onDownloadReport={handleDownloadReport}
+              />
+            )}
+
+            {currentTab === 1 && (
+              <MyTestReportRequests 
+                onRequestClick={(request) => {
+                  // Aqui você pode implementar uma ação quando clicar em uma solicitação
+                }}
+              />
+            )}
           </Box>
+
+          {/* Modal de Solicitação de Relatório */}
+          {selectedTestForReport && (
+            <TestReportRequestModal
+              open={reportRequestModalOpen}
+              onClose={handleCloseReportModal}
+              testResultId={selectedTestForReport.id}
+              testName={selectedTestForReport.test?.name || selectedTestForReport.name || 'Teste'}
+              userPlan={userPlan}
+              onSuccess={handleReportRequestSuccess}
+            />
+          )}
         </Container>
       </DashboardLayout>
     </ProtectedRoute>

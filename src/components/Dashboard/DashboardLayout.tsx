@@ -66,6 +66,8 @@ import NavigationLoader from '../NavigationLoader';
 import { useLoading } from '@/contexts/LoadingContext';
 import { useAINotifications } from '../../contexts/AINotificationContext';
 import WebSocketAvatar from '../WebSocketAvatar';
+import OverdueAlertBar from '../OverdueAlertBar';
+import { useAuth } from '../../contexts/AuthContext';
 import LogoHorizontal from '@/assets/images/logo/logo-new-white.png';
 import LogoSymbol from '@/assets/images/logo/logo-symbol.svg';
 import LogoSimboloPreto from '@/assets/images/logo/logo_simbolo_preto.png';
@@ -76,6 +78,7 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   user: User;
   onLogout: () => void;
+  overdueInfo?: any;
 }
 
 interface MenuItemProps {
@@ -155,6 +158,13 @@ const menuItems: MenuItemProps[] = [
     roles: [UserType.ADMIN],
   },
   {
+    id: 'admin-provas-externas',
+    label: 'Provas Externas',
+    icon: <EventsIcon />,
+    path: '/dashboard/admin/provas-externas',
+    roles: [UserType.ADMIN],
+  },
+  {
     id: 'admin-tests',
     label: 'Testes',
     icon: <TestIcon />,
@@ -203,6 +213,20 @@ const menuItems: MenuItemProps[] = [
     path: '/dashboard/admin/videochamadas',
     roles: [UserType.ADMIN],
   },
+  {
+    id: 'admin-cupons',
+    label: 'Cupons',
+    icon: <MoneyIcon />,
+    path: '/dashboard/admin/cupons',
+    roles: [UserType.ADMIN],
+  },
+  {
+    id: 'admin-taxa-matricula',
+    label: 'Taxa de Matrícula',
+    icon: <ReceiptIcon />,
+    path: '/dashboard/admin/taxa-matricula',
+    roles: [UserType.ADMIN],
+  },
   
   // Coach
   {
@@ -235,7 +259,7 @@ const menuItems: MenuItemProps[] = [
   },
   {
     id: 'coach-confirmar-presenca',
-    label: 'Confirmar Presença',
+    label: 'Gerenciar Provas',
     icon: <PlaylistAddCheckIcon />,
     path: '/dashboard/coach/confirmar-presenca',
     roles: [UserType.COACH],
@@ -248,6 +272,13 @@ const menuItems: MenuItemProps[] = [
         path: '/dashboard/coach/gerenciar-testes',
         roles: [UserType.COACH],
       },
+  {
+    id: 'coach-provas-externas',
+    label: 'Provas Externas',
+    icon: <EventsIcon />,
+    path: '/dashboard/coach/provas-externas',
+    roles: [UserType.COACH],
+  },
   {
     id: 'coach-participantes',
     label: 'Participantes',
@@ -322,7 +353,15 @@ const menuItems: MenuItemProps[] = [
   },
 ];
 
-export default function DashboardLayout({ children, user, onLogout }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, user, onLogout, overdueInfo }: DashboardLayoutProps) {
+  const { overdueBarVisible } = useAuth();
+  
+  // Debug: verificar se a barra de inadimplência está ativa
+  React.useEffect(() => {
+    if (user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue) {
+    }
+  }, [user.userType, overdueInfo]);
+
   // Verificação de segurança - não renderizar se user for null/undefined
   if (!user || !user.userType) {
     return (
@@ -635,6 +674,11 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
         }
       `}</style>
       
+      {/* Barra de inadimplência para alunos - deve ficar acima do header */}
+      {user.userType === UserType.FITNESS_STUDENT && overdueInfo && (
+        <OverdueAlertBar overdueInfo={overdueInfo} />
+      )}
+      
       <AppBar
         position="fixed"
         sx={{
@@ -644,6 +688,11 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
           borderBottom: `1px solid ${theme.palette.divider}`,
           bgcolor: 'background.paper',
           borderRadius: 0,
+          // Ajustar posição do header quando a barra de inadimplência estiver visível
+          top: user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue && overdueBarVisible ? '64px' : 0,
+          zIndex: 1200, // Z-index menor que a barra de inadimplência (1300) mas maior que o padrão do AppBar (1100)
+          // Garantir que o header fique visível
+          position: 'fixed',
         }}
       >
         <Toolbar sx={{ minHeight: '64px!important' }}>
@@ -792,7 +841,13 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
           }}
           sx={{
             display: { xs: 'block', lg: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerWidth,
+              // Ajustar posição do drawer móvel quando a barra de inadimplência estiver visível
+              top: user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue && overdueBarVisible ? '64px' : 0,
+              height: user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue && overdueBarVisible ? 'calc(100vh - 64px)' : '100vh',
+            },
           }}
         >
           {drawer}
@@ -801,7 +856,13 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
           variant="permanent"
           sx={{
             display: { xs: 'none', lg: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerWidth,
+              // Ajustar posição do drawer quando a barra de inadimplência estiver visível
+              top: user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue && overdueBarVisible ? '64px' : 0,
+              height: user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue && overdueBarVisible ? 'calc(100vh - 64px)' : '100vh',
+            },
           }}
           open
         >
@@ -817,6 +878,8 @@ export default function DashboardLayout({ children, user, onLogout }: DashboardL
           minHeight: '100vh',
           backgroundColor: (theme) =>
             theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[50],
+          // Ajustar padding-top: 64px para header + 64px para barra de inadimplência quando visível
+          pt: user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue && overdueBarVisible ? '128px' : '64px',
         }}
       >
         <Toolbar />

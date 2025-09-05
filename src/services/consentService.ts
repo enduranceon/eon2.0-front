@@ -1,5 +1,5 @@
 import { enduranceApi } from './enduranceApi';
-import { ConsentTerm, ConsentAcceptanceRequest } from '../types/api';
+import { ConsentTerm, ConsentAcceptanceRequest, ConsentViewResponse } from '../types/api';
 
 class ConsentService {
   /**
@@ -10,7 +10,6 @@ class ConsentService {
       // O enduranceApi.get() já processa a resposta e retorna apenas os dados
       const response = await enduranceApi.get('/consent/latest');
       
-      console.log('Resposta da API processada:', response);
       
       // Verificar se a resposta existe
       if (!response) {
@@ -47,9 +46,7 @@ class ConsentService {
    */
   async acceptConsent(data: ConsentAcceptanceRequest): Promise<void> {
     try {
-      console.log('Enviando dados para aceitar consentimento:', data);
       await enduranceApi.post('/consent/accept', data);
-      console.log('Consentimento aceito com sucesso');
     } catch (error) {
       console.error('Erro ao aceitar termo de consentimento:', error);
       throw new Error('Não foi possível aceitar o termo de consentimento');
@@ -66,6 +63,19 @@ class ConsentService {
     } catch (error) {
       console.error('Erro ao verificar status do consentimento:', error);
       return false;
+    }
+  }
+
+  /**
+   * Busca os dados completos de visualização do termo de aceite
+   */
+  async getConsentView(): Promise<ConsentViewResponse> {
+    try {
+      const response = await enduranceApi.get('/consent/my-consent-view');
+      return response as ConsentViewResponse;
+    } catch (error) {
+      console.error('Erro ao buscar dados de visualização do termo:', error);
+      throw new Error('Não foi possível carregar as informações do termo de aceite');
     }
   }
 }

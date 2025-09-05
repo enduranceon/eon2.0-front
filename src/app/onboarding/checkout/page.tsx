@@ -39,6 +39,8 @@ import {
   Modalidade, 
   User, 
   CheckoutResponse,
+  CouponDiscountResponse,
+  EnrollmentFee,
 } from '../../../types/api';
 import OnboardingStepper from '../../../components/Onboarding/OnboardingStepper';
 import { enduranceApi } from '../../../services/enduranceApi';
@@ -80,6 +82,12 @@ export default function CheckoutPage() {
   const [remoteIp, setRemoteIp] = useState<string | null>(null);
   const [paymentOption, setPaymentOption] = useState<'AVISTA' | 'PARCELADO'>('AVISTA');
   const [installmentCount, setInstallmentCount] = useState<number>(0);
+  
+  // Estados para cupom e taxa de matrícula
+  const [couponCode, setCouponCode] = useState<string>('');
+  const [couponDiscount, setCouponDiscount] = useState<CouponDiscountResponse | null>(null);
+  const [enrollmentFee, setEnrollmentFee] = useState<EnrollmentFee | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState<boolean>(false);
   
   const [paymentResult, setPaymentResult] = useState<CheckoutResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -198,7 +206,62 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     loadInitialData();
+    loadEnrollmentFee();
   }, []);
+
+  // Carregar taxa de matrícula ativa
+  const loadEnrollmentFee = async () => {
+    try {
+      const fee = await enduranceApi.getActiveEnrollmentFee();
+      setEnrollmentFee(fee);
+    } catch (error) {
+      console.error('Erro ao carregar taxa de matrícula:', error);
+    }
+  };
+
+  // Validar cupom de desconto
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponDiscount(null);
+      return;
+    }
+
+    if (!selectedPlan) {
+      enqueueSnackbar('Selecione um plano primeiro', { variant: 'warning' });
+      return;
+    }
+
+    setIsValidatingCoupon(true);
+    try {
+      const planPrice = getCurrentPrice();
+      const feeAmount = enrollmentFee?.amount || 0;
+      
+      const discount = await enduranceApi.checkCouponDiscount({
+        code: couponCode.trim().toUpperCase(),
+        planPrice,
+        enrollmentFee: feeAmount
+      });
+      
+      setCouponDiscount(discount);
+      
+      if (discount.isValid) {
+        enqueueSnackbar('Cupom aplicado com sucesso!', { variant: 'success' });
+      } else {
+        enqueueSnackbar(discount.message, { variant: 'error' });
+      }
+    } catch (error) {
+      console.error('Erro ao validar cupom:', error);
+      enqueueSnackbar('Erro ao validar cupom', { variant: 'error' });
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  // Limpar cupom
+  const clearCoupon = () => {
+    setCouponCode('');
+    setCouponDiscount(null);
+  };
 
   // Ajustar parcelas com base na periodicidade e método de pagamento
   useEffect(() => {
@@ -207,6 +270,14 @@ export default function CheckoutPage() {
       setInstallmentCount(0);
       return;
     }
+    
+    // Para periodicidade mensal, sempre forçar pagamento à vista
+    if (period === PlanPeriod.MONTHLY) {
+      setPaymentOption('AVISTA');
+      setInstallmentCount(0);
+      return;
+    }
+    
     const max = getMaxInstallments(period);
     if (max <= 1) {
       setPaymentOption('AVISTA');
@@ -244,6 +315,8 @@ export default function CheckoutPage() {
         coachId: selectedCoach?.id,
         billingType: paymentMethod,
         period: period,
+        enrollmentFee: enrollmentFee?.amount,
+        discountCoupon: couponDiscount?.isValid ? couponCode : undefined,
       };
 
       if (paymentMethod === PaymentMethod.CREDIT_CARD) {
@@ -295,7 +368,25 @@ export default function CheckoutPage() {
   
   const getCurrentPrice = () => {
     const priceInfo = selectedPlan?.prices.find(p => p.period === period);
-    return Number(priceInfo?.price || 0);
+    const basePrice = Number(priceInfo?.price || 0);
+    
+    if (couponDiscount?.isValid) {
+      return couponDiscount.discountedPlanPrice;
+    }
+    
+    return basePrice;
+  };
+
+  const getEnrollmentFeeAmount = () => {
+    if (couponDiscount?.isValid) {
+      return couponDiscount.discountedEnrollmentFee;
+    }
+    
+    return enrollmentFee?.amount || 0;
+  };
+
+  const getTotalAmount = () => {
+    return getCurrentPrice() + getEnrollmentFeeAmount();
   };
   
   const getPeriodLabel = (p: PlanPeriod) => {
@@ -314,7 +405,7 @@ export default function CheckoutPage() {
     switch (p) {
       case PlanPeriod.WEEKLY: return 1;
       case PlanPeriod.BIWEEKLY: return 2;
-      case PlanPeriod.MONTHLY: return 12;
+      case PlanPeriod.MONTHLY: return 1; // Ocultar parcelamento para periodicidade mensal
       case PlanPeriod.QUARTERLY: return 3;
       case PlanPeriod.SEMIANNUALLY: return 6;
       case PlanPeriod.YEARLY: return 12;
@@ -630,6 +721,65 @@ export default function CheckoutPage() {
                         </FormControl>
                       </ListItem>
 
+                      {/* Seção de Cupom de Desconto */}
+                      <Divider sx={{ my: 2 }} />
+                      <ListItem sx={{ px: 0 }}>
+                        <Box sx={{ width: '100%' }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Cupom de Desconto
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                            <TextField
+                              size="small"
+                              placeholder="Digite o código do cupom"
+                              value={couponCode}
+                              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                              disabled={isValidatingCoupon}
+                              sx={{ flex: 1 }}
+                            />
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={validateCoupon}
+                              disabled={isValidatingCoupon || !couponCode.trim()}
+                            >
+                              {isValidatingCoupon ? 'Validando...' : 'Aplicar'}
+                            </Button>
+                            {couponDiscount && (
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={clearCoupon}
+                                color="error"
+                              >
+                                Limpar
+                              </Button>
+                            )}
+                          </Box>
+                          {couponDiscount && (
+                            <Alert 
+                              severity={couponDiscount.isValid ? 'success' : 'error'} 
+                              sx={{ mt: 1 }}
+                            >
+                              {couponDiscount.isValid ? (
+                                <>
+                                  <Typography variant="body2">
+                                    <strong>{couponDiscount.coupon.name}</strong> aplicado!
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    Desconto: R$ {couponDiscount.totalDiscount.toFixed(2)}
+                                  </Typography>
+                                </>
+                              ) : (
+                                <Typography variant="body2">
+                                  {couponDiscount.message}
+                                </Typography>
+                              )}
+                            </Alert>
+                          )}
+                        </Box>
+                      </ListItem>
+
                       {paymentMethod === PaymentMethod.CREDIT_CARD && (
                         <>
                           <ListItem sx={{ px: 0, mt: 1 }}>
@@ -641,6 +791,14 @@ export default function CheckoutPage() {
                               value={paymentOption}
                               onChange={(e) => {
                                 const value = e.target.value as 'AVISTA' | 'PARCELADO';
+                                
+                                // Para periodicidade mensal, sempre forçar à vista
+                                if (period === PlanPeriod.MONTHLY) {
+                                  setPaymentOption('AVISTA');
+                                  setInstallmentCount(0);
+                                  return;
+                                }
+                                
                                 const max = getMaxInstallments(period);
                                 if (value === 'PARCELADO' && max <= 1) {
                                   setPaymentOption('AVISTA');
@@ -664,7 +822,7 @@ export default function CheckoutPage() {
                                 value="PARCELADO" 
                                 control={<Radio />} 
                                 label="Parcelado"
-                                disabled={getMaxInstallments(period) <= 1}
+                                disabled={period === PlanPeriod.MONTHLY || getMaxInstallments(period) <= 1}
                               />
                             </RadioGroup>
                           </ListItem>
@@ -689,9 +847,49 @@ export default function CheckoutPage() {
                     </List>
                     
                     <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                      <Typography variant="h5" fontWeight="bold" textAlign="center">
-                        Total: R$ {getCurrentPrice().toFixed(2)}
-                      </Typography>
+                      <Box sx={{ mb: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Plano ({getPeriodLabel(period)})
+                          </Typography>
+                          <Typography variant="body2">
+                            R$ {getCurrentPrice().toFixed(2)}
+                          </Typography>
+                        </Box>
+                        
+                        {enrollmentFee && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Taxa de Matrícula
+                            </Typography>
+                            <Typography variant="body2">
+                              R$ {getEnrollmentFeeAmount().toFixed(2)}
+                            </Typography>
+                          </Box>
+                        )}
+                        
+                        {couponDiscount?.isValid && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" color="success.main">
+                              Desconto ({couponDiscount.coupon.name})
+                            </Typography>
+                            <Typography variant="body2" color="success.main">
+                              -R$ {couponDiscount.totalDiscount.toFixed(2)}
+                            </Typography>
+                          </Box>
+                        )}
+                        
+                        <Divider sx={{ my: 1 }} />
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="h6" fontWeight="bold">
+                            Total
+                          </Typography>
+                          <Typography variant="h6" fontWeight="bold">
+                            R$ {getTotalAmount().toFixed(2)}
+                          </Typography>
+                        </Box>
+                      </Box>
                     </Box>
                   </CardContent>
                 </Card>

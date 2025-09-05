@@ -88,30 +88,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3001';
 
   const connect = useCallback(() => {
-    console.log('🔌 Tentando conectar WebSocket...', {
-      hasToken: !!token,
-      isAuthenticated,
-      socketConnected: socket?.connected,
-      websocketUrl: WEBSOCKET_URL,
-      userId: user?.id
-    });
-
     if (!token || !isAuthenticated || socket?.connected) {
-      console.log('❌ WebSocket não conectado - condições não atendidas:', {
-        hasToken: !!token,
-        isAuthenticated,
-        socketConnected: socket?.connected
-      });
       return;
     }
 
     try {
-      console.log('🔌 Iniciando conexão WebSocket...', {
-        url: WEBSOCKET_URL,
-        token: token.substring(0, 20) + '...',
-        userId: user?.id
-      });
-      
       const newSocket = io(WEBSOCKET_URL, {
         auth: { token },
         transports: ['websocket'],
@@ -122,15 +103,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         reconnectionDelayMax: 5000,
       });
 
-      console.log('🔌 Socket criado, configurando listeners...');
-
       // Event listeners
       newSocket.on('connect', () => {
-        console.log('✅ WebSocket conectado com sucesso!', {
-          socketId: newSocket.id,
-          userId: user?.id,
-          timestamp: new Date().toISOString()
-        });
         setIsConnected(true);
         setConnectionStatus(prev => ({
           ...prev,
@@ -141,15 +115,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         
         // Entrar na sala do usuário
         if (user?.id) {
-          console.log('🚪 Entrando na sala do usuário:', user.id);
           newSocket.emit('join:user:room', { userId: user.id });
-        } else {
-          console.log('⚠️ Usuário não disponível para entrar na sala');
         }
       });
 
       newSocket.on('disconnect', (reason) => {
-        console.log('❌ WebSocket desconectado:', reason);
         setIsConnected(false);
         setConnectionStatus(prev => ({
           ...prev,
@@ -159,7 +129,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
 
       newSocket.on('connect_error', (error) => {
-        // Erro de conexão WebSocket
         setConnectionStatus(prev => ({
           ...prev,
           reconnectAttempts: prev.reconnectAttempts + 1,
@@ -167,7 +136,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
 
       newSocket.on('reconnect', (attemptNumber) => {
-        console.log(`🔄 WebSocket reconectado após ${attemptNumber} tentativas`);
         setConnectionStatus(prev => ({
           ...prev,
           reconnectAttempts: 0,
@@ -185,22 +153,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Eventos de foto
       newSocket.on('user:photo:updated', (data: UserPhotoUpdateEvent) => {
-        console.log('📸 Foto atualizada via WebSocket:', {
-          eventData: data,
-          currentUserId: user?.id,
-          isCurrentUser: data.userId === user?.id,
-          timestamp: new Date().toISOString()
-        });
-        
-        // Log detalhado do evento recebido
-        console.log('📋 Detalhes do evento de foto:', {
-          userId: data.userId,
-          imageUrl: data.imageUrl,
-          updatedAt: data.updatedAt,
-          userType: data.userType,
-          timestamp: data.timestamp
-        });
-        
         // Atualizar imediatamente com timestamp para cache busting
         // Processar URL da imagem para garantir que use a porta correta
         const getAbsoluteImageUrl = (url: string): string => {
@@ -231,24 +183,18 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
           receivedAt: new Date().toISOString()
         };
         
-        console.log('🔄 Atualizando lastPhotoUpdate com:', photoDataWithTimestamp);
         setLastPhotoUpdate(photoDataWithTimestamp);
         
         // Mostrar notificação se for do usuário atual
         if (data.userId === user?.id) {
-          console.log('✅ Mostrando notificação para usuário atual');
           toast.success('Sua foto foi atualizada!', {
             duration: 2000,
             position: 'top-right'
           });
-        } else {
-          console.log('ℹ️ Evento não é para o usuário atual - sem notificação');
         }
       });
 
       newSocket.on('user:photo:updated:notification', (data: UserPhotoUpdateEvent) => {
-        console.log('📸 Notificação de foto atualizada:', data);
-        
         // Só processar se tiver imageUrl válida
         if (data.imageUrl && data.imageUrl !== 'undefined') {
           // Atualizar imediatamente com timestamp para cache busting
@@ -259,14 +205,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
           };
           
           setLastPhotoUpdate(photoDataWithTimestamp);
-        } else {
-          console.log('⚠️ Notificação de foto sem imageUrl válida - ignorando');
         }
       });
 
       // Eventos de perfil
       newSocket.on('user:profile:updated', (data: UserProfileUpdateEvent) => {
-        console.log('👤 Perfil atualizado via WebSocket:', data);
         setLastProfileUpdate(data);
         
         // Mostrar notificação se for do usuário atual
@@ -277,28 +220,24 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Eventos de status
       newSocket.on('user:status:changed', (data: UserStatusChangeEvent) => {
-        console.log('📊 Status alterado via WebSocket:', data);
         setLastStatusChange(data);
       });
 
       // Eventos de sistema
       newSocket.on('user:connected', (data) => {
-        console.log('👋 Usuário conectado:', data);
+        // Usuário conectado
       });
 
       newSocket.on('user:disconnected', (data) => {
-        console.log('👋 Usuário desconectado:', data);
+        // Usuário desconectado
       });
 
       newSocket.on('pong', (data) => {
-        console.log('🏓 Pong recebido:', data);
+        // Pong recebido
       });
 
-      // Novos eventos WebSocket implementados
-      
       // Eventos de resultado de prova
       newSocket.on('exam:result:registered', (data: ExamResultRegisteredEvent) => {
-        console.log('📊 Resultado de prova registrado:', data);
         setLastExamResult(data);
         
         if (data.userId === user?.id) {
@@ -310,7 +249,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
 
       newSocket.on('exam:result:registered:coach', (data: ExamResultRegisteredEvent) => {
-        console.log('📊 Resultado de prova registrado (coach):', data);
         setLastExamResult(data);
         
         if (user?.userType === 'COACH') {
@@ -323,7 +261,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Eventos de resultado de teste
       newSocket.on('test:result:registered', (data: TestResultRegisteredEvent) => {
-        console.log('🧪 Resultado de teste registrado:', data);
         setLastTestResult(data);
         
         if (data.userId === user?.id) {
@@ -335,7 +272,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
 
       newSocket.on('test:result:registered:coach', (data: TestResultRegisteredEvent) => {
-        console.log('🧪 Resultado de teste registrado (coach):', data);
         setLastTestResult(data);
         
         if (user?.userType === 'COACH') {
@@ -348,7 +284,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Eventos de nova prova criada
       newSocket.on('exam:created', (data: NewExamCreatedEvent) => {
-        console.log('📝 Nova prova criada:', data);
         setLastNewExam(data);
         
         if (data.students.includes(user?.id || '')) {
@@ -360,7 +295,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
 
       newSocket.on('exam:created:coach', (data: NewExamCreatedEvent) => {
-        console.log('📝 Nova prova criada (coach):', data);
         setLastNewExam(data);
         
         if (user?.userType === 'COACH') {
@@ -373,7 +307,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Eventos de mudança de plano
       newSocket.on('plan:changed', (data: PlanChangeEvent) => {
-        console.log('🔄 Plano alterado:', data);
         setLastPlanChange(data);
         
         if (data.userId === user?.id) {
@@ -385,7 +318,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
 
       newSocket.on('plan:changed:coach', (data: PlanChangeEvent) => {
-        console.log('🔄 Plano alterado (coach):', data);
         setLastPlanChange(data);
         
         if (user?.userType === 'COACH') {
@@ -398,7 +330,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Eventos de conta de aluno criada
       newSocket.on('account:created', (data: StudentAccountCreatedEvent) => {
-        console.log('👤 Conta criada:', data);
         setLastStudentAccount(data);
         
         if (data.userId === user?.id) {
@@ -410,7 +341,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
 
       newSocket.on('student:account:created', (data: StudentAccountCreatedEvent) => {
-        console.log('👤 Conta de aluno criada (coach):', data);
         setLastStudentAccount(data);
         
         if (user?.userType === 'COACH') {
@@ -423,7 +353,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Eventos de solicitação de licença
       newSocket.on('leave:requested', (data: LeaveRequestEvent) => {
-        console.log('🏖️ Solicitação de licença:', data);
         setLastLeaveRequest(data);
         
         if (data.userId === user?.id) {
@@ -435,7 +364,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
 
       newSocket.on('leave:requested:coach', (data: LeaveRequestEvent) => {
-        console.log('🏖️ Solicitação de licença (coach):', data);
         setLastLeaveRequest(data);
         
         if (user?.userType === 'COACH') {
@@ -446,18 +374,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         }
       });
 
-      // Interceptar TODOS os eventos recebidos para debug
-      newSocket.onAny((eventName, ...args) => {
-        console.log(`🎯 [WebSocket Event] ${eventName}`, {
-          eventName,
-          args,
-          timestamp: new Date().toISOString(),
-          socketId: newSocket.id,
-          userId: user?.id
-        });
-      });
-
-      console.log('🔌 Todos os listeners configurados, definindo socket...');
       setSocket(newSocket);
     } catch (error) {
       console.error('❌ Erro ao conectar WebSocket:', error);
@@ -467,7 +383,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   const disconnect = useCallback(() => {
     if (socket) {
-      console.log('🔌 Desconectando WebSocket...');
       socket.disconnect();
       setSocket(null);
       setIsConnected(false);
@@ -487,30 +402,16 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   // Conectar quando o usuário estiver autenticado
   useEffect(() => {
-    console.log('🔄 useEffect de conexão WebSocket executado:', {
-      isAuthenticated,
-      hasToken: !!token,
-      userId: user?.id,
-      timestamp: new Date().toISOString()
-    });
-
     if (isAuthenticated && token && user?.id) {
-      console.log('✅ Condições atendidas - iniciando conexão WebSocket');
       connect();
     } else {
-      console.log('❌ Condições não atendidas - desconectando WebSocket:', {
-        isAuthenticated,
-        hasToken: !!token,
-        hasUserId: !!user?.id
-      });
       disconnect();
     }
 
     return () => {
-      console.log('🧹 Cleanup: desconectando WebSocket');
       disconnect();
     };
-  }, [isAuthenticated, token, user?.id]); // Removido connect e disconnect das dependências
+  }, [isAuthenticated, token, user?.id]);
 
   // Limpar estado quando desconectar
   useEffect(() => {

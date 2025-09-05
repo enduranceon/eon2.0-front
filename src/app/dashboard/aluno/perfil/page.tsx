@@ -42,6 +42,7 @@ import { enduranceApi } from '../../../../services/enduranceApi';
 import Dialog from '@mui/material/Dialog';
 import TextField from '@mui/material/TextField';
 import { User } from '../../../../types/api';
+import ConsentView from '../../../../components/Dashboard/ConsentView';
 
 interface Address {
   street: string;
@@ -291,7 +292,7 @@ export default function StudentProfilePage() {
 
   if (loading) {
     return (
-      <DashboardLayout user={auth.user} onLogout={auth.logout}>
+      <DashboardLayout user={auth.user} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
             <CircularProgress size={60} />
@@ -303,7 +304,7 @@ export default function StudentProfilePage() {
 
   if (error) {
     return (
-      <DashboardLayout user={auth.user} onLogout={auth.logout}>
+      <DashboardLayout user={auth.user} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Alert severity="error" sx={{ mb: 4 }}>
             {error}
@@ -314,7 +315,7 @@ export default function StudentProfilePage() {
   }
 
   return (
-    <DashboardLayout user={auth.user} onLogout={auth.logout}>
+    <DashboardLayout user={auth.user} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
       <Container maxWidth="lg" sx={{ py: 4 }}>
         {/* Profile content */}
         <Box sx={{ mb: 4 }}>
@@ -523,6 +524,13 @@ export default function StudentProfilePage() {
               Nenhum dado de perfil encontrado
             </Typography>
           </Paper>
+        )}
+
+        {/* Seção do Termo de Aceite */}
+        {profile && (
+          <Box sx={{ mt: 4 }}>
+            <ConsentView userId={profile.id} />
+          </Box>
         )}
 
         {/* Modal de Edição */}

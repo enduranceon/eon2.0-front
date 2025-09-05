@@ -162,7 +162,7 @@ const MeuPlanoContent = () => {
 }
 
 const MeuPlanoPage = () => {
-    const { user, isLoading: authLoading, logout } = useAuth();
+    const { user, isLoading: authLoading, logout, overdueInfo } = useAuth();
     const router = useRouter();
 
     // Redirecionar para login se usuário não estiver autenticado
@@ -191,7 +191,7 @@ const MeuPlanoPage = () => {
     }
     
     return (
-        <DashboardLayout user={user} onLogout={logout}>
+        <DashboardLayout user={user} onLogout={logout} overdueInfo={overdueInfo}>
             <Container maxWidth="xl" sx={{ py: 3 }}>
                 <MeuPlanoContent />
             </Container>

@@ -98,9 +98,20 @@ export interface Address {
   zipCode: string;
 }
 
+export interface OverdueInfo {
+  isOverdue: boolean;
+  overdueAmount?: number;
+  dueDate?: string;
+  daysRemaining?: number;
+  accessLimitDate?: string;
+  isAccessBlocked: boolean;
+  message?: string;
+}
+
 export interface LoginResponse {
   access_token: string;
   user: User;
+  overdueInfo?: OverdueInfo;
 }
 
 export interface RegisterRequest {
@@ -155,6 +166,7 @@ export interface Plan {
   modalidades: { modalidade: Modalidade }[];
   features?: string[];
   isActive: boolean;
+  forSale: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -199,7 +211,8 @@ export interface CheckoutRequest {
   creditCard?: AsaasCreditCardDto;
   creditCardHolderInfo?: AsaasCreditCardHolderInfoDto;
   remoteIp?: string;
-  coupon?: string;
+  enrollmentFee?: number;
+  discountCoupon?: string;
 }
 
 export interface CheckoutResponse {
@@ -241,6 +254,30 @@ export interface CheckoutStatusResponse {
   };
 }
 
+export interface AsaasPaymentData {
+  id: string;
+  status: string;
+  billingType: PaymentMethod;
+  pixData?: {
+    encodedImage: string;
+    payload: string;
+    expirationDate: string;
+  };
+  boletoData?: {
+    bankSlipUrl: string;
+    bankSlipBarCode: string;
+    bankSlipBarCodeNumber: string;
+  };
+  invoiceUrl?: string;
+  transactionReceiptUrl?: string;
+  creditCardData?: {
+    holderName: string;
+    number: string;
+    expiryMonth: string;
+    expiryYear: string;
+  };
+}
+
 export interface Payment {
   id: string;
   subscriptionId?: string;
@@ -249,6 +286,7 @@ export interface Payment {
   paymentMethod: PaymentMethod;
   status: PaymentStatus;
   asaasPaymentId?: string;
+  asaasPaymentData?: AsaasPaymentData;
   dueDate: string;
   paidAt?: string;
   createdAt: string;
@@ -1073,9 +1111,14 @@ export interface AdminTestResult {
   recordedAt: string;
   createdAt: string;
   updatedAt: string;
+  reportUrl?: string | null;
   
   // Novos campos para resultados dinâmicos
-  dynamicResults?: DynamicTestResult[];
+  dynamicResults?: {
+    type?: string;
+    notes?: string;
+    multipleResults?: DynamicTestResult[];
+  } | DynamicTestResult[];
   resultType?: 'SINGLE' | 'MULTIPLE';
   
   user: {
@@ -1355,6 +1398,36 @@ export interface ConsentAcceptanceRequest {
   userAgent?: string;
 }
 
+// Interfaces para visualização do termo de aceite
+export interface ConsentViewUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface ConsentViewCurrentTerm {
+  id: string;
+  content: string;
+  version: string;
+  createdAt: string;
+}
+
+export interface ConsentViewHistoryItem {
+  id: string;
+  version: string;
+  acceptedAt: string;
+  ipAddress?: string;
+}
+
+export interface ConsentViewResponse {
+  user: ConsentViewUser;
+  currentTerm: ConsentViewCurrentTerm;
+  consentHistory: ConsentViewHistoryItem[];
+  hasAcceptedLatestTerm: boolean;
+  lastAcceptedAt: string | null;
+  totalConsents: number;
+}
+
 // Interfaces para WebSocket
 export interface UserPhotoUpdateEvent {
   userId: string;
@@ -1469,4 +1542,275 @@ export interface WebSocketEvent {
         ExamResultRegisteredEvent | TestResultRegisteredEvent | NewExamCreatedEvent |
         PlanChangeEvent | StudentAccountCreatedEvent | LeaveRequestEvent | any;
   timestamp: string;
+}
+
+// Interfaces para Solicitação de Relatório de Teste
+export enum TestReportRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED'
+}
+
+export enum TestReportRequestType {
+  FREE_PREMIUM = 'FREE_PREMIUM',
+  PAID_PURCHASE = 'PAID_PURCHASE'
+}
+
+export interface TestReportRequest {
+  id: string;
+  userId: string;
+  testResultId: string;
+  requestType: TestReportRequestType;
+  status: TestReportRequestStatus;
+  reason?: string;
+  adminNotes?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  completedAt?: string;
+  paymentId?: string;
+  asaasPaymentId?: string;
+  price?: number;
+  createdAt: string;
+  updatedAt: string;
+  testResult?: {
+    id: string;
+    test: {
+      id: string;
+      name: string;
+      type: TestType;
+    };
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+}
+
+export interface CreateTestReportRequestRequest {
+  testResultId: string;
+  reason?: string;
+}
+
+export interface TestReportRequestResponse {
+  success: boolean;
+  message: string;
+  data: {
+    requestId: string;
+    requestType: TestReportRequestType;
+    status: TestReportRequestStatus;
+    price?: number;
+    createdAt: string;
+  };
+}
+
+export interface TestReportPaymentRequest {
+  billingType: PaymentMethod;
+}
+
+export interface TestReportPaymentResponse {
+  success: boolean;
+  message: string;
+  data: {
+    requestId: string;
+    asaasPaymentId: string;
+    amount: number;
+    billingType: PaymentMethod;
+    paymentUrl: string;
+    pixData?: {
+      qrCode: string;
+      copyPaste: string;
+    };
+    dueDate: string;
+  };
+}
+
+export interface TestReportRequestFilters {
+  status?: TestReportRequestStatus;
+  requestType?: TestReportRequestType;
+  page?: number;
+  limit?: number;
+}
+
+export interface TestReportRequestStats {
+  total: number;
+  byStatus: {
+    pending: number;
+    approved: number;
+    rejected: number;
+    completed: number;
+    cancelled: number;
+  };
+  byType: {
+    freeRequests: number;
+    paidRequests: number;
+  };
+}
+
+// Interfaces para Cupons de Desconto
+export enum CouponType {
+  FIXED_AMOUNT = 'FIXED_AMOUNT',
+  PERCENTAGE_AMOUNT = 'PERCENTAGE_AMOUNT',
+  FIXED_SUBSCRIPTION = 'FIXED_SUBSCRIPTION',
+  PERCENTAGE_SUBSCRIPTION = 'PERCENTAGE_SUBSCRIPTION',
+  FREE_ENROLLMENT = 'FREE_ENROLLMENT'
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  type: CouponType;
+  value: number;
+  isActive: boolean;
+  usageLimit?: number;
+  usedCount: number;
+  validFrom: string;
+  validUntil: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCouponRequest {
+  code: string;
+  name: string;
+  description?: string;
+  type: CouponType;
+  value: number;
+  isActive: boolean;
+  usageLimit?: number;
+  validFrom: string;
+  validUntil: string;
+}
+
+export interface UpdateCouponRequest {
+  name?: string;
+  description?: string;
+  type?: CouponType;
+  value?: number;
+  isActive?: boolean;
+  usageLimit?: number;
+  validFrom?: string;
+  validUntil?: string;
+}
+
+export interface CouponValidationResponse {
+  isValid: boolean;
+  message: string;
+  coupon?: Coupon;
+  discount?: {
+    type: 'amount' | 'percentage';
+    value: number;
+    description: string;
+  };
+}
+
+export interface CouponDiscountResponse {
+  isValid: boolean;
+  message: string;
+  originalPlanPrice: number;
+  originalEnrollmentFee: number;
+  discountedPlanPrice: number;
+  discountedEnrollmentFee: number;
+  totalDiscount: number;
+  coupon: {
+    code: string;
+    name: string;
+    type: CouponType;
+    value: number;
+  };
+}
+
+// Interfaces para Taxa de Matrícula
+export interface EnrollmentFee {
+  id: string;
+  name: string;
+  description?: string;
+  amount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEnrollmentFeeRequest {
+  name: string;
+  description?: string;
+  amount: number;
+  isActive: boolean;
+}
+
+export interface UpdateEnrollmentFeeRequest {
+  name?: string;
+  description?: string;
+  amount?: number;
+  isActive?: boolean;
+}
+
+// Interfaces para Provas Externas
+export interface ExternalExam {
+  id: string;
+  name: string;
+  description?: string;
+  examDate: string;
+  location?: string;
+  modalidadeId: string;
+  distance?: string;
+  userId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  modalidade: {
+    id: string;
+    name: string;
+    description: string;
+  };
+}
+
+export interface CreateExternalExamRequest {
+  name: string;
+  description?: string;
+  examDate: string;
+  location?: string;
+  modalidadeId: string;
+  distance?: string;
+}
+
+export interface UpdateExternalExamRequest {
+  name?: string;
+  description?: string;
+  examDate?: string;
+  location?: string;
+  modalidadeId?: string;
+  distance?: string;
+}
+
+export interface ExternalExamFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+  modalidadeId?: string;
+  userId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ExternalExamsResponse {
+  data: ExternalExam[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 } 

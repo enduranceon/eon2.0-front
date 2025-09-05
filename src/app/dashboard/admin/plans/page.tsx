@@ -34,7 +34,9 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Clear as ClearIcon,
+  Share as ShareIcon,
 } from '@mui/icons-material';
+import { Snackbar } from '@mui/material';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -62,6 +64,8 @@ export default function AdminPlansPage() {
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
   
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -155,6 +159,34 @@ export default function AdminPlansPage() {
       setRowLoading(prev => ({ ...prev, [planId]: false }));
     }
   };
+
+  const handleToggleForSale = async (planId: string, currentForSale: boolean) => {
+    setRowLoading(prev => ({ ...prev, [planId]: true }));
+    try {
+      await enduranceApi.updatePlan(planId, { forSale: !currentForSale });
+      setPlans(prev => prev.map(p => p.id === planId ? { ...p, forSale: !currentForSale } : p));
+    } catch (err) {
+      console.error('Erro ao atualizar disponibilidade para venda:', err);
+      setError('Não foi possível atualizar a disponibilidade para venda do plano.');
+    } finally {
+      setRowLoading(prev => ({ ...prev, [planId]: false }));
+    }
+  };
+
+  const generateShareLink = (planId: string) => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareLink = `${baseUrl}/plano/${planId}`;
+    
+    // Copiar para a área de transferência
+    navigator.clipboard.writeText(shareLink).then(() => {
+      setSnackbarMessage('Link copiado para a área de transferência!');
+      setSnackbarOpen(true);
+    }).catch(err => {
+      console.error('Erro ao copiar link:', err);
+      setSnackbarMessage('Erro ao copiar link');
+      setSnackbarOpen(true);
+    });
+  };
   
   return (
     <ProtectedRoute allowedUserTypes={['ADMIN']}>
@@ -206,6 +238,7 @@ export default function AdminPlansPage() {
                         <TableCell>Nome do Plano</TableCell>
                         <TableCell>Modalidades</TableCell>
                         <TableCell align="center">Status</TableCell>
+                        <TableCell align="center">Disponível para Venda</TableCell>
                         <TableCell align="center">Ações</TableCell>
                       </TableRow>
                     </TableHead>
@@ -234,7 +267,26 @@ export default function AdminPlansPage() {
                             )}
                           </TableCell>
                           <TableCell align="center">
+                            {rowLoading[plan.id] ? (
+                              <CircularProgress size={24} />
+                            ) : (
+                              <Switch
+                                checked={plan.forSale}
+                                onChange={() => handleToggleForSale(plan.id, plan.forSale)}
+                                color="primary"
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell align="center">
                             <IconButton size="small" onClick={() => handleOpenModal(plan)}><EditIcon /></IconButton>
+                            <IconButton 
+                              size="small" 
+                              color="primary" 
+                              onClick={() => generateShareLink(plan.id)}
+                              title="Gerar link de compartilhamento"
+                            >
+                              <ShareIcon />
+                            </IconButton>
                             <IconButton size="small" color="error" onClick={() => handleDeleteRequest(plan)}><DeleteIcon /></IconButton>
                           </TableCell>
                         </TableRow>
@@ -279,6 +331,13 @@ export default function AdminPlansPage() {
               <Button onClick={handleDeleteConfirm} color="error" variant="contained">Excluir</Button>
             </DialogActions>
           </Dialog>
+
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={3000}
+            onClose={() => setSnackbarOpen(false)}
+            message={snackbarMessage}
+          />
 
         </Container>
       </DashboardLayout>

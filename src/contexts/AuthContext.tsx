@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { User, UserType, LoginRequest, LoginResponse } from '../types/api';
+import { User, UserType, LoginRequest, LoginResponse, OverdueInfo } from '../types/api';
 import { enduranceApi } from '../services/enduranceApi';
 
 interface AuthState {
@@ -15,6 +15,8 @@ interface AuthState {
   has2FA: boolean;
   subscriptionActive: boolean;
   subscriptionStatus: string | null;
+  overdueInfo: OverdueInfo | null;
+  overdueBarVisible: boolean;
 }
 
 interface AuthContextType extends AuthState {
@@ -31,6 +33,7 @@ interface AuthContextType extends AuthState {
   hasRole: (roles: UserType[]) => boolean;
   requiresSubscription: () => boolean;
   updateProfile: (updatedData: Partial<User>) => void;
+  closeOverdueBar: () => void;
   isLoading: boolean;
 }
 
@@ -50,6 +53,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     has2FA: false,
     subscriptionActive: false,
     subscriptionStatus: null,
+    overdueInfo: null,
+    overdueBarVisible: false,
   });
 
   const router = useRouter();
@@ -77,6 +82,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           has2FA: !!user.has2FA,
           subscriptionActive: subscriptionStatus === 'ACTIVE',
           subscriptionStatus,
+          overdueInfo: null, // Será preenchido no próximo login
+          overdueBarVisible: false,
           isLoading: false,
         });
         
@@ -96,6 +103,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           has2FA: false,
           subscriptionActive: false,
           subscriptionStatus: null,
+          overdueInfo: null,
+          overdueBarVisible: false,
         });
         
         // Marcar que a inicialização foi concluída (mesmo com erro)
@@ -113,6 +122,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         has2FA: false,
         subscriptionActive: false,
         subscriptionStatus: null,
+        overdueInfo: null,
+        overdueBarVisible: false,
       });
       
       // Marcar que a inicialização foi concluída (sem token)
@@ -158,7 +169,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setState(prev => ({ ...prev, isLoading: true }));
       
       const response = await enduranceApi.login(credentials);
-      const { access_token, user } = response;
+      const { access_token, user, overdueInfo } = response;
 
       // Salvar token e usuário
       setState(prev => ({
@@ -168,6 +179,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAuthenticated: true,
         emailVerified: user.emailVerified || false,
         has2FA: user.has2FA || false,
+        overdueInfo: overdueInfo || null,
+        overdueBarVisible: overdueInfo?.isOverdue || false,
         isLoading: false,
       }));
 
@@ -234,6 +247,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         emailVerified: true, // Em desenvolvimento, sempre considerar como verificado
         subscriptionActive,
         subscriptionStatus,
+        overdueInfo: overdueInfo || null,
+        overdueBarVisible: overdueInfo?.isOverdue || false,
         // Manter loading ativo até redirecionamento ser concluído
         isLoading: true,
       }));
@@ -278,6 +293,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       has2FA: false,
       subscriptionActive: false,
       subscriptionStatus: null,
+      overdueInfo: null,
+      overdueBarVisible: false,
     });
     router.push('/login');
     toast.success('Logout realizado com sucesso');
@@ -289,14 +306,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       const response = await enduranceApi.register(userData);
       
-      console.log('Resposta bruta do registro:', response);
       
       // Extrair dados da resposta
       // A API retorna { access_token, user: { id, name, email, userType, has2FA } }
       const { access_token, user } = response;
       const userId = user?.id;
       
-      console.log('Dados extraídos:', { userId, access_token, user });
       
       // Temporariamente desabilitado - sempre redirecionar para login
       toast.success('Conta criada com sucesso! Faça login para acessar o dashboard.');
@@ -378,6 +393,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         has2FA: true,
         subscriptionActive,
         subscriptionStatus,
+        overdueInfo: null, // Será preenchido no próximo login
+        overdueBarVisible: false,
         isLoading: true, // Manter loading ativo até redirecionamento
       }));
       
@@ -484,6 +501,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }));
   };
 
+  const closeOverdueBar = () => {
+    setState(prev => ({
+      ...prev,
+      overdueBarVisible: false,
+    }));
+  };
+
   const contextValue: AuthContextType = {
     ...state,
     login,
@@ -499,6 +523,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     hasRole,
     requiresSubscription,
     updateProfile,
+    closeOverdueBar,
     isLoading: state.isLoading,
   };
 

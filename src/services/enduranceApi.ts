@@ -61,6 +61,29 @@ import {
   LeaveApprovalRequest,
   LeaveExtendRequest,
   LeaveRequestCreate,
+  TestReportRequest,
+  TestReportRequestStatus,
+  TestReportRequestType,
+  CreateTestReportRequestRequest,
+  TestReportRequestResponse,
+  TestReportPaymentRequest,
+  TestReportPaymentResponse,
+  TestReportRequestFilters,
+  TestReportRequestStats,
+  Coupon,
+  CouponType,
+  CreateCouponRequest,
+  UpdateCouponRequest,
+  CouponValidationResponse,
+  CouponDiscountResponse,
+  EnrollmentFee,
+  CreateEnrollmentFeeRequest,
+  UpdateEnrollmentFeeRequest,
+  ExternalExam,
+  CreateExternalExamRequest,
+  UpdateExternalExamRequest,
+  ExternalExamFilters,
+  ExternalExamsResponse,
 } from '../types/api';
 
 export class EnduranceApiClient {
@@ -1418,6 +1441,104 @@ export class EnduranceApiClient {
     return response.data;
   }
 
+  // Upload de relatórios de teste
+  async uploadTestReport(testResultId: string, file: File): Promise<{ url: string; message: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await this.api.post(`/upload/test-reports/${testResultId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
+  }
+
+  // Remover relatório de teste
+  async deleteTestReport(testResultId: string): Promise<{ message: string }> {
+    return this.delete<{ message: string }>(`/upload/test-reports/${testResultId}`);
+  }
+
+  // Listar relatórios com filtros
+  async getTestReports(filters?: {
+    hasReport?: boolean;
+    testResultId?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<{
+    id: string;
+    testResultId: string;
+    fileName: string;
+    fileUrl: string;
+    uploadedAt: string;
+    uploadedBy: string;
+  }>> {
+    return this.get<PaginatedResponse<{
+      id: string;
+      testResultId: string;
+      fileName: string;
+      fileUrl: string;
+      uploadedAt: string;
+      uploadedBy: string;
+    }>>('/upload/test-reports', filters);
+  }
+
+  // Atualizar URL do relatório no resultado do teste
+  async updateTestResultReport(resultId: string, reportUrl: string): Promise<{ message: string }> {
+    return this.patch<{ message: string }>(`/tests/results/${resultId}/report`, { reportUrl });
+  }
+
+  // Solicitação de Relatório de Teste
+  async createTestReportRequest(data: CreateTestReportRequestRequest): Promise<TestReportRequestResponse> {
+    return this.post<TestReportRequestResponse>('/test-report-requests', data);
+  }
+
+  async getMyTestReportRequests(filters?: TestReportRequestFilters): Promise<PaginatedResponse<TestReportRequest>> {
+    return this.get<PaginatedResponse<TestReportRequest>>('/test-report-requests/my-requests', filters);
+  }
+
+  async getPendingTestReportPayments(): Promise<TestReportRequest[]> {
+    return this.get<TestReportRequest[]>('/test-report-requests/pending-payments');
+  }
+
+  async createTestReportPayment(requestId: string, data: TestReportPaymentRequest): Promise<TestReportPaymentResponse> {
+    return this.post<TestReportPaymentResponse>(`/test-report-requests/${requestId}/payment`, data);
+  }
+
+  async getTestReportPaymentStatus(requestId: string): Promise<{ status: string; paidAt?: string }> {
+    return this.get<{ status: string; paidAt?: string }>(`/test-report-requests/${requestId}/payment-status`);
+  }
+
+  async cancelTestReportRequest(requestId: string): Promise<{ message: string }> {
+    return this.delete<{ message: string }>(`/test-report-requests/${requestId}`);
+  }
+
+  async cancelTestReportPayment(requestId: string): Promise<{ message: string }> {
+    return this.delete<{ message: string }>(`/test-report-requests/${requestId}/payment`);
+  }
+
+  // Para Coaches/Admins
+  async getAllTestReportRequests(filters?: TestReportRequestFilters): Promise<PaginatedResponse<TestReportRequest>> {
+    return this.get<PaginatedResponse<TestReportRequest>>('/test-report-requests', filters);
+  }
+
+  async approveTestReportRequest(requestId: string, adminNotes?: string): Promise<{ message: string }> {
+    return this.patch<{ message: string }>(`/test-report-requests/${requestId}/approve`, { adminNotes });
+  }
+
+  async rejectTestReportRequest(requestId: string, adminNotes?: string): Promise<{ message: string }> {
+    return this.patch<{ message: string }>(`/test-report-requests/${requestId}/reject`, { adminNotes });
+  }
+
+  async completeTestReportRequest(requestId: string): Promise<{ message: string }> {
+    return this.patch<{ message: string }>(`/test-report-requests/${requestId}/complete`);
+  }
+
+  async getTestReportRequestStats(): Promise<TestReportRequestStats> {
+    return this.get<TestReportRequestStats>('/test-report-requests/stats');
+  }
+
   // WEBHOOKS (para debug/admin)
   async getWebhookEvents(filters?: any): Promise<PaginatedResponse<any>> {
     return this.get<PaginatedResponse<any>>('/admin/webhooks', filters);
@@ -1425,6 +1546,90 @@ export class EnduranceApiClient {
 
   async retryWebhook(eventId: string): Promise<void> {
     return this.post<void>(`/admin/webhooks/${eventId}/retry`);
+  }
+
+  // =============================================================================
+  // CUPONS DE DESCONTO
+  // =============================================================================
+
+  // Endpoints públicos
+  async validateCoupon(code: string): Promise<CouponValidationResponse> {
+    return this.get<CouponValidationResponse>(`/coupons/validate/${code}`);
+  }
+
+  async checkCouponDiscount(params: {
+    code: string;
+    planPrice: number;
+    enrollmentFee: number;
+  }): Promise<CouponDiscountResponse> {
+    return this.get<CouponDiscountResponse>('/coupons/check-discount', params);
+  }
+
+  // Endpoints administrativos
+  async createCoupon(data: CreateCouponRequest): Promise<Coupon> {
+    return this.post<Coupon>('/admin/coupons', data);
+  }
+
+  async getCoupons(params?: { includeInactive?: boolean }): Promise<Coupon[]> {
+    return this.get<Coupon[]>('/admin/coupons', params);
+  }
+
+  async getCoupon(id: string): Promise<Coupon> {
+    return this.get<Coupon>(`/admin/coupons/${id}`);
+  }
+
+  async getCouponByCode(code: string): Promise<Coupon> {
+    return this.get<Coupon>(`/admin/coupons/code/${code}`);
+  }
+
+  async updateCoupon(id: string, data: UpdateCouponRequest): Promise<Coupon> {
+    return this.patch<Coupon>(`/admin/coupons/${id}`, data);
+  }
+
+  async toggleCouponStatus(id: string): Promise<Coupon> {
+    return this.patch<Coupon>(`/admin/coupons/${id}/toggle-status`);
+  }
+
+  async deleteCoupon(id: string): Promise<{ message: string }> {
+    return this.delete<{ message: string }>(`/admin/coupons/${id}`);
+  }
+
+  // =============================================================================
+  // TAXA DE MATRÍCULA
+  // =============================================================================
+
+  // Endpoints públicos
+  async getActiveEnrollmentFee(): Promise<EnrollmentFee | null> {
+    try {
+      return this.get<EnrollmentFee>('/enrollment-fees/active');
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Endpoints administrativos
+  async createEnrollmentFee(data: CreateEnrollmentFeeRequest): Promise<EnrollmentFee> {
+    return this.post<EnrollmentFee>('/admin/enrollment-fees', data);
+  }
+
+  async getEnrollmentFees(params?: { includeInactive?: boolean }): Promise<EnrollmentFee[]> {
+    return this.get<EnrollmentFee[]>('/admin/enrollment-fees', params);
+  }
+
+  async getEnrollmentFee(id: string): Promise<EnrollmentFee> {
+    return this.get<EnrollmentFee>(`/admin/enrollment-fees/${id}`);
+  }
+
+  async updateEnrollmentFee(id: string, data: UpdateEnrollmentFeeRequest): Promise<EnrollmentFee> {
+    return this.patch<EnrollmentFee>(`/admin/enrollment-fees/${id}`, data);
+  }
+
+  async toggleEnrollmentFeeStatus(id: string): Promise<EnrollmentFee> {
+    return this.patch<EnrollmentFee>(`/admin/enrollment-fees/${id}/toggle-status`);
+  }
+
+  async deleteEnrollmentFee(id: string): Promise<{ message: string }> {
+    return this.delete<{ message: string }>(`/admin/enrollment-fees/${id}`);
   }
   // Dashboard do Coach - Endpoints Financeiros
   
@@ -1571,6 +1776,65 @@ export class EnduranceApiClient {
   // Métodos para histórico
   async getVideoCallHistory(videoCallId: string): Promise<VideoCallHistory[]> {
     return this.get(`/video-calls/${videoCallId}/history`);
+  }
+
+  // ===== MÉTODOS PARA PROVAS EXTERNAS =====
+
+  /**
+   * Criar uma nova prova externa
+   */
+  async createExternalExam(data: CreateExternalExamRequest): Promise<ApiResponse<ExternalExam>> {
+    const response = await this.api.post('/external-exams', data);
+    return response.data;
+  }
+
+  /**
+   * Listar provas externas com filtros
+   */
+  async getExternalExams(filters?: ExternalExamFilters): Promise<ExternalExamsResponse> {
+    const params = new URLSearchParams();
+    
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.modalidadeId) params.append('modalidadeId', filters.modalidadeId);
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+
+    const response = await this.api.get(`/external-exams?${params.toString()}`);
+    
+    // A API retorna { success: true, data: { data: [...], pagination: {...} } }
+    // Precisamos extrair apenas a parte interna
+    if (response.data && response.data.success && response.data.data) {
+      return response.data.data as ExternalExamsResponse;
+    }
+    
+    return response.data as ExternalExamsResponse;
+  }
+
+  /**
+   * Buscar prova externa por ID
+   */
+  async getExternalExamById(id: string): Promise<ApiResponse<ExternalExam>> {
+    const response = await this.api.get(`/external-exams/${id}`);
+    return response.data;
+  }
+
+  /**
+   * Atualizar prova externa
+   */
+  async updateExternalExam(id: string, data: UpdateExternalExamRequest): Promise<ApiResponse<ExternalExam>> {
+    const response = await this.api.patch(`/external-exams/${id}`, data);
+    return response.data;
+  }
+
+  /**
+   * Remover prova externa (soft delete)
+   */
+  async deleteExternalExam(id: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await this.api.delete(`/external-exams/${id}`);
+    return response.data;
   }
 }
 

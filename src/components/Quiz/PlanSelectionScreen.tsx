@@ -386,6 +386,88 @@ const PlanSelectionScreen: React.FC<PlanSelectionScreenProps> = ({ onPlanSelecte
                   </Typography>
                 </Box>
 
+                {/* Seção de Periodicidades */}
+                {modalData.plan.prices && modalData.plan.prices.length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="h6" fontWeight="bold" gutterBottom>
+                      Opções de Pagamento
+                    </Typography>
+                    <Grid container spacing={2}>
+                      {modalData.plan.prices.map((priceObj, index) => {
+                        const getPeriodLabel = (period: PlanPeriod) => {
+                          switch (period) {
+                            case PlanPeriod.WEEKLY:
+                              return 'Semanal';
+                            case PlanPeriod.BIWEEKLY:
+                              return 'Quinzenal';
+                            case PlanPeriod.MONTHLY:
+                              return 'Mensal';
+                            case PlanPeriod.QUARTERLY:
+                              return 'Trimestral';
+                            case PlanPeriod.SEMIANNUALLY:
+                              return 'Semestral';
+                            case PlanPeriod.YEARLY:
+                              return 'Anual';
+                            default:
+                              return period;
+                          }
+                        };
+
+                        const getPeriodDescription = (period: PlanPeriod) => {
+                          switch (period) {
+                            case PlanPeriod.WEEKLY:
+                              return 'por semana';
+                            case PlanPeriod.BIWEEKLY:
+                              return 'por quinzena';
+                            case PlanPeriod.MONTHLY:
+                              return 'por mês';
+                            case PlanPeriod.QUARTERLY:
+                              return 'por trimestre';
+                            case PlanPeriod.SEMIANNUALLY:
+                              return 'por semestre';
+                            case PlanPeriod.YEARLY:
+                              return 'por ano';
+                            default:
+                              return '';
+                          }
+                        };
+
+                        return (
+                          <Grid item xs={12} sm={6} key={index}>
+                            <Card 
+                              variant="outlined" 
+                              sx={{ 
+                                p: 2, 
+                                textAlign: 'center',
+                                border: priceObj.period === PlanPeriod.MONTHLY ? `2px solid ${theme.palette.primary.main}` : '1px solid',
+                                backgroundColor: priceObj.period === PlanPeriod.MONTHLY ? theme.palette.primary.light + '10' : 'transparent'
+                              }}
+                            >
+                              <Typography variant="subtitle2" fontWeight="bold" color="primary">
+                                {getPeriodLabel(priceObj.period)}
+                              </Typography>
+                              <Typography variant="h6" fontWeight="bold" sx={{ mt: 0.5 }}>
+                                {formatPrice(priceObj.price)}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {getPeriodDescription(priceObj.period)}
+                              </Typography>
+                              {priceObj.period === PlanPeriod.MONTHLY && (
+                                <Chip 
+                                  label="Mais Popular" 
+                                  size="small" 
+                                  color="primary" 
+                                  sx={{ mt: 1, fontSize: '0.7rem' }}
+                                />
+                              )}
+                            </Card>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  </Box>
+                )}
+
                 {modalData.plan.description && (
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="h6" fontWeight="bold" gutterBottom>

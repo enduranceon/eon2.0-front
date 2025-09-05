@@ -21,7 +21,9 @@ import {
   Chip,
   Typography,
   IconButton,
-  InputAdornment
+  InputAdornment,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import { AddCircleOutline as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { Plan, Modalidade, PlanPrice, PlanPeriod } from '../../../types/api';
@@ -47,6 +49,7 @@ const planSchema = z.object({
   enrollmentFee: z.number().min(0, 'A taxa deve ser positiva').optional(),
   modalidadeIds: z.array(z.string()).min(1, 'Selecione ao menos uma modalidade'),
   prices: z.array(planPriceSchema).min(1, 'Adicione ao menos um preço'),
+  forSale: z.boolean().optional(),
 });
 
 type PlanFormData = z.infer<typeof planSchema>;
@@ -66,7 +69,7 @@ export default function PlanForm({ open, onClose, onSubmit, plan, loading, error
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<PlanFormData>({
     resolver: zodResolver(planSchema),
-    defaultValues: { name: '', description: '', enrollmentFee: 0, modalidadeIds: [], prices: [] },
+    defaultValues: { name: '', description: '', enrollmentFee: 0, modalidadeIds: [], prices: [], forSale: true },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: "prices" });
@@ -92,9 +95,10 @@ export default function PlanForm({ open, onClose, onSubmit, plan, loading, error
           enrollmentFee: plan.enrollmentFee || 0,
           modalidadeIds: plan.modalidades.map(m => m.modalidade.id),
           prices: plan.prices.map(p => ({ period: p.period, price: p.price })),
+          forSale: plan.forSale ?? true,
         });
       } else {
-        reset({ name: '', description: '', enrollmentFee: 0, modalidadeIds: [], prices: [{ period: PlanPeriod.MONTHLY, price: 0 }] });
+        reset({ name: '', description: '', enrollmentFee: 0, modalidadeIds: [], prices: [{ period: PlanPeriod.MONTHLY, price: 0 }], forSale: true });
       }
     }
   }, [open, plan, isEditMode, reset]);
@@ -125,6 +129,24 @@ export default function PlanForm({ open, onClose, onSubmit, plan, loading, error
             </Grid>
             <Grid item xs={12}>
               <Controller name="description" control={control} render={({ field }) => ( <TextField {...field} label="Descrição" multiline rows={3} fullWidth /> )}/>
+            </Grid>
+            <Grid item xs={12}>
+              <Controller 
+                name="forSale" 
+                control={control} 
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={field.value ?? true}
+                        onChange={field.onChange}
+                        color="primary"
+                      />
+                    }
+                    label="Disponível para venda"
+                  />
+                )}
+              />
             </Grid>
             <Grid item xs={12}>
               <FormControl fullWidth error={!!errors.modalidadeIds}>

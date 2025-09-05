@@ -45,6 +45,10 @@ import {
   AccessTime as TimeIcon,
   EmojiEvents as TrophyIcon,
   LocationOn as LocationIcon,
+  CloudUpload as UploadIcon,
+  Description as ReportIcon,
+  Delete as DeleteIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -127,6 +131,13 @@ function TestResultsList() {
   const [selectedResult, setSelectedResult] = useState<AdminTestResult | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // Estados para upload de relatório
+  const [uploadingReport, setUploadingReport] = useState(false);
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [reportUrl, setReportUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+
   const fetchResults = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -188,14 +199,100 @@ function TestResultsList() {
     setPage(0);
   };
 
-  const openDetails = (result: AdminTestResult) => {
+  const openDetails = async (result: AdminTestResult) => {
     setSelectedResult(result);
     setDetailsOpen(true);
+    
+    // Limpar estados anteriores
+    setReportFile(null);
+    setUploadError(null);
+    setUploadSuccess(null);
+    setUploadingReport(false);
+    
+    // Usar o reportUrl que já vem na resposta da API
+    setReportUrl(result.reportUrl || null);
   };
 
   const closeDetails = () => {
     setSelectedResult(null);
     setDetailsOpen(false);
+    // Limpar estados do upload
+    setReportFile(null);
+    setReportUrl(null);
+    setUploadError(null);
+    setUploadSuccess(null);
+    setUploadingReport(false);
+  };
+
+  // Funções para upload de relatório
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validar tipo de arquivo (apenas PDF)
+      if (file.type !== 'application/pdf') {
+        setUploadError('Apenas arquivos PDF são permitidos');
+        return;
+      }
+      
+      // Validar tamanho (máximo 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadError('O arquivo deve ter no máximo 10MB');
+        return;
+      }
+      
+      setReportFile(file);
+      setUploadError(null);
+    }
+  };
+
+  const handleUploadReport = async () => {
+    if (!reportFile || !selectedResult) return;
+
+    setUploadingReport(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    try {
+      // Fazer upload do arquivo
+      const uploadResponse = await enduranceApi.uploadTestReport(selectedResult.id, reportFile);
+      
+      // Atualizar URL do relatório no resultado
+      await enduranceApi.updateTestResultReport(selectedResult.id, uploadResponse.url);
+      
+      setReportUrl(uploadResponse.url);
+      setUploadSuccess('Relatório enviado com sucesso!');
+      setReportFile(null);
+      
+      // Recarregar a lista de resultados para atualizar os dados
+      fetchResults();
+    } catch (err: any) {
+      console.error('Erro ao fazer upload do relatório:', err);
+      setUploadError(err.response?.data?.message || 'Erro ao fazer upload do relatório');
+    } finally {
+      setUploadingReport(false);
+    }
+  };
+
+  const handleDeleteReport = async () => {
+    if (!selectedResult) return;
+
+    try {
+      await enduranceApi.deleteTestReport(selectedResult.id);
+      setReportUrl(null);
+      setUploadSuccess('Relatório removido com sucesso!');
+      
+      // Recarregar a lista de resultados
+      fetchResults();
+    } catch (err: any) {
+      console.error('Erro ao remover relatório:', err);
+      setUploadError(err.response?.data?.message || 'Erro ao remover relatório');
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (reportUrl) {
+      window.open(reportUrl, '_blank');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -232,7 +329,40 @@ function TestResultsList() {
       );
     }
 
-    // Verificar se é um array (estrutura correta)
+    // Verificar se é um objeto com multipleResults (estrutura correta da API)
+    if (dynamicResults.multipleResults && Array.isArray(dynamicResults.multipleResults)) {
+      if (dynamicResults.multipleResults.length === 0) {
+        return (
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Nenhum resultado dinâmico encontrado
+            </Typography>
+          </Box>
+        );
+      }
+
+      return (
+        <Box>
+          {dynamicResults.multipleResults.map((result: any, index: number) => (
+            <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="body2" fontWeight="bold">
+                {result.fieldName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {result.value} {result.unit}
+              </Typography>
+              {result.description && (
+                <Typography variant="caption" color="text.secondary">
+                  {result.description}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
+      );
+    }
+
+    // Verificar se é um array direto (estrutura alternativa)
     if (Array.isArray(dynamicResults)) {
       if (dynamicResults.length === 0) {
         return (
@@ -246,7 +376,7 @@ function TestResultsList() {
 
       return (
         <Box>
-          {dynamicResults.map((result, index) => (
+          {dynamicResults.map((result: any, index: number) => (
             <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
               <Typography variant="body2" fontWeight="bold">
                 {result.fieldName}
@@ -527,8 +657,10 @@ function TestResultsList() {
                               Múltiplos resultados
                             </Typography>
                             <Typography variant="caption" color="textSecondary">
-                              {Array.isArray(result.dynamicResults) 
-                                ? result.dynamicResults.length 
+                              {result.dynamicResults && typeof result.dynamicResults === 'object' && 'multipleResults' in result.dynamicResults && Array.isArray(result.dynamicResults.multipleResults)
+                                ? result.dynamicResults.multipleResults.length 
+                                : Array.isArray(result.dynamicResults)
+                                ? result.dynamicResults.length
                                 : 'N/A'} campos
                             </Typography>
                           </Box>
@@ -741,6 +873,142 @@ function TestResultsList() {
                       )}
                     </Grid>
                   </Grid>
+                </Grid>
+
+                {/* Seção de Relatório */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <ReportIcon />
+                      Relatório do Teste
+                    </Box>
+                  </Typography>
+                  
+                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                    {reportUrl ? (
+                      // Relatório existente
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <ReportIcon color="primary" />
+                          <Typography variant="body1" fontWeight="bold">
+                            Relatório disponível
+                          </Typography>
+                        </Box>
+                        
+                        {/* Link do relatório */}
+                        <Box sx={{ mb: 2, p: 1, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Link do relatório:
+                          </Typography>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              wordBreak: 'break-all',
+                              fontFamily: 'monospace',
+                              fontSize: '0.875rem',
+                              color: 'primary.main',
+                              cursor: 'pointer',
+                              '&:hover': {
+                                textDecoration: 'underline'
+                              }
+                            }}
+                            onClick={handleDownloadReport}
+                            title="Clique para abrir o relatório"
+                          >
+                            {reportUrl}
+                          </Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button
+                            variant="outlined"
+                            startIcon={<DownloadIcon />}
+                            onClick={handleDownloadReport}
+                            size="small"
+                          >
+                            Baixar Relatório
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={handleDeleteReport}
+                            size="small"
+                          >
+                            Remover
+                          </Button>
+                        </Box>
+                      </Box>
+                    ) : (
+                      // Upload de novo relatório
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          Faça upload de um relatório em PDF para este teste
+                        </Typography>
+                        
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <input
+                            accept=".pdf"
+                            style={{ display: 'none' }}
+                            id="report-upload"
+                            type="file"
+                            onChange={handleFileSelect}
+                          />
+                          <label htmlFor="report-upload">
+                            <Button
+                              variant="outlined"
+                              component="span"
+                              startIcon={<UploadIcon />}
+                              size="small"
+                            >
+                              Selecionar Arquivo
+                            </Button>
+                          </label>
+                          
+                          {reportFile && (
+                            <Typography variant="body2" color="primary">
+                              {reportFile.name}
+                            </Typography>
+                          )}
+                        </Box>
+                        
+                        {reportFile && (
+                          <Button
+                            variant="contained"
+                            startIcon={<UploadIcon />}
+                            onClick={handleUploadReport}
+                            disabled={uploadingReport}
+                            size="small"
+                            sx={{ mb: 2 }}
+                          >
+                            {uploadingReport ? 'Enviando...' : 'Enviar Relatório'}
+                          </Button>
+                        )}
+                      </Box>
+                    )}
+                    
+                    {/* Mensagens de feedback */}
+                    {uploadError && (
+                      <Alert severity="error" sx={{ mt: 2 }}>
+                        {uploadError}
+                      </Alert>
+                    )}
+                    
+                    {uploadSuccess && (
+                      <Alert severity="success" sx={{ mt: 2 }}>
+                        {uploadSuccess}
+                      </Alert>
+                    )}
+                    
+                    {uploadingReport && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
+                        <CircularProgress size={20} />
+                        <Typography variant="body2" color="text.secondary">
+                          Enviando relatório...
+                        </Typography>
+                      </Box>
+                    )}
+                  </Paper>
                 </Grid>
               </Grid>
             </DialogContent>

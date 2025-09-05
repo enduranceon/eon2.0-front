@@ -101,6 +101,16 @@ export default function MeusAlunosPage() {
   const [studentsPerPage] = useState(10);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuStudentId, setMenuStudentId] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    gender: '',
+    birthDate: '',
+    isActive: true
+  });
   const { user, logout } = useAuth();
   const router = useRouter();
 
@@ -201,6 +211,64 @@ export default function MeusAlunosPage() {
   const handleMenuClose = () => {
     setAnchorEl(null);
     setMenuStudentId(null);
+  };
+
+  const handleEditStudent = (studentId: string) => {
+    const student = students.find(s => s.id === studentId);
+    if (student) {
+      setEditingStudent(student);
+      setEditFormData({
+        name: student.name,
+        email: student.email,
+        gender: student.gender,
+        birthDate: student.birthDate,
+        isActive: student.isActive
+      });
+      setEditDialogOpen(true);
+    }
+    handleMenuClose();
+  };
+
+  const handleViewDetails = (studentId: string) => {
+    const student = students.find(s => s.id === studentId);
+    if (student) {
+      setEditingStudent(student);
+      setDetailsDialogOpen(true);
+    }
+    handleMenuClose();
+  };
+
+  const handleEditFormChange = (field: string, value: any) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSaveStudent = async () => {
+    if (!editingStudent) return;
+
+    try {
+      // Aqui você pode implementar a chamada para a API de atualização
+      // await enduranceApi.updateStudent(editingStudent.id, editFormData);
+      
+      // Por enquanto, vamos apenas atualizar o estado local
+      setStudents(prev => prev.map(s => 
+        s.id === editingStudent.id 
+          ? { ...s, ...editFormData }
+          : s
+      ));
+      
+      setSuccess('Aluno atualizado com sucesso!');
+      setEditDialogOpen(false);
+      setEditingStudent(null);
+      
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error) {
+      console.error('Erro ao atualizar aluno:', error);
+      setError('Erro ao atualizar dados do aluno');
+      setTimeout(() => setError(null), 3000);
+    }
   };
 
   const getAge = (birthDate: string): number => {
@@ -649,11 +717,11 @@ export default function MeusAlunosPage() {
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
           >
-            <MenuItem onClick={handleMenuClose}>
+            <MenuItem onClick={() => menuStudentId && handleEditStudent(menuStudentId)}>
               <EditIcon fontSize="small" sx={{ mr: 1 }} />
               Editar Aluno
             </MenuItem>
-            <MenuItem onClick={handleMenuClose}>
+            <MenuItem onClick={() => menuStudentId && handleViewDetails(menuStudentId)}>
               <PersonIcon fontSize="small" sx={{ mr: 1 }} />
               Ver Detalhes
             </MenuItem>
@@ -692,6 +760,218 @@ export default function MeusAlunosPage() {
                 color={selectedStudent?.isActive ? 'error' : 'success'}
               >
                 {selectedStudent?.isActive ? 'Desativar' : 'Ativar'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Modal de Edição de Aluno */}
+          <Dialog 
+            open={editDialogOpen} 
+            onClose={() => setEditDialogOpen(false)}
+            maxWidth="md"
+            fullWidth
+          >
+            <DialogTitle>
+              Editar Aluno
+            </DialogTitle>
+            <DialogContent>
+              {editingStudent && (
+                <Box sx={{ pt: 2 }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Nome"
+                        value={editFormData.name}
+                        onChange={(e) => handleEditFormChange('name', e.target.value)}
+                        variant="outlined"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Email"
+                        value={editFormData.email}
+                        onChange={(e) => handleEditFormChange('email', e.target.value)}
+                        variant="outlined"
+                        type="email"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <FormControl fullWidth>
+                        <InputLabel>Gênero</InputLabel>
+                        <Select
+                          value={editFormData.gender}
+                          label="Gênero"
+                          onChange={(e) => handleEditFormChange('gender', e.target.value)}
+                        >
+                          <MenuItem value="MALE">Masculino</MenuItem>
+                          <MenuItem value="FEMALE">Feminino</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Data de Nascimento"
+                        type="date"
+                        value={editFormData.birthDate}
+                        onChange={(e) => handleEditFormChange('birthDate', e.target.value)}
+                        variant="outlined"
+                        InputLabelProps={{
+                          shrink: true,
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={editFormData.isActive}
+                            onChange={(e) => handleEditFormChange('isActive', e.target.checked)}
+                            color="primary"
+                          />
+                        }
+                        label="Aluno Ativo"
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSaveStudent}
+                variant="contained"
+                color="primary"
+              >
+                Salvar Alterações
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Modal de Visualização de Detalhes */}
+          <Dialog 
+            open={detailsDialogOpen} 
+            onClose={() => setDetailsDialogOpen(false)}
+            maxWidth="md"
+            fullWidth
+          >
+            <DialogTitle>
+              Detalhes do Aluno
+            </DialogTitle>
+            <DialogContent>
+              {editingStudent && (
+                <Box sx={{ pt: 2 }}>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={4}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Avatar 
+                          src={editingStudent.image} 
+                          alt={editingStudent.name}
+                          sx={{ width: 120, height: 120, mx: 'auto', mb: 2 }}
+                        >
+                          <PersonIcon sx={{ fontSize: 60 }} />
+                        </Avatar>
+                        <Typography variant="h6" fontWeight="bold">
+                          {editingStudent.name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {editingStudent.email}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={8}>
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            Informações Pessoais
+                          </Typography>
+                          <Divider sx={{ mb: 1 }} />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            {getGenderIcon(editingStudent.gender)}
+                            <Typography variant="body2">
+                              <strong>Gênero:</strong> {getGenderLabel(editingStudent.gender)}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            <strong>Idade:</strong> {editingStudent.birthDate ? getAge(editingStudent.birthDate) : 'N/A'} anos
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            <strong>Data de Nascimento:</strong> {editingStudent.birthDate ? format(new Date(editingStudent.birthDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            Informações da Conta
+                          </Typography>
+                          <Divider sx={{ mb: 1 }} />
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            <strong>Status:</strong> 
+                            <Chip 
+                              label={editingStudent.isActive ? 'Ativo' : 'Inativo'}
+                              color={editingStudent.isActive ? 'success' : 'error'}
+                              size="small"
+                              sx={{ ml: 1 }}
+                            />
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            <strong>Data de Ingresso:</strong> {format(new Date(editingStudent.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
+                          </Typography>
+                        </Box>
+
+                        {editingStudent.plan && (
+                          <Box>
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                              Plano Atual
+                            </Typography>
+                            <Divider sx={{ mb: 1 }} />
+                            <Typography variant="body2" sx={{ mb: 1 }}>
+                              <strong>Nome do Plano:</strong> {editingStudent.plan.name}
+                            </Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}>
+                              <strong>Valor:</strong> R$ {editingStudent.plan.price.toFixed(2)}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {editingStudent.modalidade && (
+                          <Box>
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                              Modalidade
+                            </Typography>
+                            <Divider sx={{ mb: 1 }} />
+                            <Typography variant="body2">
+                              <strong>Modalidade:</strong> {editingStudent.modalidade.name}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDetailsDialogOpen(false)}>
+                Fechar
+              </Button>
+              <Button 
+                onClick={() => {
+                  setDetailsDialogOpen(false);
+                  if (editingStudent) {
+                    handleEditStudent(editingStudent.id);
+                  }
+                }}
+                variant="contained"
+                color="primary"
+                startIcon={<EditIcon />}
+              >
+                Editar Aluno
               </Button>
             </DialogActions>
           </Dialog>

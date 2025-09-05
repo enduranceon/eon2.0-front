@@ -216,7 +216,7 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <DashboardLayout user={auth.user!} onLogout={auth.logout}>
+      <DashboardLayout user={auth.user!} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
             <CircularProgress size={60} />
@@ -228,7 +228,7 @@ export default function StudentDashboard() {
 
   if (error) {
     return (
-      <DashboardLayout user={auth.user!} onLogout={auth.logout}>
+      <DashboardLayout user={auth.user!} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Alert severity="error" sx={{ mb: 4 }}>
             {error}
@@ -242,7 +242,7 @@ export default function StudentDashboard() {
   }
 
   return (
-    <DashboardLayout user={auth.user!} onLogout={auth.logout}>
+    <DashboardLayout user={auth.user!} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
       <Container maxWidth="lg" sx={{ py: 4 }}>
         {/* Header */}
         <Box sx={{ mb: 4 }}>

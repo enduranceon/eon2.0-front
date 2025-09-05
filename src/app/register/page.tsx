@@ -432,6 +432,12 @@ export default function RegisterPage() {
   };
 
   const handleBack = () => {
+    // Se estiver no passo 0 (Bem-vindo), redirecionar para login
+    if (activeStep === 0) {
+      router.push('/login');
+      return;
+    }
+    
     const prevStep = activeStep - 1;
     setActiveStep(prevStep);
     // Salvar o passo atual no localStorage
@@ -492,15 +498,11 @@ export default function RegisterPage() {
 
       const registerResponse = await auth.register(registerData);
       
-      console.log('Resposta completa do registro:', registerResponse);
       
       // Após criar a conta, aceitar o termo de consentimento
       // Usar o userId real retornado pelo registro
       if (consentTerm && registerResponse) {
         try {
-          console.log('Registro bem-sucedido, aceitando termo de consentimento...');
-          console.log('userId:', registerResponse.userId);
-          console.log('consentTermVersion:', consentTerm.version);
           
           // O usuário será redirecionado automaticamente após o registro
           // O termo será aceito em background
@@ -544,7 +546,7 @@ export default function RegisterPage() {
         return (
           <Box>
             <Typography variant="h6" gutterBottom>
-              Criar conta de aluno
+              Bem-vindo à Endurance On!
             </Typography>
             <Alert severity="info" sx={{ mb: 3 }}>
               Como aluno, você terá acesso a planos de treino personalizados e acompanhamento profissional.
@@ -553,6 +555,11 @@ export default function RegisterPage() {
               <Typography variant="body2">
                 <strong>Observação:</strong> Se você é um profissional e deseja ser treinador em nossa plataforma, 
                 entre em contato com nosso suporte ou aguarde ser convidado por um administrador.
+              </Typography>
+            </Alert>
+            <Alert severity="success" sx={{ mb: 3 }}>
+              <Typography variant="body2">
+                <strong>Já tem uma conta?</strong> Clique em "Ir para Login" para acessar sua conta existente.
               </Typography>
             </Alert>
           </Box>
@@ -1032,10 +1039,10 @@ export default function RegisterPage() {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
             <Button
               onClick={handleBack}
-              disabled={activeStep === 0 || loading}
+              disabled={loading}
               variant="outlined"
             >
-              Voltar
+              {activeStep === 0 ? 'Ir para Login' : 'Voltar'}
             </Button>
             
             <Button

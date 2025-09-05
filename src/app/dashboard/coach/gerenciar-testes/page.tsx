@@ -62,7 +62,11 @@ import {
   Science as ScienceIcon,
   History as HistoryIcon,
   Edit as EditIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  CloudUpload as UploadIcon,
+  Description as ReportIcon,
+  Delete as DeleteIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -113,6 +117,7 @@ interface AllStudentTest {
   notes?: string;
   recordedAt?: string;
   recordedBy?: string;
+  reportUrl?: string | null;
   dynamicResults?: {
     date: string;
     type: string;
@@ -301,6 +306,13 @@ export default function GerenciarTestesPage() {
   // Estados para modal de detalhes do teste
   const [testDetailsDialogOpen, setTestDetailsDialogOpen] = useState(false);
   const [selectedTestForDetails, setSelectedTestForDetails] = useState<AllStudentTest | null>(null);
+
+  // Estados para upload de relatório no modal de detalhes
+  const [uploadingReport, setUploadingReport] = useState(false);
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [reportUrl, setReportUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
 
 
@@ -681,12 +693,28 @@ export default function GerenciarTestesPage() {
   const openTestDetailsDialog = (test: AllStudentTest) => {
     setSelectedTestForDetails(test);
     setTestDetailsDialogOpen(true);
+    
+    // Limpar estados anteriores do upload
+    setReportFile(null);
+    setUploadError(null);
+    setUploadSuccess(null);
+    setUploadingReport(false);
+    
+    // Usar o reportUrl que já vem na resposta da API
+    setReportUrl(test.reportUrl || null);
   };
 
   // Função para fechar modal de detalhes do teste
   const closeTestDetailsDialog = () => {
     setTestDetailsDialogOpen(false);
     setSelectedTestForDetails(null);
+    
+    // Limpar estados do upload
+    setReportFile(null);
+    setReportUrl(null);
+    setUploadError(null);
+    setUploadSuccess(null);
+    setUploadingReport(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -759,6 +787,81 @@ export default function GerenciarTestesPage() {
     setAllTestsEndDate(null);
     setAllTestsTestIdFilter('');
     setAllTestsUserIdFilter('');
+  };
+
+  // Funções para upload de relatório
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validar tipo de arquivo (apenas PDF)
+      if (file.type !== 'application/pdf') {
+        setUploadError('Apenas arquivos PDF são permitidos');
+        return;
+      }
+      
+      // Validar tamanho (máximo 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadError('O arquivo deve ter no máximo 10MB');
+        return;
+      }
+      
+      setReportFile(file);
+      setUploadError(null);
+    }
+  };
+
+  const handleUploadReport = async () => {
+    if (!reportFile || !selectedTestForDetails) return;
+
+    setUploadingReport(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    try {
+      // Fazer upload do arquivo
+      const uploadResponse = await enduranceApi.uploadTestReport(selectedTestForDetails.id, reportFile);
+      
+      // Atualizar URL do relatório no resultado
+      await enduranceApi.updateTestResultReport(selectedTestForDetails.id, uploadResponse.url);
+      
+      setReportUrl(uploadResponse.url);
+      setUploadSuccess('Relatório enviado com sucesso!');
+      setReportFile(null);
+      
+      // Recarregar a lista de testes para atualizar os dados
+      if (currentTab === 1) {
+        fetchAllStudentTests(1, false);
+      }
+    } catch (err: any) {
+      console.error('Erro ao fazer upload do relatório:', err);
+      setUploadError(err.response?.data?.message || 'Erro ao fazer upload do relatório');
+    } finally {
+      setUploadingReport(false);
+    }
+  };
+
+  const handleDeleteReport = async () => {
+    if (!selectedTestForDetails) return;
+
+    try {
+      await enduranceApi.deleteTestReport(selectedTestForDetails.id);
+      setReportUrl(null);
+      setUploadSuccess('Relatório removido com sucesso!');
+      
+      // Recarregar a lista de testes
+      if (currentTab === 1) {
+        fetchAllStudentTests(1, false);
+      }
+    } catch (err: any) {
+      console.error('Erro ao remover relatório:', err);
+      setUploadError(err.response?.data?.message || 'Erro ao remover relatório');
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (reportUrl) {
+      window.open(reportUrl, '_blank');
+    }
   };
 
 
@@ -1655,6 +1758,142 @@ export default function GerenciarTestesPage() {
                     }
                     return null;
                   })()}
+
+                  {/* Seção de Relatório */}
+                  <Grid item xs={12}>
+                    <Typography variant="h6" gutterBottom>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <ReportIcon />
+                        Relatório do Teste
+                      </Box>
+                    </Typography>
+                    
+                    <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                      {reportUrl ? (
+                        // Relatório existente
+                        <Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <ReportIcon color="primary" />
+                            <Typography variant="body1" fontWeight="bold">
+                              Relatório disponível
+                            </Typography>
+                          </Box>
+                          
+                          {/* Link do relatório */}
+                          <Box sx={{ mb: 2, p: 1, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              Link do relatório:
+                            </Typography>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                wordBreak: 'break-all',
+                                fontFamily: 'monospace',
+                                fontSize: '0.875rem',
+                                color: 'primary.main',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  textDecoration: 'underline'
+                                }
+                              }}
+                              onClick={handleDownloadReport}
+                              title="Clique para abrir o relatório"
+                            >
+                              {reportUrl}
+                            </Typography>
+                          </Box>
+                          
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                              variant="outlined"
+                              startIcon={<DownloadIcon />}
+                              onClick={handleDownloadReport}
+                              size="small"
+                            >
+                              Baixar Relatório
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              startIcon={<DeleteIcon />}
+                              onClick={handleDeleteReport}
+                              size="small"
+                            >
+                              Remover
+                            </Button>
+                          </Box>
+                        </Box>
+                      ) : (
+                        // Upload de novo relatório
+                        <Box>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Faça upload de um relatório em PDF para este teste
+                          </Typography>
+                          
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <input
+                              accept=".pdf"
+                              style={{ display: 'none' }}
+                              id="report-upload-coach"
+                              type="file"
+                              onChange={handleFileSelect}
+                            />
+                            <label htmlFor="report-upload-coach">
+                              <Button
+                                variant="outlined"
+                                component="span"
+                                startIcon={<UploadIcon />}
+                                size="small"
+                              >
+                                Selecionar Arquivo
+                              </Button>
+                            </label>
+                            
+                            {reportFile && (
+                              <Typography variant="body2" color="primary">
+                                {reportFile.name}
+                              </Typography>
+                            )}
+                          </Box>
+                          
+                          {reportFile && (
+                            <Button
+                              variant="contained"
+                              startIcon={<UploadIcon />}
+                              onClick={handleUploadReport}
+                              disabled={uploadingReport}
+                              size="small"
+                              sx={{ mb: 2 }}
+                            >
+                              {uploadingReport ? 'Enviando...' : 'Enviar Relatório'}
+                            </Button>
+                          )}
+                        </Box>
+                      )}
+                      
+                      {/* Mensagens de feedback */}
+                      {uploadError && (
+                        <Alert severity="error" sx={{ mt: 2 }}>
+                          {uploadError}
+                        </Alert>
+                      )}
+                      
+                      {uploadSuccess && (
+                        <Alert severity="success" sx={{ mt: 2 }}>
+                          {uploadSuccess}
+                        </Alert>
+                      )}
+                      
+                      {uploadingReport && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
+                          <CircularProgress size={20} />
+                          <Typography variant="body2" color="text.secondary">
+                            Enviando relatório...
+                          </Typography>
+                        </Box>
+                      )}
+                    </Paper>
+                  </Grid>
                   </Grid>
               )}
                 </DialogContent>

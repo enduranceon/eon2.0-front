@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -27,7 +27,7 @@ import {
   DirectionsRun as RunIcon,
   CheckCircle as CheckIcon,
 } from '@mui/icons-material';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -41,6 +41,7 @@ import NextLink from 'next/link';
 export default function LoginPage() {
   const theme = useTheme();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const auth = useAuth();
 
   const [formData, setFormData] = useState({
@@ -53,7 +54,18 @@ export default function LoginPage() {
   const [loginStep, setLoginStep] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const emailInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Verificar se há mensagem de sucesso na URL
+  useEffect(() => {
+    const message = searchParams.get('message');
+    if (message === 'registration-success') {
+      setSuccessMessage('Cadastro realizado com sucesso! Agora você pode fazer login.');
+      setShowSuccess(true);
+    }
+  }, [searchParams]);
 
   // Redirecionar se já autenticado
   React.useEffect(() => {
@@ -187,6 +199,23 @@ export default function LoginPage() {
 
           {/* Formulário */}
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            {showSuccess && (
+              <Alert 
+                severity="success" 
+                sx={{ 
+                  mb: 3,
+                  animation: 'fadeIn 0.5s',
+                  '@keyframes fadeIn': {
+                    '0%': { opacity: 0, transform: 'translateY(-10px)' },
+                    '100%': { opacity: 1, transform: 'translateY(0)' }
+                  }
+                }}
+                onClose={() => setShowSuccess(false)}
+              >
+                {successMessage}
+              </Alert>
+            )}
+
             {error && (
               <Alert 
                 severity="error" 
