@@ -99,23 +99,10 @@ export default function StudentProfilePage() {
   }, [auth.isLoading, auth.user, router]);
 
   React.useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await enduranceApi.getProfile();
-        setProfile(data);
-      } catch (err) {
-        console.error('❌ Erro ao carregar perfil:', err);
-        setError('Erro ao carregar perfil. Tente novamente.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    // Só carrega o perfil se o usuário estiver autenticado
+    // Usar dados do AuthContext em vez de chamar a API diretamente
     if (auth.user && !auth.isLoading) {
-      loadProfile();
+      setProfile(auth.user);
+      setLoading(false);
     }
   }, [auth.user, auth.isLoading]);
 
@@ -340,14 +327,16 @@ export default function StudentProfilePage() {
                       id: profile.id,
                       name: profile.name,
                       email: profile.email,
+                      image: profile.image,
                       userType: 'FITNESS_STUDENT' as any,
                       isActive: true,
                       createdAt: new Date().toISOString(),
                       updatedAt: new Date().toISOString()
                     }}
-                    defaultPhoto={getAbsoluteImageUrl(profile.image || profile.avatar)}
                     sx={{ width: 120, height: 120, margin: '0 auto', mb: 2 }}
                     showUpdateIndicator={true}
+                    indicatorPosition="top"
+                    indicatorSize="medium"
                   />
                   <input
                     type="file"

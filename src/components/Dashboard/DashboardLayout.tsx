@@ -24,6 +24,7 @@ import {
   Container,
   CircularProgress,
   Chip,
+  Avatar as MuiAvatar,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -438,16 +439,6 @@ export default function DashboardLayout({ children, user, onLogout, overdueInfo 
     onLogout();
   };
 
-  const getAbsoluteImageUrl = (url: string | undefined | null): string | undefined => {
-    if (!url) return undefined;
-    if (url.startsWith('http') || url.startsWith('blob:')) {
-      return url;
-    }
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const origin = new URL(apiUrl).origin;
-    const path = url.startsWith('/api') ? url.substring(4) : url;
-    return `${origin}/api${path.startsWith('/') ? '' : '/'}${path}`;
-  };
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -773,15 +764,23 @@ export default function DashboardLayout({ children, user, onLogout, overdueInfo 
               onClick={handleProfileMenuOpen}
               color="inherit"
             >
-              <WebSocketAvatar 
-                userId={user.id}
-                user={user}
-                defaultPhoto={getAbsoluteImageUrl(user.image)}
-                sx={{ width: 32, height: 32 }}
-                showUpdateIndicator={true}
-              >
-                {!user.image && <AccountCircleIcon />}
-              </WebSocketAvatar>
+              {/* Aguardar dados do usuário estarem consistentes antes de renderizar o avatar */}
+              {user?.id && user?.name ? (
+                <WebSocketAvatar 
+                  userId={user.id}
+                  user={user}
+                  sx={{ width: 32, height: 32 }}
+                  showUpdateIndicator={true}
+                  indicatorPosition="top"
+                  indicatorSize="small"
+                >
+                  {!user.image && <AccountCircleIcon />}
+                </WebSocketAvatar>
+              ) : (
+                <MuiAvatar sx={{ width: 32, height: 32 }}>
+                  <AccountCircleIcon />
+                </MuiAvatar>
+              )}
             </IconButton>
           </Box>
         </Toolbar>
@@ -797,7 +796,13 @@ export default function DashboardLayout({ children, user, onLogout, overdueInfo 
       >
         <MenuItem
           component={Link}
-          href={user.userType === UserType.COACH ? '/dashboard/coach/perfil' : '/dashboard/aluno/perfil'}
+          href={
+            user.userType === UserType.COACH 
+              ? '/dashboard/coach/perfil' 
+              : user.userType === UserType.ADMIN 
+                ? '/dashboard/admin/perfil' 
+                : '/dashboard/aluno/perfil'
+          }
           onClick={() => { handleProfileMenuClose(); }}
         >
           <ListItemIcon>

@@ -348,14 +348,16 @@ export default function CoachProfilePage() {
                       id: profile.id,
                       name: profile.name,
                       email: profile.email,
+                      image: profile.image,
                       userType: 'COACH' as any,
                       isActive: true,
                       createdAt: new Date().toISOString(),
                       updatedAt: new Date().toISOString()
                     }}
-                    defaultPhoto={getAbsoluteImageUrl(profile.image || profile.avatar)}
                     sx={{ width: 120, height: 120, margin: '0 auto', mb: 2 }}
                     showUpdateIndicator={true}
+                    indicatorPosition="top"
+                    indicatorSize="medium"
                   />
                   <input
                     type="file"

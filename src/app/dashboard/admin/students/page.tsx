@@ -561,7 +561,12 @@ export default function AdminStudentsPage() {
                         <TableRow key={student.id} hover>
                           <TableCell>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>{student.name.charAt(0).toUpperCase()}</Avatar>
+                              <Avatar 
+                                src={student.image} 
+                                sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}
+                              >
+                                {student.name.charAt(0).toUpperCase()}
+                              </Avatar>
                               <Typography variant="body2">{student.name}</Typography>
                             </Box>
                           </TableCell>

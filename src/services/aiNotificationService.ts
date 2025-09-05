@@ -38,9 +38,14 @@ class AINotificationService {
   private userActivityKey = 'ai_user_activity';
 
   // 🧠 Motor de IA - Analisa padrões e gera insights
-  async generateIntelligentInsights(userId: string): Promise<AIInsight[]> {
+  async generateIntelligentInsights(userId: string, userType?: string): Promise<AIInsight[]> {
     try {
       const insights: AIInsight[] = [];
+      
+      // Verificar se o usuário é administrador antes de fazer chamadas de API
+      if (userType && userType !== 'ADMIN') {
+        return this.generateFallbackInsights();
+      }
       
       // Buscar dados reais do backend em paralelo
       const [

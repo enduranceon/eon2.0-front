@@ -165,10 +165,14 @@ export class EnduranceApiClient {
   }
 
   getToken(): string | null {
-    if (this.token) return this.token;
+    if (this.token) {
+      return this.token;
+    }
+    
     if (typeof window !== 'undefined') {
       return localStorage.getItem('endurance_token');
     }
+    
     return null;
   }
 
@@ -239,7 +243,8 @@ export class EnduranceApiClient {
   }
 
   async getProfile(): Promise<User> {
-    return this.get<User>('/auth/me');
+    const response = await this.get<User>('/auth/me');
+    return response;
   }
 
   async logout(): Promise<void> {

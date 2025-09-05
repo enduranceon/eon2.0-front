@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { User, UserType, LoginRequest, LoginResponse, OverdueInfo } from '../types/api';
@@ -57,42 +57,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
     overdueBarVisible: false,
   });
 
+  const [isInitialized, setIsInitialized] = useState(false);
+  const initializationRef = useRef(false);
   const router = useRouter();
 
-  useEffect(() => {
-    initializeAuth();
-  }, []);
-
   const initializeAuth = async () => {
+    // Evitar múltiplas inicializações usando ref
+    if (initializationRef.current) {
+      return;
+    }
+    
+    // Marcar como inicializando
+    initializationRef.current = true;
+    
     const token = enduranceApi.getToken();
 
     if (token) {
       try {
         enduranceApi.setToken(token);
-
         const user = await enduranceApi.getProfile();
-        
         const subscriptionStatus = await checkUserSubscription(user);
-
-        setState({
+        
+        const newState = {
           user,
           token,
           isAuthenticated: true,
-          emailVerified: true, // Temporariamente desabilitado
+          emailVerified: true,
           has2FA: !!user.has2FA,
           subscriptionActive: subscriptionStatus === 'ACTIVE',
           subscriptionStatus,
-          overdueInfo: null, // Será preenchido no próximo login
+          overdueInfo: null,
           overdueBarVisible: false,
           isLoading: false,
-        });
+        };
         
-        // Marcar que a inicialização foi concluída com sucesso
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('auth_initialized', 'true');
-        }
+        setState(newState);
         
       } catch (error) {
+        console.error('AuthContext - Error loading user profile:', error);
         enduranceApi.clearToken();
         setState({
           user: null,
@@ -106,11 +108,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           overdueInfo: null,
           overdueBarVisible: false,
         });
-        
-        // Marcar que a inicialização foi concluída (mesmo com erro)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('auth_initialized', 'true');
-        }
       }
     } else {
       setState({
@@ -125,13 +122,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
         overdueInfo: null,
         overdueBarVisible: false,
       });
-      
-      // Marcar que a inicialização foi concluída (sem token)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auth_initialized', 'true');
+    }
+
+    setIsInitialized(true);
+  };
+
+  useEffect(() => {
+    // Usar uma ref para evitar múltiplas execuções
+    let mounted = true;
+    
+    const initAuth = async () => {
+      if (mounted && !initializationRef.current) {
+        try {
+          await initializeAuth();
+        } catch (error) {
+          console.error('AuthContext - Error in useEffect:', error);
+        }
+      }
+    };
+
+    // Verificar se já foi inicializado no localStorage
+    if (typeof window !== 'undefined') {
+      const alreadyInitialized = localStorage.getItem('auth_initialized');
+      if (alreadyInitialized && !initializationRef.current) {
+        // Verificar se ainda há um token válido
+        const token = enduranceApi.getToken();
+        if (token) {
+          // Se há token, executar initializeAuth normalmente
+          initAuth();
+        } else {
+          // Se não há token, limpar estado e marcar como não carregando
+          initializationRef.current = true;
+          setIsInitialized(true);
+          setState(prev => ({
+            ...prev,
+            isLoading: false,
+          }));
+        }
+        return;
       }
     }
-  };
+
+    initAuth();
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // Array vazio para executar apenas uma vez
+
 
   const checkUserSubscription = async (user: User): Promise<'ACTIVE' | 'PENDING' | 'NONE' | 'ON_LEAVE'> => {
     // Apenas alunos precisam de assinatura ativa
@@ -171,14 +209,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await enduranceApi.login(credentials);
       const { access_token, user, overdueInfo } = response;
 
-      // Salvar token e usuário
+      // Definir token na API
+      enduranceApi.setToken(access_token);
+
+      // Carregar perfil completo do usuário
+      const fullUser = await enduranceApi.getProfile();
+
+      // Salvar token e usuário completo
       setState(prev => ({
         ...prev,
         token: access_token,
-        user,
+        user: fullUser, // Usar o perfil completo
         isAuthenticated: true,
-        emailVerified: user.emailVerified || false,
-        has2FA: user.has2FA || false,
+        emailVerified: fullUser.emailVerified || false,
+        has2FA: fullUser.has2FA || false,
         overdueInfo: overdueInfo || null,
         overdueBarVisible: overdueInfo?.isOverdue || false,
         isLoading: false,
@@ -241,7 +285,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Login completo
       setState(prev => ({
         ...prev,
-        user,
+        user: fullUser, // Usar o perfil completo
         token: access_token,
         isAuthenticated: true,
         emailVerified: true, // Em desenvolvimento, sempre considerar como verificado

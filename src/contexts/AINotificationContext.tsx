@@ -42,8 +42,10 @@ export function AINotificationProvider({ children }: AINotificationProviderProps
       // Atualiza último login
       aiNotificationService.updateLastLogin(userId);
       
-      // Gera insights inteligentes (admin)
-      const adminInsightsPromise = aiNotificationService.generateIntelligentInsights(userId);
+      // Gera insights inteligentes (admin) - apenas para administradores
+      const adminInsightsPromise = (user?.userType === UserType.ADMIN) 
+        ? aiNotificationService.generateIntelligentInsights(userId, user.userType)
+        : Promise.resolve([]);
 
       // Busca insights reais do coach quando role = COACH
       const coachInsightsPromise = (async () => {

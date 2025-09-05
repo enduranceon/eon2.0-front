@@ -72,20 +72,8 @@ const CoachSelectionScreen: React.FC<CoachSelectionScreenProps> = ({ onCoachSele
   };
 
   const getCoachImagePath = (coach: User): string | undefined => {
-    // Mapear nomes dos treinadores para suas imagens
-    const nameImageMap: { [key: string]: string } = {
-      'Ian Ribeiro': '/images/treinadores/ian-ribeiro.jpg',
-      'Guto Fernandes': '/images/treinadores/guto-fernandes.jpg',
-      'Elinai Freitas': '/images/treinadores/elinai-freitas.jpg',
-      'Luis Fernando': '/images/treinadores/luis-fernando.jpg',
-      'Jéssica Rodrigues': '/images/treinadores/jessica-rodrigues.jpg',
-      'William Dutra': '/images/treinadores/william-dutra.jpg',
-      'Gabriel Hermann': '/images/treinadores/gabriel-hermann.jpg',
-      'Bruno Jeremias': '/images/treinadores/bruno-jeremias.jpg',
-      'Thaís Prando': '/images/treinadores/thais-prando.jpg',
-    };
-
-    return nameImageMap[coach.name] || coach.image;
+    // Usar a imagem da API diretamente
+    return coach.image;
   };
 
   const getCoachLevelDisplay = (level: CoachLevel | undefined) => {

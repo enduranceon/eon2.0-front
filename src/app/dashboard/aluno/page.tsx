@@ -126,7 +126,7 @@ export default function StudentDashboard() {
         enduranceApi.getActiveSubscription().catch(() => null),
         enduranceApi.getUserTests().catch(() => ({ data: [], summary: { total: 0, completed: 0, pending: 0 } })),
         enduranceApi.getUserExams(auth.user.id, { page: 1, limit: 50 }).catch(() => ({ data: [], pagination: { total: 0 } })),
-        enduranceApi.getProfile().catch(() => auth.user),
+        Promise.resolve(auth.user),
         enduranceApi.getWalletBalance().catch(() => ({ balance: 0, currency: 'BRL' })),
         enduranceApi.getExams({ status: 'ACTIVE', limit: 5 }).catch(() => ({ data: [] }))
       ]);
