@@ -48,7 +48,12 @@ export default function TestResultsViewer({ open, onClose, test }: TestResultsVi
 
   useEffect(() => {
     if (open && test) {
-      loadTestResults();
+      // Usar setTimeout para evitar setState durante render
+      const timeoutId = setTimeout(() => {
+        loadTestResults();
+      }, 0);
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [open, test]);
 
@@ -59,7 +64,16 @@ export default function TestResultsViewer({ open, onClose, test }: TestResultsVi
     setError(null);
     try {
       const response = await enduranceApi.getTestResults(test.id, { limit: 100 });
-      setResults(response.data);
+      
+      // Validar e normalizar os dados recebidos
+      const validatedResults = Array.isArray(response.data) 
+        ? response.data.map(result => ({
+            ...result,
+            dynamicResults: Array.isArray(result.dynamicResults) ? result.dynamicResults : []
+          }))
+        : [];
+      
+      setResults(validatedResults);
     } catch (err) {
       console.error('Erro ao carregar resultados:', err);
       setError('Erro ao carregar resultados do teste.');
@@ -123,7 +137,8 @@ export default function TestResultsViewer({ open, onClose, test }: TestResultsVi
   };
 
   const renderMultipleResults = (result: TestResult) => {
-    if (!result.dynamicResults || result.dynamicResults.length === 0) {
+    // Validação robusta para dynamicResults
+    if (!result.dynamicResults || !Array.isArray(result.dynamicResults) || result.dynamicResults.length === 0) {
       return <Typography variant="body2" color="text.secondary">Sem resultados</Typography>;
     }
 
@@ -203,7 +218,7 @@ export default function TestResultsViewer({ open, onClose, test }: TestResultsVi
                           {getResultTypeLabel(result)}
                         </TableCell>
                         <TableCell>
-                          {result.resultType === 'MULTIPLE' 
+                          {result.resultType === 'MULTIPLE' && result.dynamicResults && Array.isArray(result.dynamicResults) && result.dynamicResults.length > 0
                             ? renderMultipleResults(result)
                             : renderSingleResult(result)
                           }
