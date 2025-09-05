@@ -8,7 +8,9 @@ class FormStorageService {
    */
   saveFormData(formData: FormData): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+      }
     } catch (error) {
       console.error('Erro ao salvar dados no localStorage:', error);
     }
@@ -19,9 +21,11 @@ class FormStorageService {
    */
   getFormData(): FormData | null {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored);
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          return JSON.parse(stored);
+        }
       }
       return null;
     } catch (error) {
@@ -35,7 +39,9 @@ class FormStorageService {
    */
   clearFormData(): void {
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY);
+      }
     } catch (error) {
       console.error('Erro ao limpar dados do localStorage:', error);
     }
@@ -46,7 +52,10 @@ class FormStorageService {
    */
   hasStoredData(): boolean {
     try {
-      return localStorage.getItem(STORAGE_KEY) !== null;
+      if (typeof window !== 'undefined') {
+        return localStorage.getItem(STORAGE_KEY) !== null;
+      }
+      return false;
     } catch (error) {
       return false;
     }
@@ -57,7 +66,9 @@ class FormStorageService {
    */
   saveCurrentStep(step: number): void {
     try {
-      localStorage.setItem('endurance_register_current_step', step.toString());
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('endurance_register_current_step', step.toString());
+      }
     } catch (error) {
       console.error('Erro ao salvar passo atual:', error);
     }
@@ -68,8 +79,11 @@ class FormStorageService {
    */
   getCurrentStep(): number {
     try {
-      const stored = localStorage.getItem('endurance_register_current_step');
-      return stored ? parseInt(stored, 10) : 0;
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('endurance_register_current_step');
+        return stored ? parseInt(stored, 10) : 0;
+      }
+      return 0;
     } catch (error) {
       return 0;
     }
@@ -80,7 +94,9 @@ class FormStorageService {
    */
   clearCurrentStep(): void {
     try {
-      localStorage.removeItem('endurance_register_current_step');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('endurance_register_current_step');
+      }
     } catch (error) {
       console.error('Erro ao limpar passo atual:', error);
     }

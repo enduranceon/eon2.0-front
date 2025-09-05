@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import {
   Box,
   Card,
@@ -38,7 +38,7 @@ import { saveRememberMeData, getRememberMeData } from '../../utils/rememberMeUti
 import LogoSymbol from '@/assets/images/logo/logo_simbolo_preto.png';
 import NextLink from 'next/link';
 
-export default function LoginPage() {
+function LoginContent() {
   const theme = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -419,5 +419,25 @@ export default function LoginPage() {
         </Box>
       )}
     </Box>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'grey.50',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 } 

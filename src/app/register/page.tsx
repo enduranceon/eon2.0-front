@@ -94,6 +94,7 @@ export default function RegisterPage() {
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [consentLoading, setConsentLoading] = useState(false);
   const [consentError, setConsentError] = useState('');
+  const [isClient, setIsClient] = useState(false);
   
   const [formData, setFormData] = useState<FormData>(() => {
     // Tentar carregar dados salvos do localStorage

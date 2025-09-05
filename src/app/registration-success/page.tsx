@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Container,
@@ -20,7 +20,7 @@ import {
 } from '@mui/icons-material';
 import PublicLayout from '../../components/PublicLayout';
 
-export default function RegistrationSuccessPage() {
+function RegistrationSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get('message');
@@ -95,5 +95,21 @@ export default function RegistrationSuccessPage() {
         </Paper>
       </Container>
     </PublicLayout>
+  );
+}
+
+export default function RegistrationSuccessPage() {
+  return (
+    <Suspense fallback={
+      <PublicLayout>
+        <Container maxWidth="md" sx={{ py: 4 }}>
+          <Paper sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="h6">Carregando...</Typography>
+          </Paper>
+        </Container>
+      </PublicLayout>
+    }>
+      <RegistrationSuccessContent />
+    </Suspense>
   );
 }

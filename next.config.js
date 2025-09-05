@@ -44,6 +44,18 @@ const nextConfig = {
     // optimizeCss: true, // Desabilitado devido a problemas com critters
   },
   
+  // Configurações para resolver problemas de build
+  trailingSlash: true,
+  skipTrailingSlashRedirect: true,
+  
+  // Configurações para páginas que não podem ser pré-renderizadas
+  generateStaticParams: false,
+  
+  // Configurações para build em produção
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  
   // Configurações de webpack
   webpack: (config, { dev, isServer }) => {
     // Otimizações para produção
