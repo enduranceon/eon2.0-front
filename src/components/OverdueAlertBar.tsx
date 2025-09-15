@@ -67,10 +67,10 @@ export default function OverdueAlertBar({
 
   const getAlertTitle = () => {
     if (overdueInfo.isAccessBlocked) {
-      return 'Acesso Bloqueado - Pagamento em Atraso';
+      return 'Pagamento em Atraso - Acesso Bloqueado';
     }
-    if (overdueInfo.daysRemaining && overdueInfo.daysRemaining <= 3) {
-      return 'Atenção - Pagamento em Atraso';
+    if (overdueInfo.daysRemaining && overdueInfo.daysRemaining > 0) {
+      return `Pagamento em Atraso - ${overdueInfo.daysRemaining} dias restante${overdueInfo.daysRemaining > 1 ? 's' : ''}`;
     }
     return 'Pagamento em Atraso';
   };
@@ -164,24 +164,6 @@ export default function OverdueAlertBar({
           <Typography variant="body2" sx={{ color: 'white', mb: 1 }}>
             {getAlertMessage()}
           </Typography>
-          
-          {overdueInfo.overdueAmount && (
-            <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold' }}>
-              Valor em atraso: {formatCurrency(overdueInfo.overdueAmount)}
-            </Typography>
-          )}
-          
-          {overdueInfo.dueDate && (
-            <Typography variant="body2" sx={{ color: 'white' }}>
-              Vencimento: {formatDate(overdueInfo.dueDate)}
-            </Typography>
-          )}
-          
-          {overdueInfo.accessLimitDate && !overdueInfo.isAccessBlocked && (
-            <Typography variant="body2" sx={{ color: 'white' }}>
-              Acesso bloqueado em: {formatDate(overdueInfo.accessLimitDate)}
-            </Typography>
-          )}
         </Alert>
       </Box>
     </Collapse>

@@ -104,7 +104,15 @@ const PlanSelectionScreen: React.FC<PlanSelectionScreenProps> = ({ onPlanSelecte
   };
 
   const getPlanFeatures = (plan: Plan) => {
-    // Features baseadas no nome do plano
+    // Usar as features reais do plano se disponíveis
+    if (plan.features && Array.isArray(plan.features)) {
+      return plan.features
+        .filter(planFeature => planFeature.isActive) // Apenas features ativas
+        .map(planFeature => planFeature.feature.name)
+        .slice(0, 6); // Limitar a 6 features para não sobrecarregar o card
+    }
+    
+    // Fallback para features baseadas no nome do plano (caso não tenha features na API)
     const planName = plan.name.toLowerCase();
     
     if (planName.includes('premium') || planName.includes('pro')) {
@@ -114,8 +122,7 @@ const PlanSelectionScreen: React.FC<PlanSelectionScreenProps> = ({ onPlanSelecte
         'Acompanhamento próximo via WhatsApp',
         'Reuniões mensais',
         'Análise detalhada de métricas',
-        'Suporte 24/7',
-        'Flexibilidade total para mudanças'
+        'Suporte 24/7'
       ];
     }
     
@@ -484,14 +491,47 @@ const PlanSelectionScreen: React.FC<PlanSelectionScreenProps> = ({ onPlanSelecte
                     O que está incluso
                   </Typography>
                   <List dense>
-                    {getPlanFeatures(modalData.plan).map((feature, index) => (
-                      <ListItem key={index} sx={{ py: 0.5, px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 30 }}>
-                          <CheckIcon color="success" sx={{ fontSize: 18 }} />
-                        </ListItemIcon>
-                        <ListItemText primary={feature} />
-                      </ListItem>
-                    ))}
+                    {modalData.plan.features && Array.isArray(modalData.plan.features) ? (
+                      // Mostrar features reais da API
+                      modalData.plan.features
+                        .filter(planFeature => planFeature.isActive)
+                        .map((planFeature, index) => (
+                          <ListItem key={index} sx={{ py: 0.5, px: 0 }}>
+                            <ListItemIcon sx={{ minWidth: 30 }}>
+                              <CheckIcon color="success" sx={{ fontSize: 18 }} />
+                            </ListItemIcon>
+                            <ListItemText 
+                              primary={planFeature.feature.name}
+                              secondary={
+                                <Box>
+                                  {planFeature.feature.description && (
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                      {planFeature.feature.description}
+                                    </Typography>
+                                  )}
+                                  {planFeature.feature.quantity && (
+                                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                      <Typography variant="caption" color="text.secondary">
+                                        {planFeature.feature.quantity} unidades
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              }
+                            />
+                          </ListItem>
+                        ))
+                    ) : (
+                      // Fallback para features hardcoded
+                      getPlanFeatures(modalData.plan).map((feature, index) => (
+                        <ListItem key={index} sx={{ py: 0.5, px: 0 }}>
+                          <ListItemIcon sx={{ minWidth: 30 }}>
+                            <CheckIcon color="success" sx={{ fontSize: 18 }} />
+                          </ListItemIcon>
+                          <ListItemText primary={feature} />
+                        </ListItem>
+                      ))
+                    )}
                   </List>
                 </Box>
 

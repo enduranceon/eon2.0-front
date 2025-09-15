@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     // Registrando resultado de prova
 
     // Chamar o backend real diretamente para evitar loop infinito
-    const result = await enduranceApi.post<any>(`/coaches/exams/${examId}/results`, {
+    const result = await enduranceApi.post<any>(`/exams/${examId}/results`, {
       registrationId,
       timeSeconds,
       generalRank,

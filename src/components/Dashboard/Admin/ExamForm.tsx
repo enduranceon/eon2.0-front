@@ -26,6 +26,7 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { Exam, Modalidade, ExamDistance, ExamCategory } from '../../../types/api';
 import { enduranceApi } from '../../../services/enduranceApi';
+import ExamImageUpload from './ExamImageUpload';
 
 const distanceSchema = z.object({
   distance: z.coerce.number().optional().refine((val) => {
@@ -77,6 +78,7 @@ const examSchema = z.object({
   }),
   exam_url: z.string().url('URL inválida').optional().or(z.literal('')),
   modalidadeId: z.string().min(1, 'Selecione uma modalidade'),
+  imageUrl: z.string().optional(),
   distances: z.array(distanceSchema).optional(),
   categories: z.array(categorySchema).optional(),
 });
@@ -96,8 +98,16 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
   const isEditMode = !!exam;
   const [modalities, setModalities] = useState<Modalidade[]>([]);
   const [isCorrida, setIsCorrida] = useState(false);
+  const [examImageUrl, setExamImageUrl] = useState<string | null>(null);
 
-  const { control, handleSubmit, reset, formState: { errors }, watch, getValues } = useForm<ExamFormData>({
+  // Função para atualizar a URL da imagem tanto no estado quanto no formulário
+  const handleImageUpdate = (imageUrl: string | null) => {
+    console.log('Atualizando URL da imagem:', imageUrl);
+    setExamImageUrl(imageUrl);
+    setValue('imageUrl', imageUrl || '');
+  };
+
+  const { control, handleSubmit, reset, formState: { errors }, watch, getValues, setValue } = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
     defaultValues: { 
       name: '', 
@@ -107,6 +117,7 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
       end_date: '',
       exam_url: '',
       modalidadeId: '',
+      imageUrl: '',
       distances: [{ distance: 5, unit: 'km', date: '' }],
       categories: [{ category: ExamCategory.SPRINT, date: '' }]
     },
@@ -174,6 +185,9 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
         // Determinar se é modalidade Corrida para decidir quais campos mostrar
         const isCorrida = exam.modalidade?.name.toLowerCase() === 'corrida';
         
+        // Definir imagem da prova
+        setExamImageUrl(exam.imageUrl || null);
+        
         reset({
           name: exam.name,
           description: exam.description || '',
@@ -182,6 +196,7 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
           end_date: exam.end_date ? new Date(exam.end_date).toISOString().substring(0, 10) : '',
           exam_url: exam.exam_url || '',
           modalidadeId: exam.modalidadeId,
+          imageUrl: exam.imageUrl || '',
           distances: isCorrida && exam.distances?.length > 0 ? exam.distances.map(d => ({
             distance: d.distance,
             unit: d.unit,
@@ -193,6 +208,9 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
           })) : [{ category: ExamCategory.SPRINT, date: '' }]
         });
       } else {
+        // Limpar imagem quando criar nova prova
+        setExamImageUrl(null);
+        
         reset({ 
           name: '', 
           description: '', 
@@ -201,6 +219,7 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
           end_date: '',
           exam_url: '',
           modalidadeId: '',
+          imageUrl: '',
           distances: [{ distance: 5, unit: 'km', date: '' }],
           categories: [{ category: ExamCategory.SPRINT, date: '' }]
         });
@@ -274,6 +293,7 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
     try {
       // Validar dados baseado na modalidade
       validateFormData(data);
+      console.log('Dados do formulário sendo enviados:', data);
       await onSubmit(data);
     } catch (error: any) {
       console.error('Erro de validação:', error);
@@ -334,6 +354,17 @@ export default function ExamForm({ open, onClose, onSubmit, exam, loading, error
               </FormControl>
             </Grid>
           </Grid>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Upload de Imagem da Prova */}
+          <Typography variant="h6" sx={{ mb: 2 }}>Imagem da Prova</Typography>
+          <ExamImageUpload
+            examId={exam?.id}
+            currentImageUrl={examImageUrl}
+            onImageUpdate={handleImageUpdate}
+            disabled={loading}
+          />
 
           <Divider sx={{ my: 3 }} />
 

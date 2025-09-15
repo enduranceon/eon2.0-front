@@ -18,7 +18,7 @@ export default function VideoChamadasPage() {
     );
   }
   return (
-    <DashboardLayout user={auth.user!} onLogout={auth.logout}>
+    <DashboardLayout user={auth.user!} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
           <ConstructionIcon color="warning" sx={{ fontSize: 56, mb: 1 }} />

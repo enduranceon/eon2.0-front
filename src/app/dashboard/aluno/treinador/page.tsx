@@ -216,7 +216,7 @@ export default function StudentCoachPage() {
 
   if (loading) {
     return (
-      <DashboardLayout user={auth.user!} onLogout={auth.logout}>
+      <DashboardLayout user={auth.user!} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
             <CircularProgress size={60} />
@@ -228,7 +228,7 @@ export default function StudentCoachPage() {
 
   if (error) {
     return (
-      <DashboardLayout user={auth.user!} onLogout={auth.logout}>
+      <DashboardLayout user={auth.user!} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
         </Container>
@@ -237,7 +237,7 @@ export default function StudentCoachPage() {
   }
 
   return (
-    <DashboardLayout user={auth.user!} onLogout={auth.logout}>
+    <DashboardLayout user={auth.user!} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
       <Container maxWidth="md" sx={{ py: 4 }}>
         {!coach ? (
           <Alert severity="info">Nenhum treinador associado à sua assinatura.</Alert>

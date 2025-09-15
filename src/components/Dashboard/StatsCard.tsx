@@ -145,7 +145,7 @@ export default function StatsCard({
         },
       }}
     >
-      <CardContent sx={{ p: 3, position: 'relative', zIndex: 1 }}>
+      <CardContent sx={{ p: 3, position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Box
@@ -163,69 +163,64 @@ export default function StatsCard({
           >
             {icon}
           </Box>
-          <Box sx={{ ml: 'auto' }}>
-            {action || (
-              <IconButton
-                size="small"
-                sx={{
-                  color: theme.palette.text.secondary,
-                  '&:hover': {
-                    backgroundColor: theme.palette.action.hover,
-                  },
-                }}
-              >
-                <MoreVertIcon />
-              </IconButton>
-            )}
-          </Box>
         </Box>
 
-        {/* Title */}
-        <Typography
-          variant="body2"
-          sx={{
-            mb: 1,
-            fontWeight: 500,
-            color: theme.palette.text.secondary,
-          }}
-        >
-          {title}
-        </Typography>
-
-        {/* Value */}
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            mb: 1,
-            color: theme.palette.text.primary,
-            lineHeight: 1.2,
-          }}
-        >
-          {formatValue(value)}
-        </Typography>
-
-        {/* Subtitle */}
-        {subtitle && (
+        {/* Content Area - flex: 1 para ocupar espaço disponível */}
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {/* Title */}
           <Typography
-            variant="caption"
+            variant="body2"
             sx={{
-              color: theme.palette.text.secondary,
               mb: 1,
-              display: 'block',
+              fontWeight: 500,
+              color: theme.palette.text.secondary,
             }}
           >
-            {subtitle}
+            {title}
           </Typography>
-        )}
 
-        {/* Change Indicator */}
-        {change !== undefined && (
-          <Box sx={{ display: 'flex', alignItems: 'center', color: getChangeColor() }}>
-            {getChangeIcon()}
-            <Typography variant="caption" sx={{ ml: 0.5, fontWeight: 'bold' }}>
-              {Math.abs(change)}% {changeLabel || (change > 0 ? 'de aumento' : 'de queda')}
+          {/* Value */}
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+              mb: 1,
+              color: theme.palette.text.primary,
+              lineHeight: 1.2,
+            }}
+          >
+            {formatValue(value)}
+          </Typography>
+
+          {/* Subtitle */}
+          {subtitle && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: theme.palette.text.secondary,
+                mb: 1,
+                display: 'block',
+              }}
+            >
+              {subtitle}
             </Typography>
+          )}
+
+          {/* Change Indicator */}
+          {change !== undefined && (
+            <Box sx={{ display: 'flex', alignItems: 'center', color: getChangeColor() }}>
+              {getChangeIcon()}
+              <Typography variant="caption" sx={{ ml: 0.5, fontWeight: 'bold' }}>
+                {Math.abs(change)}% {changeLabel || (change > 0 ? 'de aumento' : 'de queda')}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        {/* Action Button - posicionado na parte inferior e centralizado */}
+        {action && (
+          <Box sx={{ mt: 'auto', pt: 2, display: 'flex', justifyContent: 'center' }}>
+            {action}
           </Box>
         )}
       </CardContent>

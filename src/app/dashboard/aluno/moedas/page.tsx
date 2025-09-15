@@ -79,7 +79,7 @@ export default function StudentCoinsPage() {
 
   return (
     <ProtectedRoute allowedUserTypes={['FITNESS_STUDENT']}>
-      <DashboardLayout user={auth.user!} onLogout={auth.logout}>
+      <DashboardLayout user={auth.user!} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Typography variant="h4" fontWeight="bold" gutterBottom>
             Minhas Moedas

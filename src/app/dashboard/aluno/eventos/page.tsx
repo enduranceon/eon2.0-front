@@ -38,7 +38,8 @@ import {
   DialogTitle,
   Tabs,
   Tab,
-  TextField
+  TextField,
+  CardMedia
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -49,7 +50,6 @@ import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import { 
   Event as EventIcon, 
   CheckCircle as CheckCircleIcon,
-  CalendarToday as CalendarIcon,
   Category as CategoryIcon,
   Place as PlaceIcon,
   Info as InfoIcon,
@@ -69,18 +69,126 @@ const formatDate = (d: string) => {
   });
 };
 
+// Função para normalizar caracteres especiais
+const normalizeText = (text: string) => {
+  if (!text) return text;
+  
+  // Corrigir caracteres específicos com problemas de encoding
+  let normalizedText = text;
+  
+  // Correções específicas para palavras conhecidas
+  normalizedText = normalizedText.replace(/Distncias/g, 'Distâncias');
+  normalizedText = normalizedText.replace(/Distncias/g, 'Distâncias');
+  normalizedText = normalizedText.replace(/Distâncias/g, 'Distâncias');
+  
+  // Correções para caracteres especiais individuais
+  normalizedText = normalizedText.replace(/\u00e3/g, 'ã');
+  normalizedText = normalizedText.replace(/\u00e9/g, 'é');
+  normalizedText = normalizedText.replace(/\u00ed/g, 'í');
+  normalizedText = normalizedText.replace(/\u00f3/g, 'ó');
+  normalizedText = normalizedText.replace(/\u00fa/g, 'ú');
+  normalizedText = normalizedText.replace(/\u00e7/g, 'ç');
+  normalizedText = normalizedText.replace(/\u00e2/g, 'â');
+  normalizedText = normalizedText.replace(/\u00ea/g, 'ê');
+  normalizedText = normalizedText.replace(/\u00f4/g, 'ô');
+  normalizedText = normalizedText.replace(/\u00e0/g, 'à');
+  normalizedText = normalizedText.replace(/\u00e8/g, 'è');
+  normalizedText = normalizedText.replace(/\u00ec/g, 'ì');
+  normalizedText = normalizedText.replace(/\u00f2/g, 'ò');
+  normalizedText = normalizedText.replace(/\u00f9/g, 'ù');
+  
+  return normalizedText;
+};
+
+// Função para obter a imagem da prova ou imagem padrão
+const getExamImage = (exam: any) => {
+  // Se a prova tem uma imagem, usar ela
+  if (exam.imageUrl) {
+    return exam.imageUrl;
+  }
+  
+  // Usar uma imagem padrão simples que existe
+  return '/images/default-exam.jpg';
+};
+
 const getStatusChip = (status: string) => {
   switch(status) {
     case 'DISPONÍVEL':
-      return <Chip label="Inscrições Abertas" color="success" variant="filled" size="small" icon={<CheckCircleIcon />} />;
+      return (
+        <Chip 
+          label="Inscrições Abertas" 
+          color="success" 
+          variant="filled" 
+          size="small" 
+          icon={<CheckCircleIcon />} 
+          sx={{ 
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            px: 1,
+            '& .MuiChip-icon': { fontSize: '0.875rem' }
+          }} 
+        />
+      );
     case 'INSCRITO':
-      return <Chip label="Inscrito" color="primary" variant="filled" size="small" icon={<CheckCircleIcon />} />;
+      return (
+        <Chip 
+          label="Inscrito" 
+          color="primary" 
+          variant="filled" 
+          size="small" 
+          icon={<CheckCircleIcon />} 
+          sx={{ 
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            px: 1,
+            '& .MuiChip-icon': { fontSize: '0.875rem' }
+          }} 
+        />
+      );
     case 'ENCERRADA':
-      return <Chip label="Encerrada" color="default" variant="outlined" size="small" />;
+      return (
+        <Chip 
+          label="Encerrada" 
+          color="default" 
+          variant="outlined" 
+          size="small" 
+          sx={{ 
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            px: 1,
+            opacity: 0.7
+          }} 
+        />
+      );
     case 'PARTICIPOU':
-        return <Chip label="Participou" color="info" variant="filled" size="small" icon={<CheckCircleIcon />} />;
+      return (
+        <Chip 
+          label="Participou" 
+          color="info" 
+          variant="filled" 
+          size="small" 
+          icon={<CheckCircleIcon />} 
+          sx={{ 
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            px: 1,
+            '& .MuiChip-icon': { fontSize: '0.875rem' }
+          }} 
+        />
+      );
     default:
-      return <Chip label={status} color="default" size="small" />;
+      return (
+        <Chip 
+          label={status} 
+          color="default" 
+          size="small" 
+          sx={{ 
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            px: 1
+          }} 
+        />
+      );
   }
 };
 
@@ -142,16 +250,32 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
               display: 'flex', 
               flexDirection: 'column' 
             }}>
+                {/* Imagem da prova */}
+                <CardMedia
+                  component="img"
+                  height="140"
+                  image={getExamImage(exam)}
+                  alt={exam.name}
+                  sx={{
+                    objectFit: 'cover',
+                    backgroundColor: 'grey.200'
+                  }}
+                  onError={(e) => {
+                    // Se a imagem falhar ao carregar, usar um placeholder
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE0MCIgdmlld0JveD0iMCAwIDMwMCAxNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMTQwIiBmaWxsPSIjRjVGNUY1Ii8+CjxjaXJjbGUgY3g9IjE1MCIgY3k9IjcwIiByPSIyMCIgZmlsbD0iI0NDQ0NDQyIvPgo8cGF0aCBkPSJNMTQwIDYwTDE2MCA2MEwxNTAgODBMMTQwIDYwWiIgZmlsbD0iI0NDQ0NDQyIvPgo8dGV4dCB4PSIxNTAiIHk9IjEwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk5OTk5OSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0Ij5JbWFnZW0gZGEgUHJvdmE8L3RleHQ+Cjwvc3ZnPgo=';
+                  }}
+                />
+                
                 <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}><EventIcon /></Avatar>
-                    <Typography variant="h6" fontWeight="bold" component="div" sx={{ flexGrow: 1 }}>{exam.name}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, justifyContent: 'center' }}>
+                    <Typography variant="h6" fontWeight="bold" component="div" sx={{ textAlign: 'center' }}>{normalizeText(exam.name)}</Typography>
                   </Box>
                   <Divider sx={{ mb: 2 }}/>
                   <Box sx={{ flexGrow: 1 }}>
                     <List dense>
-                      <ListItem><ListItemIcon sx={{minWidth: 40}}><CategoryIcon color="action"/></ListItemIcon><ListItemText primary="Modalidade" secondary={exam.modalidade?.name || 'Não especificada'} /></ListItem>
-                      <ListItem><ListItemIcon sx={{minWidth: 40}}><CalendarIcon color="action"/></ListItemIcon><ListItemText primary="Data" secondary={formatDate(exam.date)} /></ListItem>
+                      <ListItem><ListItemIcon sx={{minWidth: 40}}><CategoryIcon color="action"/></ListItemIcon><ListItemText primary="Modalidade" secondary={normalizeText(exam.modalidade?.name) || 'Não especificada'} /></ListItem>
+                      <ListItem><ListItemText primary="Data" secondary={formatDate(exam.date)} /></ListItem>
                       {exam.distances && exam.distances.length > 0 ? (
                         <ListItem>
                           <ListItemIcon sx={{minWidth: 40}}><PlaceIcon color="action"/></ListItemIcon>
@@ -197,22 +321,37 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
                       ) : null}
                     </List>
                   </Box>
-                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    {getStatusChip(status)}
-                    <Button 
-                      variant={status === 'INSCRITO' ? 'outlined' : 'contained'}
-                      disabled={isInactive || isProcessing}
-                      onClick={() => {
-                        if (status === 'DISPONÍVEL') onRegister(exam.id);
-                        if (status === 'INSCRITO') onOpenDetails(exam);
-                      }}
-                      startIcon={isProcessing ? <CircularProgress size={16} color="inherit" /> : null}
-                    >
-                      {isProcessing ? 'Processando...' 
-                       : status === 'INSCRITO' ? 'Ver Detalhes' 
-                       : status === 'DISPONÍVEL' ? 'Confirmar Presença' 
-                       : 'Encerrada'}
-                    </Button>
+                  <Box sx={{ mt: 2 }}>
+                    {/* Chip de Status */}
+                    <Box sx={{ mb: 1.5, display: 'flex', justifyContent: 'center' }}>
+                      {getStatusChip(status)}
+                    </Box>
+                    
+                    {/* Botão de Ação */}
+                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                      <Button 
+                        variant={status === 'INSCRITO' ? 'outlined' : 'contained'}
+                        size="medium"
+                        disabled={isInactive || isProcessing}
+                        onClick={() => {
+                          if (status === 'DISPONÍVEL') onRegister(exam.id);
+                          if (status === 'INSCRITO') onOpenDetails(exam);
+                        }}
+                        startIcon={isProcessing ? <CircularProgress size={18} color="inherit" /> : null}
+                        sx={{ 
+                          minWidth: 160,
+                          fontSize: '0.875rem',
+                          py: 1,
+                          px: 3,
+                          fontWeight: 500
+                        }}
+                      >
+                        {isProcessing ? 'Processando...' 
+                         : status === 'INSCRITO' ? 'Ver Detalhes' 
+                         : status === 'DISPONÍVEL' ? 'Confirmar Presença' 
+                         : 'Encerrada'}
+                      </Button>
+                    </Box>
                   </Box>
                 </CardContent>
               </Card>
@@ -324,7 +463,7 @@ const PastExams = ({ userExams, userId }: any) => {
                     secondary={
                       <Box sx={{ mt: 1 }}>
                         <Typography component="span" variant="body2" color="text.primary">
-                          📅 Data: {formatDate(exam.date)}
+                          Data: {formatDate(exam.date)}
                         </Typography>
                         <br />
                         <Typography component="span" variant="body2" color="text.secondary">
@@ -584,7 +723,7 @@ export default function EventsPage() {
   };
   
   return (
-    <DashboardLayout user={auth.user} onLogout={auth.logout}>
+    <DashboardLayout user={auth.user} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>Provas & Competições</Typography>
         
@@ -595,9 +734,9 @@ export default function EventsPage() {
               onChange={(e, newValue) => setActiveTab(newValue)} 
               aria-label="abas de provas"
             >
-              <Tab label="Provas Disponíveis" id="tab-available" aria-controls="tabpanel-available" />
-              <Tab label="Provas Externas" id="tab-external" aria-controls="tabpanel-external" />
-              <Tab label="Resultado de Provas" id="tab-history" aria-controls="tabpanel-history" />
+              <Tab label="Disponíveis" id="tab-available" aria-controls="tabpanel-available" />
+              <Tab label="Histórico" id="tab-history" aria-controls="tabpanel-history" />
+              <Tab label="Externas" id="tab-external" aria-controls="tabpanel-external" />
             </Tabs>
           </Box>
 
@@ -622,18 +761,8 @@ export default function EventsPage() {
             )}
           </Box>
 
-          <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-external" aria-labelledby="tab-external">
+          <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-history" aria-labelledby="tab-history">
             {activeTab === 1 && (
-              <ExternalExamsTab
-                onExamClick={(exam) => {
-                  // Aqui você pode implementar uma ação quando clicar em uma prova externa
-                }}
-              />
-            )}
-          </Box>
-
-          <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-history" aria-labelledby="tab-history">
-            {activeTab === 2 && (
               <>
                 {loading && <CircularProgress />}
                 {error && <Alert severity="error">{error}</Alert>}
@@ -641,6 +770,16 @@ export default function EventsPage() {
                   <PastExams userExams={userRegistrations} userId={auth.user.id} />
                 )}
               </>
+            )}
+          </Box>
+
+          <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-external" aria-labelledby="tab-external">
+            {activeTab === 2 && (
+              <ExternalExamsTab
+                onExamClick={(exam) => {
+                  // Aqui você pode implementar uma ação quando clicar em uma prova externa
+                }}
+              />
             )}
           </Box>
         </LocalizationProvider>
@@ -651,7 +790,7 @@ export default function EventsPage() {
           <Typography variant="h6" component="h2" fontWeight="bold" color="text.primary">{selectedExam?.name}</Typography>
           <Divider sx={{my: 2}} />
           <List>
-            <ListItem><ListItemIcon><CalendarIcon/></ListItemIcon><ListItemText primary="Data" secondary={selectedExam ? formatDate(selectedExam.date) : ''} primaryTypographyProps={{ color: 'text.primary' }} secondaryTypographyProps={{ color: 'text.secondary' }} /></ListItem>
+            <ListItem><ListItemText primary="Data" secondary={selectedExam ? formatDate(selectedExam.date) : ''} primaryTypographyProps={{ color: 'text.primary' }} secondaryTypographyProps={{ color: 'text.secondary' }} /></ListItem>
             <ListItem><ListItemIcon><PlaceIcon/></ListItemIcon><ListItemText primary="Local" secondary={selectedExam?.location || 'A definir'} primaryTypographyProps={{ color: 'text.primary' }} secondaryTypographyProps={{ color: 'text.secondary' }}/></ListItem>
             <ListItem>
               <ListItemIcon><InfoIcon/></ListItemIcon>

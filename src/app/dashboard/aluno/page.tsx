@@ -162,6 +162,65 @@ export default function StudentDashboard() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return {
+      date: date.toLocaleDateString('pt-BR'),
+      time: date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      full: date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+  };
+
+  const getEventStatus = (event: any) => {
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    const diffTime = eventDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return { label: 'Realizada', color: 'default' as const };
+    if (diffDays === 0) return { label: 'Hoje', color: 'warning' as const };
+    if (diffDays <= 7) return { label: 'Esta semana', color: 'error' as const };
+    if (diffDays <= 30) return { label: 'Este mês', color: 'info' as const };
+    return { label: 'Futuro', color: 'success' as const };
+  };
+
+  const getDistanceInfo = (event: any) => {
+    if (event.distances && event.distances.length > 0) {
+      const distances = event.distances.map((d: any) => `${d.distance}${d.unit}`).join(', ');
+      return distances;
+    }
+    return 'Distância não informada';
+  };
+
+  const getUserRegistrationStatus = (event: any) => {
+    if (!event.registrations || event.registrations.length === 0) return null;
+    
+    const userRegistration = event.registrations.find((reg: any) => 
+      reg.userId === auth.user?.id
+    );
+    
+    if (!userRegistration) return null;
+    
+    if (userRegistration.attended) {
+      return { 
+        label: 'Participou', 
+        color: 'success' as const,
+        result: userRegistration.result 
+      };
+    }
+    
+    return { 
+      label: 'Inscrito', 
+      color: 'primary' as const 
+    };
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -471,35 +530,133 @@ export default function StudentDashboard() {
         {upcomingEvents.length > 0 && (
           <Card sx={{ mb: 4 }}>
             <CardContent>
-              <Typography variant="h6" fontWeight="bold" gutterBottom>
-                Próximos Eventos
-              </Typography>
-              <List>
-                {upcomingEvents.slice(0, 3).map((event: any, index: number) => (
-                  <ListItem key={event.id} divider={index < 2}>
-                    <ListItemIcon>
-                      <EventIcon color="primary" />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={event.name}
-                      secondary={`${formatDate(event.examDate)} • ${event.location}`}
-                    />
-                    <Chip 
-                      label={event.status} 
-                      color={event.status === 'ACTIVE' ? 'success' : 'default'}
-                      size="small"
-                    />
-                  </ListItem>
-                ))}
-              </List>
-              <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h6" fontWeight="bold">
+                  Próximos Eventos
+                </Typography>
                 <Button 
                   variant="outlined"
+                  size="small"
                   onClick={() => router.push('/dashboard/aluno/eventos')}
                 >
-                  Ver Todos os Eventos
+                  Ver Todos
                 </Button>
               </Box>
+              
+              <Grid container spacing={2}>
+                {upcomingEvents.slice(0, 3).map((event: any, index: number) => {
+                  const dateTime = formatDateTime(event.date);
+                  const eventStatus = getEventStatus(event);
+                  const userStatus = getUserRegistrationStatus(event);
+                  const distanceInfo = getDistanceInfo(event);
+                  
+                  return (
+                    <Grid item xs={12} md={4} key={event.id}>
+                      <Card 
+                        sx={{ 
+                          height: '100%',
+                          border: '1px solid',
+                          borderColor: eventStatus.color === 'error' ? 'error.main' : 
+                                     eventStatus.color === 'warning' ? 'warning.main' : 'divider',
+                          '&:hover': {
+                            boxShadow: 2,
+                            transform: 'translateY(-2px)',
+                          },
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                      >
+                        <CardContent sx={{ p: 2 }}>
+                          {/* Header com status e modalidade */}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                            <Chip 
+                              label={eventStatus.label}
+                              color={eventStatus.color}
+                              size="small"
+                              sx={{ fontWeight: 'bold' }}
+                            />
+                            <Chip 
+                              label={event.modalidade?.name || 'N/A'}
+                              variant="outlined"
+                              size="small"
+                              color="primary"
+                            />
+                          </Box>
+
+                          {/* Nome do evento */}
+                          <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, lineHeight: 1.2 }}>
+                            {event.name}
+                          </Typography>
+
+                          {/* Data e hora */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <CalendarIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {dateTime.full}
+                            </Typography>
+                          </Box>
+
+                          {/* Localização */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <EventIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {event.location}
+                            </Typography>
+                          </Box>
+
+                          {/* Distância */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <RunIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {distanceInfo}
+                            </Typography>
+                          </Box>
+
+                          {/* Status do usuário */}
+                          {userStatus && (
+                            <Box sx={{ mt: 'auto', pt: 1, borderTop: 1, borderColor: 'divider' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Seu status:
+                                </Typography>
+                                <Chip 
+                                  label={userStatus.label}
+                                  color={userStatus.color}
+                                  size="small"
+                                  sx={{ fontWeight: 'bold' }}
+                                />
+                              </Box>
+                              {userStatus.result && (
+                                <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block' }}>
+                                  Resultado: {userStatus.result}
+                                </Typography>
+                              )}
+                            </Box>
+                          )}
+
+                          {/* Descrição */}
+                          {event.description && (
+                            <Typography 
+                              variant="caption" 
+                              color="text.secondary" 
+                              sx={{ 
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.4,
+                                mt: 1
+                              }}
+                            >
+                              {event.description}
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
             </CardContent>
           </Card>
         )}

@@ -294,7 +294,7 @@ const ModuleCard = ({ module, delay = 0 }: { module: any; delay?: number }) => {
           </Box>
         )}
         
-        <CardContent sx={{ p: 3 }}>
+        <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <Box
               sx={{
@@ -322,7 +322,7 @@ const ModuleCard = ({ module, delay = 0 }: { module: any; delay?: number }) => {
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flex: 1 }}>
             {module.stats && Object.keys(module.stats).length > 0 ? (
               Object.entries(module.stats)
                 .filter(([key, value]) => key !== 'lastUpdate' && value !== undefined)
@@ -371,7 +371,7 @@ const ModuleCard = ({ module, delay = 0 }: { module: any; delay?: number }) => {
 
           <Divider sx={{ my: 2 }} />
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 'auto', gap: 1 }}>
             <Button
               variant="text"
               size="small"

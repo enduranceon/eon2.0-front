@@ -84,6 +84,21 @@ import {
   UpdateExternalExamRequest,
   ExternalExamFilters,
   ExternalExamsResponse,
+  Feature,
+  CreateFeatureRequest,
+  UpdateFeatureRequest,
+  FeatureFilters,
+  FeaturesResponse,
+  FeatureStatus,
+  PlanFeature,
+  AddFeatureToPlanRequest,
+  UpdatePlanFeatureStatusRequest,
+  PlanFeatureAudit,
+  PlanFeaturesResponse,
+  PlanFeatureAuditsResponse,
+  ExamImageResponse,
+  UploadExamImageRequest,
+  UpdateExamImageUrlRequest,
 } from '../types/api';
 
 export class EnduranceApiClient {
@@ -312,7 +327,7 @@ export class EnduranceApiClient {
   }
   
   async getExam(id: string): Promise<Exam> {
-    return this.get<Exam>(`/exams/${id}`);
+    return this.get<Exam>(`/exams/${id.trim()}`);
   }
 
   async createExam(data: Partial<Exam>): Promise<Exam> {
@@ -320,19 +335,56 @@ export class EnduranceApiClient {
   }
 
   async updateExam(id: string, data: Partial<Exam>): Promise<Exam> {
-    return this.patch<Exam>(`/exams/${id}`, data);
+    return this.patch<Exam>(`/exams/${id.trim()}`, data);
   }
 
   async deleteExam(id: string): Promise<void> {
-    return this.delete<void>(`/exams/${id}`);
+    return this.delete<void>(`/exams/${id.trim()}`);
+  }
+
+  // Funções de upload de imagem da prova
+  async uploadExamImage(examId: string, file: File): Promise<ExamImageResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await this.api.post(`/exams/${examId}/image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${this.token}`,
+      },
+    });
+    
+    return response.data;
+  }
+  
+  async uploadExamImageWithoutId(file: File): Promise<ExamImageResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await this.api.post('/exams/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${this.token}`,
+      },
+    });
+    
+    return response.data;
+  }
+
+  async removeExamImage(examId: string): Promise<ExamImageResponse> {
+    return this.delete<ExamImageResponse>(`/exams/${examId.trim()}/image`);
+  }
+
+  async updateExamImageUrl(examId: string, imageUrl: string): Promise<ExamImageResponse> {
+    return this.patch<ExamImageResponse>(`/exams/${examId.trim()}/image`, { imageUrl });
   }
 
   async registerForExam(examId: string, data?: { distanceId?: string; categoryId?: string }): Promise<any> {
-    return this.post<any>(`/exams/${examId}/register`, data);
+    return this.post<any>(`/exams/${examId.trim()}/register`, data);
   }
 
   async cancelExamRegistration(examId: string): Promise<any> {
-    return this.delete<any>(`/exams/${examId}/register`);
+    return this.delete<any>(`/exams/${examId.trim()}/register`);
   }
 
   async getUserExams(userId: string, params?: { page?: number; limit?: number }): Promise<PaginatedResponse<Exam>> {
@@ -1104,11 +1156,11 @@ export class EnduranceApiClient {
   }
 
   async updateCoachExam(examId: string, data: any): Promise<any> {
-    return this.put<any>(`/coaches/exams/${examId}`, data);
+    return this.put<any>(`/coaches/exams/${examId.trim()}`, data);
   }
 
   async deleteCoachExam(examId: string): Promise<any> {
-    return this.delete<any>(`/coaches/exams/${examId}`);
+    return this.delete<any>(`/coaches/exams/${examId.trim()}`);
   }
 
   // Dashboard do Coach - Listar Inscrições em Provas
@@ -1149,7 +1201,7 @@ export class EnduranceApiClient {
 
   // Dashboard do Coach - Confirmar Presença em Prova
   async confirmExamAttendance(registrationId: string): Promise<any> {
-    return this.post<any>('/coaches/dashboard/confirm-attendance', { registrationId });
+    return this.patch<any>(`/exams/registration/${registrationId}/confirm`);
   }
 
   // Dashboard do Coach - Atualizar Registro de Prova (Presença + Resultado)
@@ -1840,6 +1892,144 @@ export class EnduranceApiClient {
   async deleteExternalExam(id: string): Promise<ApiResponse<{ message: string }>> {
     const response = await this.api.delete(`/external-exams/${id}`);
     return response.data;
+  }
+
+  // ==================== FEATURES API ====================
+
+  /**
+   * Criar feature
+   */
+  async createFeature(data: CreateFeatureRequest): Promise<ApiResponse<Feature>> {
+    const response = await this.api.post('/features', data);
+    return response.data;
+  }
+
+  /**
+   * Listar features
+   */
+  async getFeatures(filters?: FeatureFilters): Promise<FeaturesResponse> {
+    const params = new URLSearchParams();
+    
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.isActive !== undefined) params.append('isActive', filters.isActive.toString());
+
+    const response = await this.api.get(`/features?${params.toString()}`);
+    
+    if (response.data && response.data.success && response.data.data) {
+      return response.data.data as FeaturesResponse;
+    }
+    
+    return response.data as FeaturesResponse;
+  }
+
+  /**
+   * Buscar feature por ID
+   */
+  async getFeatureById(id: string): Promise<ApiResponse<Feature>> {
+    const response = await this.api.get(`/features/${id}`);
+    return response.data;
+  }
+
+  /**
+   * Atualizar feature
+   */
+  async updateFeature(id: string, data: UpdateFeatureRequest): Promise<ApiResponse<Feature>> {
+    const response = await this.api.patch(`/features/${id}`, data);
+    return response.data;
+  }
+
+  /**
+   * Excluir feature
+   */
+  async deleteFeature(id: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await this.api.delete(`/features/${id}`);
+    return response.data;
+  }
+
+  /**
+   * Listar features para venda
+   */
+  async getFeaturesForSale(): Promise<ApiResponse<Feature[]>> {
+    const response = await this.api.get('/features/for-sale');
+    return response.data;
+  }
+
+  /**
+   * Buscar pagamentos pendentes de features
+   */
+  async getPendingPayments(): Promise<any[]> {
+    try {
+      const response = await this.api.get('/user/features/pending-payments');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar pagamentos pendentes:', error);
+      throw error;
+    }
+  }
+
+  // ==================== PLAN FEATURES API ====================
+
+  /**
+   * Adicionar feature ao plano
+   */
+  async addFeatureToPlan(planId: string, data: AddFeatureToPlanRequest): Promise<ApiResponse<PlanFeature>> {
+    const response = await this.api.post(`/plans/${planId}/features`, data);
+    return response.data;
+  }
+
+  /**
+   * Listar features do plano
+   */
+  async getPlanFeatures(planId: string, filters?: { page?: number; limit?: number }): Promise<PlanFeaturesResponse> {
+    const params = new URLSearchParams();
+    
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    const response = await this.api.get(`/plans/${planId}/features?${params.toString()}`);
+    
+    if (response.data && response.data.success && response.data.data) {
+      return response.data.data as PlanFeaturesResponse;
+    }
+    
+    return response.data as PlanFeaturesResponse;
+  }
+
+  /**
+   * Atualizar status da feature no plano
+   */
+  async updatePlanFeatureStatus(planId: string, featureId: string, data: UpdatePlanFeatureStatusRequest): Promise<ApiResponse<PlanFeature>> {
+    const response = await this.api.patch(`/plans/${planId}/features/${featureId}/status`, data);
+    return response.data;
+  }
+
+  /**
+   * Remover feature do plano
+   */
+  async removeFeatureFromPlan(planId: string, featureId: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await this.api.delete(`/plans/${planId}/features/${featureId}`);
+    return response.data;
+  }
+
+  /**
+   * Histórico de alterações das features do plano
+   */
+  async getPlanFeatureHistory(planId: string, filters?: { page?: number; limit?: number }): Promise<PlanFeatureAuditsResponse> {
+    const params = new URLSearchParams();
+    
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    const response = await this.api.get(`/plans/${planId}/features/history?${params.toString()}`);
+    
+    if (response.data && response.data.success && response.data.data) {
+      return response.data.data as PlanFeatureAuditsResponse;
+    }
+    
+    return response.data as PlanFeatureAuditsResponse;
   }
 }
 

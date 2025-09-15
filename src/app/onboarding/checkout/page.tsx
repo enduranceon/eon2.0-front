@@ -337,9 +337,9 @@ export default function CheckoutPage() {
       if (result.paymentStatus === 'CONFIRMED') {
         enqueueSnackbar('Pagamento aprovado com sucesso!', { variant: 'success' });
         localStorage.setItem('onboarding_step_3_completed', 'true');
-        // Para cartão de crédito confirmado, redirecionar diretamente para dashboard
+        // Para cartão de crédito confirmado, redirecionar diretamente para dashboard após mensagem de contratação
         if (paymentMethod === PaymentMethod.CREDIT_CARD) {
-          setTimeout(() => router.push('/dashboard/aluno'), 5000);
+          setTimeout(() => router.push('/dashboard/aluno'), 3000);
         }
       } else {
         enqueueSnackbar('Pagamento pendente. Siga as instruções.', { variant: 'info' });
@@ -516,7 +516,7 @@ export default function CheckoutPage() {
                     <CheckIcon sx={{ fontSize: 80, color: theme.palette.success.main, mb: 2 }} />
                     <Typography variant="h4" gutterBottom>Pagamento Confirmado!</Typography>
                     <Typography variant="body1" color="text.secondary" paragraph>
-                      Sua assinatura está ativa! Você será redirecionado para o seu dashboard em até 5 segundos.
+                      Sua assinatura está ativa! Você será redirecionado para o seu dashboard em até 3 segundos.
                     </Typography>
                     <Button variant="contained" onClick={() => router.push('/dashboard/aluno')}>
                       Ir agora para o Dashboard

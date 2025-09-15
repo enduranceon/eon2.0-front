@@ -177,13 +177,15 @@ export default function PlanRegistrationForm({
   const { enqueueSnackbar } = useSnackbar();
 
   // Hook do react-hook-form para cartão de crédito
-  const { control: cardControl, handleSubmit: handleCardSubmit, formState: { errors: cardErrors } } = useForm<CheckoutCardFormData>({
+  const cardForm = useForm<CheckoutCardFormData>({
     resolver: zodResolver(checkoutCardSchema),
     defaultValues: {
       creditCard: { holderName: '', number: '', expiryMonth: '', expiryYear: '', ccv: '' },
       creditCardHolderInfo: { name: '', email: '', cpfCnpj: '', postalCode: '', addressNumber: '', phone: '' }
     }
   });
+  
+  const { control: cardControl, getValues: getCardValues, formState: { errors: cardErrors } } = cardForm;
 
   // Carregar taxa de matrícula ativa
   const loadEnrollmentFee = async () => {
@@ -477,7 +479,7 @@ export default function PlanRegistrationForm({
       // Adicionar dados específicos do cartão de crédito se necessário
       if (formData.paymentMethod === PaymentMethod.CREDIT_CARD) {
         // Obter dados do formulário de cartão
-        const cardFormData = (cardControl as any).getValues() as CheckoutCardFormData;
+        const cardFormData = getCardValues();
         (checkoutData as any).installmentCount = paymentOption === 'PARCELADO' ? installmentCount : 0;
         (checkoutData as any).creditCard = cardFormData.creditCard;
         (checkoutData as any).creditCardHolderInfo = cardFormData.creditCardHolderInfo;

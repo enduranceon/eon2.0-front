@@ -435,8 +435,13 @@ const PlanResult = ({
   
   // Obter dados do plano (nome e features)
   const planName = plan.name || getFallbackPlanData(normalizedType, modalidade.name || '').name;
+  
+  // Usar features reais da API se disponíveis
   const planFeatures = (plan.features && plan.features.length > 0) ? 
-    plan.features : 
+    plan.features
+      .filter(planFeature => planFeature.isActive) // Apenas features ativas
+      .map(planFeature => planFeature.feature.name)
+      .slice(0, 6) : // Limitar a 6 features
     getFallbackPlanData(normalizedType, modalidade.name || '').features;
   
   // Calcular preços para exibição

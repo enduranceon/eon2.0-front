@@ -9,15 +9,19 @@ import {
   Alert,
   Paper,
   Container,
-  Card
+  Card,
+  Tabs,
+  Tab,
+  AppBar
 } from '@mui/material';
 import { Payment, Subscription, UserType } from '@/types/api';
 import { paymentService } from '@/services/paymentService';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/Dashboard/DashboardLayout';
-import SubscriptionCard from '@/components/Dashboard/Aluno/SubscriptionCard';
+import PlanDetailsCard from '@/components/Dashboard/Aluno/PlanDetailsCard';
 import PaymentHistory from '@/components/Dashboard/Aluno/PaymentHistory';
+import FeaturesTab from '@/components/Dashboard/Aluno/FeaturesTab';
 
 const MeuPlanoContent = () => {
     const { user } = useAuth();
@@ -25,6 +29,7 @@ const MeuPlanoContent = () => {
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState(0);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -65,6 +70,36 @@ const MeuPlanoContent = () => {
         }
     }, [user]);
 
+    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+        setActiveTab(newValue);
+    };
+
+    const handleFeaturePurchased = () => {
+        // Recarregar dados quando uma feature for comprada
+        const fetchData = async () => {
+            try {
+                const [subResult, paymentsResult] = await Promise.all([
+                    paymentService.getActiveSubscription(),
+                    paymentService.getPaymentHistory({ page: 1, limit: 50 })
+                ]);
+                setSubscription(subResult);
+                
+                let paymentsData: Payment[] = [];
+                if (paymentsResult) {
+                    if ('data' in paymentsResult && Array.isArray(paymentsResult.data)) {
+                        paymentsData = paymentsResult.data;
+                    } else if (Array.isArray(paymentsResult)) {
+                        paymentsData = paymentsResult;
+                    }
+                }
+                setPayments(paymentsData);
+            } catch (err) {
+                console.error('Erro ao atualizar dados:', err);
+            }
+        };
+        fetchData();
+    };
+
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
@@ -93,70 +128,88 @@ const MeuPlanoContent = () => {
                     Meu Plano
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                    Gerencie sua assinatura e acompanhe o histórico de pagamentos
+                    Gerencie sua assinatura, acompanhe pagamentos e compre features adicionais
                 </Typography>
             </Box>
             
-            <Grid container spacing={4}>
-                <Grid item xs={12}>
-                    <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
-                        <Card sx={{ 
-                          background: (theme) => theme.palette.mode === 'dark' 
-                            ? 'rgba(30, 30, 30, 0.98)' 
-                            : 'rgba(255, 255, 255, 0.98)', 
-                          backdropFilter: 'blur(10px)', 
-                          height: '100%', 
-                          display: 'flex', 
-                          flexDirection: 'column' 
-                        }}>
-                            <SubscriptionCard
-                                subscription={subscription} 
-                                onSubscriptionUpdate={() => {
-                                    // Recarregar dados da assinatura
-                                    const fetchData = async () => {
-                                        try {
-                                            const [subResult, paymentsResult] = await Promise.all([
-                                                paymentService.getActiveSubscription(),
-                                                paymentService.getPaymentHistory({ page: 1, limit: 50 })
-                                            ]);
-                                            setSubscription(subResult);
-                                            
-                                            let paymentsData: Payment[] = [];
-                                            if (paymentsResult) {
-                                                if ('data' in paymentsResult && Array.isArray(paymentsResult.data)) {
-                                                    paymentsData = paymentsResult.data;
-                                                } else if (Array.isArray(paymentsResult)) {
-                                                    paymentsData = paymentsResult;
+            <Paper elevation={2} sx={{ mb: 3 }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={handleTabChange}
+                    variant="fullWidth"
+                    sx={{ borderBottom: 1, borderColor: 'divider' }}
+                >
+                    <Tab label="Informações do Plano" />
+                    <Tab label="Adicionais" />
+                </Tabs>
+            </Paper>
+
+            {activeTab === 0 && (
+                <Grid container spacing={4}>
+                    <Grid item xs={12}>
+                        <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
+                            <Card sx={{ 
+                              background: (theme) => theme.palette.mode === 'dark' 
+                                ? 'rgba(30, 30, 30, 0.98)' 
+                                : 'rgba(255, 255, 255, 0.98)', 
+                              backdropFilter: 'blur(10px)', 
+                              height: '100%', 
+                              display: 'flex', 
+                              flexDirection: 'column' 
+                            }}>
+                                <PlanDetailsCard
+                                    subscription={subscription} 
+                                    onSubscriptionUpdate={() => {
+                                        // Recarregar dados da assinatura
+                                        const fetchData = async () => {
+                                            try {
+                                                const [subResult, paymentsResult] = await Promise.all([
+                                                    paymentService.getActiveSubscription(),
+                                                    paymentService.getPaymentHistory({ page: 1, limit: 50 })
+                                                ]);
+                                                setSubscription(subResult);
+                                                
+                                                let paymentsData: Payment[] = [];
+                                                if (paymentsResult) {
+                                                    if ('data' in paymentsResult && Array.isArray(paymentsResult.data)) {
+                                                        paymentsData = paymentsResult.data;
+                                                    } else if (Array.isArray(paymentsResult)) {
+                                                        paymentsData = paymentsResult;
+                                                    }
                                                 }
+                                                setPayments(paymentsData);
+                                            } catch (err) {
+                                                console.error('Erro ao atualizar dados:', err);
                                             }
-                                            setPayments(paymentsData);
-                                        } catch (err) {
-                                            console.error('Erro ao atualizar dados:', err);
-                                        }
-                                    };
-                                    fetchData();
-                                }} 
-                            />
-                        </Card>
-                    </Paper>
+                                        };
+                                        fetchData();
+                                    }} 
+                                />
+                            </Card>
+                        </Paper>
+                    </Grid>
+                    
+                    <Grid item xs={12}>
+                        <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
+                            <Card sx={{ 
+                              background: (theme) => theme.palette.mode === 'dark' 
+                                ? 'rgba(30, 30, 30, 0.98)' 
+                                : 'rgba(255, 255, 255, 0.98)', 
+                              backdropFilter: 'blur(10px)', 
+                              height: '100%', 
+                              display: 'flex', 
+                              flexDirection: 'column' 
+                            }}>
+                                <PaymentHistory payments={payments} />
+                            </Card>
+                        </Paper>
+                    </Grid>
                 </Grid>
-                
-                <Grid item xs={12}>
-                    <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
-                        <Card sx={{ 
-                          background: (theme) => theme.palette.mode === 'dark' 
-                            ? 'rgba(30, 30, 30, 0.98)' 
-                            : 'rgba(255, 255, 255, 0.98)', 
-                          backdropFilter: 'blur(10px)', 
-                          height: '100%', 
-                          display: 'flex', 
-                          flexDirection: 'column' 
-                        }}>
-                            <PaymentHistory payments={payments} />
-                        </Card>
-                    </Paper>
-                </Grid>
-            </Grid>
+            )}
+
+            {activeTab === 1 && (
+                <FeaturesTab onFeaturePurchased={handleFeaturePurchased} />
+            )}
         </Box>
     );
 }

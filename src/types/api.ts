@@ -78,10 +78,7 @@ export interface User {
   twoFactorVerified?: boolean;
   onboardingCompleted?: boolean;
   subaccountStatus?: SubaccountStatus;
-  subscriptions?: {
-    plan: { id: string; name: string; };
-    modalidade: { id: string; name: string; };
-  }[];
+  subscriptions?: Subscription[];
   coachPlans?: { plan: Plan }[];
   coachModalidades?: { modalidade: Modalidade }[];
   createdAt: string;
@@ -164,7 +161,7 @@ export interface Plan {
   enrollmentFee: number;
   prices: PlanPrice[];
   modalidades: { modalidade: Modalidade }[];
-  features?: string[];
+  features?: PlanFeature[];
   isActive: boolean;
   forSale: boolean;
   createdAt: string;
@@ -618,6 +615,7 @@ export interface Exam {
   date: string;
   end_date?: string;
   exam_url?: string;
+  imageUrl?: string;
   location: string;
   modalidadeId: string;
   modalidade: Modalidade;
@@ -636,6 +634,21 @@ export interface Exam {
   registrations?: ExamRegistration[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ExamImageResponse {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  updatedAt: string;
+}
+
+export interface UploadExamImageRequest {
+  file: File;
+}
+
+export interface UpdateExamImageUrlRequest {
+  imageUrl: string;
 }
 
 export interface Margin {
@@ -1805,6 +1818,125 @@ export interface ExternalExamFilters {
 
 export interface ExternalExamsResponse {
   data: ExternalExam[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+// Interfaces para Features
+export enum FeatureStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  EXPIRED = 'EXPIRED',
+  DISCONTINUED = 'DISCONTINUED'
+}
+
+export interface Feature {
+  id: string;
+  name: string;
+  description?: string;
+  value: number;
+  quantity?: number; // null = ilimitado
+  validUntil?: string;
+  status: FeatureStatus;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface CreateFeatureRequest {
+  name: string;
+  description?: string;
+  value: number;
+  quantity?: number;
+  validUntil?: string;
+  status?: FeatureStatus;
+  isActive?: boolean;
+}
+
+export interface UpdateFeatureRequest {
+  name?: string;
+  description?: string;
+  value?: number;
+  quantity?: number;
+  validUntil?: string;
+  status?: FeatureStatus;
+  isActive?: boolean;
+}
+
+export interface FeatureFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: FeatureStatus;
+  isActive?: boolean;
+}
+
+export interface FeaturesResponse {
+  data: Feature[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+// Interfaces para Features dos Planos
+export interface PlanFeature {
+  id: string;
+  planId: string;
+  featureId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  feature: Feature;
+}
+
+export interface AddFeatureToPlanRequest {
+  featureId: string;
+  isActive?: boolean;
+}
+
+export interface UpdatePlanFeatureStatusRequest {
+  isActive: boolean;
+}
+
+export interface PlanFeatureAudit {
+  id: string;
+  planId: string;
+  featureId: string;
+  action: 'ADD' | 'REMOVE' | 'UPDATE';
+  changedBy: string;
+  oldValue?: any;
+  newValue?: any;
+  createdAt: string;
+  userName: string;
+  featureName: string;
+}
+
+export interface PlanFeaturesResponse {
+  data: PlanFeature[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+export interface PlanFeatureAuditsResponse {
+  data: PlanFeatureAudit[];
   pagination: {
     page: number;
     limit: number;

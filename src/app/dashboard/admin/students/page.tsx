@@ -45,6 +45,9 @@ import {
   Clear as ClearIcon,
   SwapHoriz as SwapHorizIcon,
   MoreVert as MoreVertIcon,
+  FileDownload as FileDownloadIcon,
+  PictureAsPdf as PdfIcon,
+  TableChart as CsvIcon,
 } from '@mui/icons-material';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
@@ -57,6 +60,7 @@ import { useDebounce } from '../../../../hooks/useDebounce'; // Assuming a debou
 import CheckoutCreditCardForm, { checkoutCardSchema, CheckoutCardFormData } from '../../../../components/Forms/CheckoutCreditCardForm';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ExportService, ExportData, ExportFilters } from '../../../../services/exportService';
 
 const calculateAge = (birthDate: string | null) => {
   if (!birthDate) return null;
@@ -81,6 +85,7 @@ export default function AdminStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({});
   const [formLoading, setFormLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState<{ pdf: boolean; csv: boolean }>({ pdf: false, csv: false });
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -418,6 +423,49 @@ export default function AdminStudentsPage() {
     setPage(0);
   };
 
+  // Funções de exportação
+  const handleExportToPDF = async () => {
+    setExportLoading(prev => ({ ...prev, pdf: true }));
+    try {
+      const filters: ExportFilters = {
+        searchTerm: debouncedSearchTerm || undefined,
+        age: age || undefined,
+        selectedCoach: selectedCoach || undefined,
+        selectedModality: selectedModality || undefined,
+        selectedPlan: selectedPlan || undefined,
+      };
+      
+      await ExportService.exportAllStudentsToPDF(filters);
+      setSuccessMessage('Lista completa de alunos exportada para PDF com sucesso!');
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      setError('Não foi possível exportar para PDF. Tente novamente.');
+    } finally {
+      setExportLoading(prev => ({ ...prev, pdf: false }));
+    }
+  };
+
+  const handleExportToCSV = async () => {
+    setExportLoading(prev => ({ ...prev, csv: true }));
+    try {
+      const filters: ExportFilters = {
+        searchTerm: debouncedSearchTerm || undefined,
+        age: age || undefined,
+        selectedCoach: selectedCoach || undefined,
+        selectedModality: selectedModality || undefined,
+        selectedPlan: selectedPlan || undefined,
+      };
+      
+      await ExportService.exportAllStudentsToCSV(filters);
+      setSuccessMessage('Lista completa de alunos exportada para CSV com sucesso!');
+    } catch (error) {
+      console.error('Erro ao exportar CSV:', error);
+      setError('Não foi possível exportar para CSV. Tente novamente.');
+    } finally {
+      setExportLoading(prev => ({ ...prev, csv: false }));
+    }
+  };
+
   return (
     <ProtectedRoute allowedUserTypes={['ADMIN']}>
       <DashboardLayout user={user!} onLogout={logout}>
@@ -426,9 +474,33 @@ export default function AdminStudentsPage() {
             title="Gerenciar Alunos"
             description="Visualize, adicione, edite ou remova alunos da plataforma."
             actionComponent={
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
-                Novo Aluno
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Tooltip title="Exportar todos os alunos para PDF">
+                  <Button 
+                    variant="outlined" 
+                    startIcon={exportLoading.pdf ? <CircularProgress size={16} /> : <PdfIcon />}
+                    onClick={handleExportToPDF}
+                    disabled={exportLoading.pdf}
+                    color="error"
+                  >
+                    PDF
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Exportar todos os alunos para CSV">
+                  <Button 
+                    variant="outlined" 
+                    startIcon={exportLoading.csv ? <CircularProgress size={16} /> : <CsvIcon />}
+                    onClick={handleExportToCSV}
+                    disabled={exportLoading.csv}
+                    color="success"
+                  >
+                    CSV
+                  </Button>
+                </Tooltip>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
+                  Novo Aluno
+                </Button>
+              </Box>
             }
           />
 

@@ -94,7 +94,7 @@ export default function RequestLeavePage() {
 
   return (
     <ProtectedRoute allowedUserTypes={['FITNESS_STUDENT']}>
-      <DashboardLayout user={auth.user} onLogout={auth.logout}>
+      <DashboardLayout user={auth.user} onLogout={auth.logout} overdueInfo={auth.overdueInfo}>
         <Container maxWidth="sm" sx={{ mt: 4, mb: 4 }}>
           <PageHeader
             title="Solicitar Licença"

@@ -49,7 +49,7 @@ const nextConfig = {
   skipTrailingSlashRedirect: true,
   
   // Configurações para páginas que não podem ser pré-renderizadas
-  generateStaticParams: false,
+  // generateStaticParams é uma função, não uma configuração do Next.js
   
   // Configurações para build em produção
   typescript: {

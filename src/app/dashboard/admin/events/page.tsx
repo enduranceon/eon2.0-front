@@ -47,6 +47,20 @@ import { Exam, Modalidade, PaginatedResponse } from '../../../../types/api';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import ExamForm from '../../../../components/Dashboard/Admin/ExamForm';
 
+// Função para formatar data sem problemas de fuso horário
+const formatDateSafe = (dateString: string): string => {
+  if (!dateString) return '';
+  
+  // Se a data termina com 'Z' ou tem informação de timezone, extrair apenas a parte da data
+  const dateOnly = dateString.split('T')[0];
+  const [year, month, day] = dateOnly.split('-');
+  
+  // Criar data local sem conversão de timezone
+  const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  
+  return date.toLocaleDateString('pt-BR');
+};
+
 export default function AdminExamsPage() {
   const { user, logout } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
@@ -128,8 +142,6 @@ export default function AdminExamsPage() {
       const selectedModalidade = modalities.find(m => m.id === data.modalidadeId);
       const isCorrida = selectedModalidade?.name.toLowerCase() === 'corrida';
 
-     
-
       // Processar dados antes de enviar
       const processedData = {
         ...data,
@@ -137,6 +149,7 @@ export default function AdminExamsPage() {
         // Tratar campos opcionais - enviar null quando vazio
         end_date: data.end_date && data.end_date.trim() !== '' ? data.end_date + 'T00:00:00.000Z' : null,
         exam_url: data.exam_url && data.exam_url.trim() !== '' ? data.exam_url : null,
+        imageUrl: data.imageUrl && data.imageUrl.trim() !== '' ? data.imageUrl : null,
       };
 
       // Processar distâncias ou categorias baseado na modalidade
@@ -262,6 +275,7 @@ export default function AdminExamsPage() {
                           <TableCell>Data Início</TableCell>
                           <TableCell>Data Fim</TableCell>
                           <TableCell>Local</TableCell>
+                          <TableCell>Imagem</TableCell>
                           <TableCell align="center">Ações</TableCell>
                         </TableRow>
                      </TableHead>
@@ -281,7 +295,7 @@ export default function AdminExamsPage() {
                                   exam.distances.map((distance, index) => (
                                     <Chip
                                       key={distance.id || index}
-                                      label={`${distance.distance}${distance.unit}${distance.date ? ` - ${new Date(distance.date).toLocaleDateString('pt-BR')}` : ''}`}
+                                      label={`${distance.distance}${distance.unit}${distance.date ? ` - ${formatDateSafe(distance.date)}` : ''}`}
                                       size="small"
                                       variant="outlined"
                                       color="primary"
@@ -292,7 +306,7 @@ export default function AdminExamsPage() {
                                   exam.categories.map((category, index) => (
                                     <Chip
                                       key={category.id || index}
-                                      label={`${category.name}${category.date ? ` - ${new Date(category.date).toLocaleDateString('pt-BR')}` : ''}`}
+                                      label={`${category.name}${category.date ? ` - ${formatDateSafe(category.date)}` : ''}`}
                                       size="small"
                                       variant="outlined"
                                       color="secondary"
@@ -304,11 +318,32 @@ export default function AdminExamsPage() {
                                 )}
                               </Box>
                             </TableCell>
-                                                     <TableCell>{new Date(exam.date).toLocaleDateString('pt-BR')}</TableCell>
+                                                     <TableCell>{formatDateSafe(exam.date)}</TableCell>
                            <TableCell>
-                             {exam.end_date ? new Date(exam.end_date).toLocaleDateString('pt-BR') : '-'}
+                             {exam.end_date ? formatDateSafe(exam.end_date) : '-'}
                            </TableCell>
                            <TableCell>{exam.location}</TableCell>
+                          <TableCell>
+                            {exam.imageUrl ? (
+                              <Box
+                                component="img"
+                                src={exam.imageUrl}
+                                alt="Imagem da prova"
+                                sx={{
+                                  width: 60,
+                                  height: 40,
+                                  objectFit: 'cover',
+                                  borderRadius: 1,
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                }}
+                              />
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">
+                                Sem imagem
+                              </Typography>
+                            )}
+                          </TableCell>
                           <TableCell align="center">
                             <IconButton size="small" onClick={() => handleOpenModal(exam)}><EditIcon /></IconButton>
                             <IconButton size="small" color="error" onClick={() => handleDeleteRequest(exam)}><DeleteIcon /></IconButton>

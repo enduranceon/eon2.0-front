@@ -17,14 +17,20 @@ import {
   CardContent,
   Grid,
   Chip,
-  Divider
+  Divider,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import {
   AttachMoney,
   Assignment,
   CalendarMonth,
   Star,
-  Lightbulb
+  Lightbulb,
+  CheckCircle,
+  List as ListIcon
 } from '@mui/icons-material';
 import { enduranceApi } from '../../../services/enduranceApi';
 import { Plan, Modalidade, User, PaymentMethod, PlanPeriod, EnrollmentFee, UserType } from '../../../types/api';
@@ -191,6 +197,54 @@ export default function PlanRegistrationPage() {
                   ))}
                 </Box>
               </Box>
+
+              {/* Features do Plano */}
+              {plan.features && plan.features.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
+                    <ListIcon sx={{ fontSize: '2rem', color: 'primary.main' }} />
+                    <Typography variant="h5" color="primary" fontWeight="bold">
+                      O que está incluído
+                    </Typography>
+                  </Box>
+                  
+                  <Grid container spacing={2}>
+                    {plan.features
+                      .filter(planFeature => planFeature.isActive)
+                      .map((planFeature, index) => (
+                        <Grid item xs={12} sm={6} key={index}>
+                          <Box sx={{ 
+                            p: 2, 
+                            bgcolor: 'grey.50', 
+                            borderRadius: 2, 
+                            border: '1px solid', 
+                            borderColor: 'grey.200',
+                            height: '100%'
+                          }}>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                              <CheckCircle sx={{ color: 'success.main', fontSize: '1.2rem', mt: 0.5, flexShrink: 0 }} />
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="subtitle1" fontWeight="bold" color="text.primary" gutterBottom>
+                                  {planFeature.feature.name}
+                                </Typography>
+                                {planFeature.feature.description && (
+                                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                    {planFeature.feature.description}
+                                  </Typography>
+                                )}
+                                {planFeature.feature.quantity && (
+                                  <Typography variant="caption" color="primary" fontWeight="medium">
+                                    {planFeature.feature.quantity} unidades incluídas
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
+                          </Box>
+                        </Grid>
+                      ))}
+                  </Grid>
+                </Box>
+              )}
 
               {/* Preços */}
               <Box sx={{ mb: 4, p: 4, bgcolor: 'grey.50', borderRadius: 3, border: '2px solid', borderColor: 'primary.light' }}>

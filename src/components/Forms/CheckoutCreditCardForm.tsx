@@ -1,6 +1,5 @@
 import React from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, Control } from 'react-hook-form';
 import * as z from 'zod';
 import {
   Box,
@@ -34,7 +33,7 @@ export const checkoutCardSchema = z.object({
 export type CheckoutCardFormData = z.infer<typeof checkoutCardSchema>;
 
 interface CheckoutCreditCardFormProps {
-  control: any;
+  control: Control<CheckoutCardFormData>;
 }
 
 export default function CheckoutCreditCardForm({ control }: CheckoutCreditCardFormProps) {

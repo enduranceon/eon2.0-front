@@ -57,6 +57,19 @@ import {
   CalendarToday as CalendarIcon,
   Pause as PauseIcon,
   VideoCall as VideoCallIcon,
+  // Novos ícones Material 3
+  Home as HomeIcon,
+  Person as PersonIcon,
+  Assignment as AssignmentNewIcon,
+  Quiz as QuizIcon,
+  EventBusy as EventBusyIcon,
+  CreditCard as CreditCardIcon,
+  EmojiEvents as EmojiEventsIcon,
+  Wallet as WalletIcon,
+  Videocam as VideocamIcon,
+  Flag as FlagIcon,
+  Subscriptions as SubscriptionsIcon,
+  MonetizationOn as MonetizationOnIcon,
 } from '@mui/icons-material';
 import NotificationCenter from './NotificationCenter';
 import AINotificationPanel from './AINotificationPanel';
@@ -109,8 +122,8 @@ const menuItems: MenuItemProps[] = [
   },
   {
     id: 'dashboard-student',
-    label: 'Dashboard',
-    icon: <DashboardIcon />,
+    label: 'Início',
+    icon: <HomeIcon />,
     path: '/dashboard/aluno',
     roles: [UserType.FITNESS_STUDENT],
   },
@@ -228,6 +241,13 @@ const menuItems: MenuItemProps[] = [
     path: '/dashboard/admin/taxa-matricula',
     roles: [UserType.ADMIN],
   },
+  {
+    id: 'admin-features',
+    label: 'Adicionais',
+    icon: <AddIcon />,
+    path: '/dashboard/admin/features',
+    roles: [UserType.ADMIN],
+  },
   
   // Coach
   {
@@ -298,57 +318,57 @@ const menuItems: MenuItemProps[] = [
   // Student
   {
     id: 'student-coach',
-    label: 'Meu Treinador',
-    icon: <PersonAddIcon />,
+    label: 'Treinador',
+    icon: <PersonIcon />,
     path: '/dashboard/aluno/treinador',
     roles: [UserType.FITNESS_STUDENT],
   },
   {
     id: 'student-events',
     label: 'Provas',
-    icon: <EventsIcon />,
+    icon: <FlagIcon />,
     path: '/dashboard/aluno/eventos',
     roles: [UserType.FITNESS_STUDENT],
   },
   {
     id: 'student-tests',
     label: 'Testes',
-    icon: <TestIcon />,
+    icon: <QuizIcon />,
     path: '/dashboard/aluno/testes',
     roles: [UserType.FITNESS_STUDENT],
   },
   {
     id: 'student-request-leave',
-    label: 'Solicitar Licença',
-    icon: <PauseIcon />,
+    label: 'Licença',
+    icon: <EventBusyIcon />,
     path: '/dashboard/aluno/solicitar-licenca',
     roles: [UserType.FITNESS_STUDENT],
   },
   {
     id: 'student-plan',
-    label: 'Meu Plano',
-    icon: <AssignmentIcon />,
+    label: 'Assinatura',
+    icon: <SubscriptionsIcon />,
     path: '/dashboard/aluno/meu-plano',
     roles: [UserType.FITNESS_STUDENT],
   },
   {
     id: 'student-coins',
-    label: 'Moedas',
-    icon: <MoneyIcon />,
+    label: 'Recompensas',
+    icon: <MonetizationOnIcon />,
     path: '/dashboard/aluno/moedas',
     roles: [UserType.FITNESS_STUDENT],
   },
   {
     id: 'student-payments',
-    label: 'Pagamentos',
-    icon: <PaymentIcon />,
+    label: 'Cartões',
+    icon: <WalletIcon />,
     path: '/dashboard/aluno/pagamentos',
     roles: [UserType.FITNESS_STUDENT],
   },
   {
     id: 'student-videochamadas',
-    label: 'Videochamadas',
-    icon: <VideoCallIcon />,
+    label: 'Consultas Online',
+    icon: <VideocamIcon />,
     path: '/dashboard/aluno/videochamadas',
     roles: [UserType.FITNESS_STUDENT],
   },
@@ -887,8 +907,7 @@ export default function DashboardLayout({ children, user, onLogout, overdueInfo 
           pt: user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue && overdueBarVisible ? '128px' : '64px',
         }}
       >
-        <Toolbar />
-        <Container maxWidth="xl" sx={{ py: 3 }}>
+        <Container maxWidth="xl" sx={{ py: 2 }}>
           {children}
         </Container>
       </Box>

@@ -235,9 +235,7 @@ export default function ConfirmarPresencaPage() {
         return;
       }
       
-      await enduranceApi.updateExamRegistration(registrationId, {
-        attended: true
-      });
+      await enduranceApi.confirmExamAttendance(registrationId);
       
       setRegistrations(prev => prev.map(reg => 
         reg.id === registrationId 
