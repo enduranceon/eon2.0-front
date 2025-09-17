@@ -42,7 +42,12 @@ import {
   Search as SearchIcon,
   FilterList as FilterListIcon,
   Today as TodayIcon,
-  EmojiEvents as EmojiEventsIcon
+  EmojiEvents as EmojiEventsIcon,
+  Download as DownloadIcon,
+  ContentCopy as CopyIcon,
+  Clear as ClearIcon,
+  Category as CategoryIcon,
+  Straighten as DistanceIcon
 } from '@mui/icons-material';
 import { enduranceApi } from '@/services/enduranceApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -117,8 +122,14 @@ export default function ConfirmarPresencaPage() {
   const [registrations, setRegistrations] = useState<ExamRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRegistration, setSelectedRegistration] = useState<ExamRegistration | null>(null);
+  
+  // Novos estados para filtros adicionais
+  const [examFilter, setExamFilter] = useState<string>('');
+  const [modalidadeFilter, setModalidadeFilter] = useState<string>('');
+  const [attendedFilter, setAttendedFilter] = useState<string>('');
+  const [exams, setExams] = useState<any[]>([]);
+  const [modalidades, setModalidades] = useState<any[]>([]);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [timeSecondsInput, setTimeSecondsInput] = useState('');
@@ -135,25 +146,51 @@ export default function ConfirmarPresencaPage() {
 
   useEffect(() => {
     fetchRegistrations();
-  }, []);
+  }, [examFilter, modalidadeFilter, attendedFilter]);
 
   const fetchRegistrations = async () => {
     try {
       setLoading(true);
       setError(null);
       
+      // Buscar dados em paralelo
+      const [registrationsResponse, examsResponse] = await Promise.all([
+        enduranceApi.getCoachExamRegistrations({
+          page: 1,
+          limit: 100, // Buscar todas as inscrições
+          examId: examFilter || undefined,
+          modalidadeId: modalidadeFilter || undefined,
+          attended: attendedFilter === 'true' ? true : attendedFilter === 'false' ? false : undefined,
+        }),
+        fetch('/api/exams').then(res => {
+          if (!res.ok) {
+            throw new Error(`Erro ao buscar provas: ${res.status}`);
+          }
+          return res.json();
+        }).catch(error => {
+          console.error('Erro ao buscar provas:', error);
+          return {
+            success: false,
+            data: [],
+            total: 0,
+            message: 'Erro ao carregar provas'
+          };
+        }),
+      ]);
       
-      
-      // Buscar inscrições em provas usando o novo endpoint
-      const response = await enduranceApi.getCoachExamRegistrations({
-        page: 1,
-        limit: 100 // Buscar todas as inscrições
-      });
+      // Carregar modalidades separadamente para melhor tratamento de erro
+      let modalidadesResponse;
+      try {
+        modalidadesResponse = await enduranceApi.getModalidades();
+      } catch (modalidadesError) {
+        console.error('Erro ao carregar modalidades:', modalidadesError);
+        modalidadesResponse = null;
+      }
       
       
       
       // Mapear os dados para o formato esperado pelo componente
-      const mappedRegistrations: ExamRegistration[] = response.data.map((registration: any, index: number) => {
+      const mappedRegistrations: ExamRegistration[] = registrationsResponse.data.map((registration: any, index: number) => {
         
         
         // Verificar se o ID é válido (UUID, CUID ou NanoID)
@@ -192,6 +229,42 @@ export default function ConfirmarPresencaPage() {
       });
       
       setRegistrations(mappedRegistrations);
+      
+      // Configurar dados de provas
+      if (examsResponse.success && Array.isArray(examsResponse.data)) {
+        setExams(examsResponse.data);
+      } else {
+        setExams([]);
+      }
+      
+      // Configurar modalidades
+      let modalidadesData = modalidadesResponse?.data || modalidadesResponse;
+      
+      if (!Array.isArray(modalidadesData)) {
+        if (modalidadesData && typeof modalidadesData === 'object') {
+          modalidadesData = modalidadesData.modalidades || modalidadesData.data || modalidadesData.items || [];
+        } else {
+          modalidadesData = [];
+        }
+      }
+      
+      if (!Array.isArray(modalidadesData)) {
+        modalidadesData = [];
+      }
+      
+      const modalidadesArray = Array.isArray(modalidadesData) ? modalidadesData : [];
+      setModalidades(modalidadesArray);
+      
+      // Se não há modalidades, usar dados dos participantes para extrair modalidades únicas
+      if (modalidadesArray.length === 0 && registrationsResponse.data?.length > 0) {
+        const uniqueModalidades = registrationsResponse.data
+          .map(p => p.exam?.modalidade)
+          .filter((modalidade, index, self) => 
+            modalidade && modalidade.id && modalidade.name && 
+            self.findIndex(m => m?.id === modalidade.id) === index
+          );
+        setModalidades(uniqueModalidades);
+      }
       
     } catch (error) {
       console.error('Erro ao buscar inscrições:', error);
@@ -376,13 +449,86 @@ export default function ConfirmarPresencaPage() {
     }
   };
 
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setExamFilter('');
+    setModalidadeFilter('');
+    setAttendedFilter('');
+  };
+  
+  const handleExportCSV = () => {
+    const csvContent = generateCSV();
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'confirmar_presenca_provas.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
+  const handleCopyList = () => {
+    const csvContent = generateCSV();
+    navigator.clipboard.writeText(csvContent).then(() => {
+      setSuccess('Lista copiada para a área de transferência!');
+      setTimeout(() => setSuccess(null), 3000);
+    }).catch(() => {
+      setError('Erro ao copiar lista');
+      setTimeout(() => setError(null), 5000);
+    });
+  };
+  
+  const generateCSV = () => {
+    const headers = ['Nome', 'Email', 'Prova', 'Modalidade', 'Distância/Categoria', 'Data da Prova', 'Local', 'Status', 'Tempo', 'Classificação Geral', 'Classificação Categoria', 'Data da Inscrição'];
+    const rows = filteredRegistrations.map(reg => [
+      reg.user.name,
+      reg.user.email,
+      reg.exam.name,
+      reg.exam.modalidade.name,
+      reg.distance ? `${reg.distance.distance}${reg.distance.unit}` : reg.category ? reg.category.name : 'N/A',
+      (() => {
+        try {
+          return format(new Date(reg.exam.date), 'dd/MM/yyyy HH:mm', { locale: ptBR });
+        } catch (error) {
+          return 'Data inválida';
+        }
+      })(),
+      reg.exam.location,
+      reg.attendanceConfirmed ? 'Confirmado' : 'Pendente',
+      reg.timeSeconds !== undefined && reg.timeSeconds !== null ? (() => {
+        const total = Number(reg.timeSeconds);
+        const abs = Math.abs(total);
+        const hours = Math.floor(abs / 3600);
+        const minutes = Math.floor((abs % 3600) / 60);
+        const secondsFloat = abs % 60;
+        const secondsInt = Math.floor(secondsFloat);
+        const fraction = Number((secondsFloat - secondsInt).toFixed(1));
+        const secondsStr = fraction > 0 ? (secondsInt + fraction).toFixed(1) : secondsInt.toString();
+        return `${hours}:${String(minutes).padStart(2, '0')}:${String(secondsStr).padStart(2, '0')}`;
+      })() : 'N/A',
+      reg.generalRank !== undefined && reg.generalRank !== null ? String(reg.generalRank) : 'N/A',
+      reg.categoryRank !== undefined && reg.categoryRank !== null ? String(reg.categoryRank) : 'N/A',
+      (() => {
+        try {
+          return format(new Date(reg.registeredAt), 'dd/MM/yyyy HH:mm', { locale: ptBR });
+        } catch (error) {
+          return 'Data inválida';
+        }
+      })()
+    ]);
+    
+    return [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+  };
+
   const filteredRegistrations = registrations.filter(reg => {
-    const matchesSearch = reg.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         reg.exam.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'pending' && !reg.attendanceConfirmed) ||
-                         (statusFilter === 'confirmed' && reg.attendanceConfirmed);
-    return matchesSearch && matchesStatus;
+    const matchesSearch = !searchTerm || 
+      reg.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reg.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reg.exam.name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return matchesSearch;
   });
 
   const stats = {
@@ -477,55 +623,101 @@ export default function ConfirmarPresencaPage() {
       </Grid>
 
       {/* Filtros */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Buscar por aluno ou prova"
-                variant="outlined"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Filtrar por Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Filtrar por Status"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="pending">Pendentes</MenuItem>
-                  <MenuItem value="confirmed">Confirmados</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<FilterListIcon />}
-                onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('all');
-                }}
-              >
-                Limpar
-              </Button>
-            </Grid>
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Buscar por nome, email ou prova..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+              }}
+            />
           </Grid>
-        </CardContent>
-      </Card>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Prova</InputLabel>
+              <Select
+                value={examFilter}
+                label="Prova"
+                onChange={(e) => setExamFilter(e.target.value)}
+              >
+                <MenuItem value="">Todas</MenuItem>
+                {exams.map(exam => (
+                  <MenuItem key={exam.id} value={exam.id}>{exam.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Modalidade</InputLabel>
+              <Select
+                value={modalidadeFilter}
+                label="Modalidade"
+                onChange={(e) => setModalidadeFilter(e.target.value)}
+              >
+                <MenuItem value="">Todas</MenuItem>
+                {Array.isArray(modalidades) && modalidades
+                  .filter(modalidade => modalidade && modalidade.id && modalidade.name)
+                  .map(modalidade => (
+                    <MenuItem key={modalidade.id} value={modalidade.id}>{modalidade.name}</MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Presença</InputLabel>
+              <Select
+                value={attendedFilter}
+                label="Presença"
+                onChange={(e) => setAttendedFilter(e.target.value)}
+              >
+                <MenuItem value="">Todas</MenuItem>
+                <MenuItem value="true">Confirmada</MenuItem>
+                <MenuItem value="false">Pendente</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={1}>
+            <Button
+              variant="outlined"
+              startIcon={<ClearIcon />}
+              onClick={handleClearFilters}
+              size="small"
+              color="secondary"
+              disabled={!examFilter && !modalidadeFilter && !attendedFilter && !searchTerm}
+              fullWidth
+            >
+              Limpar
+            </Button>
+          </Grid>
+        </Grid>
+        
+        {/* Botões de Ação */}
+        <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-start' }}>
+          <Button
+            variant="outlined"
+            startIcon={<CopyIcon />}
+            onClick={handleCopyList}
+            size="small"
+          >
+            Copiar Lista
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportCSV}
+            size="small"
+          >
+            Exportar CSV
+          </Button>
+        </Box>
+      </Paper>
 
       {/* Tabela de Inscrições */}
       <Card>
@@ -598,20 +790,18 @@ export default function ConfirmarPresencaPage() {
                       {registration.distance ? (
                         <Chip 
                           label={`${registration.distance.distance}${registration.distance.unit}`}
-                          color="primary"
                           size="small"
-                          variant="outlined"
+                          icon={<DistanceIcon />}
                         />
                       ) : registration.category ? (
                         <Chip 
                           label={registration.category.name}
-                          color="secondary"
                           size="small"
-                          variant="outlined"
+                          icon={<CategoryIcon />}
                         />
                       ) : (
                         <Typography variant="caption" color="text.secondary">
-                          Não especificado
+                          N/A
                         </Typography>
                       )}
                     </TableCell>

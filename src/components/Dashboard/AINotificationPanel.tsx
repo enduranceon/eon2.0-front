@@ -104,7 +104,6 @@ export default function AINotificationPanel({
         'coach-modalidades': '/dashboard/coach/modalidades',
         'coach-planos': '/dashboard/coach/planos',
         'coach-gerenciar-testes': '/dashboard/coach/gerenciar-testes',
-        'coach-participantes': '/dashboard/coach/participantes',
         // Rotas para Aluno
         'dashboard-student': '/dashboard/aluno',
         'student-coach': '/dashboard/aluno/treinador',

@@ -390,22 +390,22 @@ export default function CoachDashboard() {
                             <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
                               <Box sx={{ flexGrow: 1 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
-                                  <Typography variant="subtitle2" fontWeight="bold">
+                                  <Typography variant="subtitle2" fontWeight="bold" component="span">
                                     {act.studentName || 'Aluno(a)'}
                                   </Typography>
                                   {changeLabel && (
                                     <Chip size="small" color="warning" label={changeLabel} />
                                   )}
                                 </Box>
-                                <Typography variant="body2" color="text.secondary">
+                                <Typography variant="body2" color="text.secondary" component="div">
                                   {(act.modalidade || 'Modalidade')} • {(act.plan || 'Plano')}{periodPt ? ` (${periodPt})` : ''}
                                 </Typography>
                                 {act.planChangeInfo && (
-                                  <Typography variant="caption" color="text.secondary" display="block">
+                                  <Typography variant="caption" color="text.secondary" component="div" sx={{ display: 'block' }}>
                                     {`De ${act.planChangeInfo.previousPlan || '—'} (${translatePeriod(act.planChangeInfo.previousPeriod)}) para ${act.planChangeInfo.newPlan || '—'} (${translatePeriod(act.planChangeInfo.newPeriod)})`}
                                   </Typography>
                                 )}
-                                <Typography variant="caption" color="text.secondary" display="block">
+                                <Typography variant="caption" color="text.secondary" component="div" sx={{ display: 'block' }}>
                                   {`Início: ${startDatePt}${changedAtPt ? ` • Atualizado: ${changedAtPt}` : ''}`}
                                 </Typography>
                               </Box>

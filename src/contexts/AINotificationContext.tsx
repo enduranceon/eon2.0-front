@@ -154,7 +154,7 @@ export function AINotificationProvider({ children }: AINotificationProviderProps
     const type = (i?.type || '').toLowerCase();
     if (title.includes('ganho') || title.includes('finance') || type.includes('financial')) return 'financial';
     if (title.includes('teste') || type.includes('tests')) return 'coach-gerenciar-testes';
-    if (title.includes('prova') || title.includes('inscrição') || type.includes('exam')) return 'coach-participantes';
+    if (title.includes('prova') || title.includes('inscrição') || type.includes('exam')) return 'coach-provas-externas';
     if (title.includes('aluno') || type.includes('students') || type.includes('alunos')) return 'my-clients';
     if (title.includes('modalidade') || type.includes('modalidades')) return 'coach-modalidades';
     if (title.includes('plano') || type.includes('plans')) return 'coach-planos';

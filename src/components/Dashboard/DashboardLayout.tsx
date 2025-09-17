@@ -301,13 +301,6 @@ const menuItems: MenuItemProps[] = [
     roles: [UserType.COACH],
   },
   {
-    id: 'coach-participantes',
-    label: 'Participantes',
-    icon: <GroupIcon />,
-    path: '/dashboard/coach/participantes',
-    roles: [UserType.COACH],
-  },
-  {
     id: 'coach-videochamadas',
     label: 'Videochamadas',
     icon: <VideoCallIcon />,
@@ -474,7 +467,7 @@ export default function DashboardLayout({ children, user, onLogout, overdueInfo 
         }}
       >
         <Link href={user.userType === UserType.ADMIN ? '/dashboard/admin' : user.userType === UserType.COACH ? '/dashboard/coach' : user.userType === UserType.FITNESS_STUDENT ? '/dashboard/aluno' : '/login'} passHref>
-          <Image src={LogoHorizontal} alt="EnduranceOn Logo" width={180} />
+          <Image src={LogoHorizontal} alt="EnduranceOn Logo" width={180} priority />
         </Link>
       </Toolbar>
       <Divider />
@@ -872,6 +865,13 @@ export default function DashboardLayout({ children, user, onLogout, overdueInfo 
               // Ajustar posição do drawer móvel quando a barra de inadimplência estiver visível
               top: user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue && overdueBarVisible ? '64px' : 0,
               height: user.userType === UserType.FITNESS_STUDENT && overdueInfo?.isOverdue && overdueBarVisible ? 'calc(100vh - 64px)' : '100vh',
+            },
+            '& .MuiModal-root': {
+              '&[aria-hidden="true"]': {
+                '& *': {
+                  visibility: 'hidden !important',
+                },
+              },
             },
           }}
         >

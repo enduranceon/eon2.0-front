@@ -486,9 +486,11 @@ export default function CoachPlanosPage() {
                     <React.Fragment key={plan.id}>
                       <ListItem alignItems="flex-start">
                         <ListItemText
+                          primaryTypographyProps={{ component: 'div' }}
+                          secondaryTypographyProps={{ component: 'div' }}
                           primary={
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                              <Typography variant="subtitle1" fontWeight="bold">
+                              <Typography variant="subtitle1" fontWeight="bold" component="span">
                                 {plan.name}
                               </Typography>
                               <Chip
@@ -506,17 +508,17 @@ export default function CoachPlanosPage() {
                             </Box>
                           }
                           secondary={
-                            <Box>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            <Box component="div">
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }} component="div">
                                 {plan.description}
                               </Typography>
                               
                               {plan.prices && plan.prices.length > 0 && (
-                                <Box sx={{ mb: 1 }}>
-                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                <Box sx={{ mb: 1 }} component="div">
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }} component="div">
                                     Preços:
                                   </Typography>
-                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }} component="div">
                                     {plan.prices.map((price) => (
                                       <Chip
                                         key={price.id}
@@ -530,7 +532,7 @@ export default function CoachPlanosPage() {
                               )}
                               
                               {plan.modalidades && plan.modalidades.length > 0 && (
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }} component="div">
                                   {plan.modalidades.map((modalidade) => (
                                     <Chip
                                       key={modalidade.modalidade.id}

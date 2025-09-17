@@ -1,17 +1,35 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  CalendarIcon, 
-  ClockIcon, 
-  UserIcon, 
-  VideoCameraIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ExclamationTriangleIcon,
-  EllipsisVerticalIcon,
-  ClockIcon as HistoryIcon
-} from '@heroicons/react/24/outline';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Button,
+  Chip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Alert,
+  CircularProgress,
+  IconButton,
+  Tooltip,
+  Divider,
+  Link,
+} from '@mui/material';
+import {
+  CalendarToday as CalendarIcon,
+  AccessTime as ClockIcon,
+  Person as UserIcon,
+  Videocam as VideoCameraIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as XCircleIcon,
+  Warning as ExclamationTriangleIcon,
+  MoreVert as EllipsisVerticalIcon,
+  History as HistoryIcon,
+} from '@mui/icons-material';
 import { videoCallService, VideoCallService } from '@/services/videoCallService';
 import { VideoCall, VideoCallStatus, User, UserType } from '@/types/api';
 import VideoCallHistory from './VideoCallHistory';
@@ -97,18 +115,54 @@ export default function VideoCallList({ userType, currentUser, onRefresh, varian
     });
   };
 
-  const getStatusIcon = (status: VideoCallStatus, compact: boolean = false) => {
-    const size = compact ? 'h-4 w-4' : 'h-5 w-5';
+  const getStatusIcon = (status: VideoCallStatus) => {
     switch (status) {
       case VideoCallStatus.COMPLETED:
-        return <CheckCircleIcon className={`${size} text-green-500 flex-shrink-0`} />;
+        return <CheckCircleIcon color="success" sx={{ fontSize: 20 }} />;
       case VideoCallStatus.CANCELLED:
       case VideoCallStatus.DENIED:
-        return <XCircleIcon className={`${size} text-red-500 flex-shrink-0`} />;
+        return <XCircleIcon color="error" sx={{ fontSize: 20 }} />;
       case VideoCallStatus.REQUESTED:
-        return <ExclamationTriangleIcon className={`${size} text-yellow-500 flex-shrink-0`} />;
+        return <ExclamationTriangleIcon color="warning" sx={{ fontSize: 20 }} />;
       default:
-        return <VideoCameraIcon className={`${size} text-blue-500 flex-shrink-0`} />;
+        return <VideoCameraIcon color="primary" sx={{ fontSize: 20 }} />;
+    }
+  };
+
+  const getStatusColor = (status: VideoCallStatus) => {
+    switch (status) {
+      case VideoCallStatus.COMPLETED:
+        return 'success';
+      case VideoCallStatus.CANCELLED:
+      case VideoCallStatus.DENIED:
+        return 'error';
+      case VideoCallStatus.REQUESTED:
+        return 'warning';
+      case VideoCallStatus.SCHEDULED:
+        return 'info';
+      case VideoCallStatus.WAITING:
+        return 'secondary';
+      default:
+        return 'default';
+    }
+  };
+
+  const getStatusLabel = (status: VideoCallStatus) => {
+    switch (status) {
+      case VideoCallStatus.REQUESTED:
+        return 'Solicitada';
+      case VideoCallStatus.SCHEDULED:
+        return 'Agendada';
+      case VideoCallStatus.WAITING:
+        return 'Em Espera';
+      case VideoCallStatus.COMPLETED:
+        return 'Concluída';
+      case VideoCallStatus.CANCELLED:
+        return 'Cancelada';
+      case VideoCallStatus.DENIED:
+        return 'Negada';
+      default:
+        return status;
     }
   };
 
@@ -146,187 +200,234 @@ export default function VideoCallList({ userType, currentUser, onRefresh, varian
 
   if (loading) {
     return (
-      <div className={variant === 'embedded' ? 'flex justify-center items-center py-4' : 'flex justify-center items-center py-8'}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        py: variant === 'embedded' ? 2 : 4 
+      }}>
+        <CircularProgress size={32} />
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+      <Alert severity="error" sx={{ mb: 2 }}>
         {error}
-      </div>
+      </Alert>
     );
   }
 
   return (
-    <div className={variant === 'embedded' ? 'space-y-0' : 'space-y-4'}>
+    <Box sx={{ 
+      ...(variant === 'embedded' ? {} : { '& > * + *': { mt: 2 } })
+    }}>
       {/* Filtros */}
-      <div className="flex gap-2">
-        <select
+      <FormControl size="small" sx={{ minWidth: 200 }}>
+        <InputLabel>Status</InputLabel>
+        <Select
           value={selectedStatus}
+          label="Status"
           onChange={(e) => setSelectedStatus(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm"
         >
-          <option value="">Todos os status</option>
-          <option value={VideoCallStatus.REQUESTED}>Solicitadas</option>
-          <option value={VideoCallStatus.SCHEDULED}>Agendadas</option>
-          <option value={VideoCallStatus.WAITING}>Em Espera</option>
-          <option value={VideoCallStatus.COMPLETED}>Concluídas</option>
-          <option value={VideoCallStatus.CANCELLED}>Canceladas</option>
-          <option value={VideoCallStatus.DENIED}>Negadas</option>
-        </select>
-      </div>
+          <MenuItem value="">Todos os status</MenuItem>
+          <MenuItem value={VideoCallStatus.REQUESTED}>Solicitadas</MenuItem>
+          <MenuItem value={VideoCallStatus.SCHEDULED}>Agendadas</MenuItem>
+          <MenuItem value={VideoCallStatus.WAITING}>Em Espera</MenuItem>
+          <MenuItem value={VideoCallStatus.COMPLETED}>Concluídas</MenuItem>
+          <MenuItem value={VideoCallStatus.CANCELLED}>Canceladas</MenuItem>
+          <MenuItem value={VideoCallStatus.DENIED}>Negadas</MenuItem>
+        </Select>
+      </FormControl>
 
       {/* Lista de Videochamadas */}
       {videoCalls.length === 0 ? (
-        <div className={variant === 'embedded' ? 'text-center py-4 text-gray-500' : 'text-center py-8 text-gray-500'}>
-          <VideoCameraIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-          <p>Nenhuma videochamada encontrada</p>
-        </div>
+        <Box sx={{ 
+          textAlign: 'center', 
+          py: variant === 'embedded' ? 2 : 4,
+          color: 'text.secondary'
+        }}>
+          <VideoCameraIcon sx={{ fontSize: 48, mb: 2, color: 'text.disabled' }} />
+          <Typography variant="body1">
+            Nenhuma videochamada encontrada
+          </Typography>
+        </Box>
       ) : (
-        <div className={variant === 'embedded' ? 'divide-y divide-gray-200' : 'space-y-3'}>
+        <Box sx={{ 
+          ...(variant === 'embedded' ? {} : { '& > * + *': { mt: 2 } })
+        }}>
           {videoCalls.map((videoCall) => (
-            <div
+            <Card 
               key={videoCall.id}
-              className={
-                variant === 'embedded'
-                  ? 'py-3'
-                  : 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow'
-              }
+              sx={{ 
+                ...(variant === 'embedded' 
+                  ? { boxShadow: 'none', border: '1px solid', borderColor: 'divider' }
+                  : { '&:hover': { boxShadow: 2 } }
+                )
+              }}
             >
-              <div className={variant === 'embedded' ? 'flex items-start justify-between px-1' : 'flex items-start justify-between'}>
-                <div className="flex-1">
-                  <div className={variant === 'embedded' ? 'flex items-center gap-2 mb-1' : 'flex items-center gap-2 mb-2'}>
-                    {getStatusIcon(videoCall.status, variant === 'embedded')}
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${videoCallService.getStatusColor(videoCall.status)}`}>
-                      {videoCallService.getStatusLabel(videoCall.status)}
-                    </span>
-                  </div>
+              <CardContent sx={{ p: variant === 'embedded' ? 2 : 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                      {getStatusIcon(videoCall.status)}
+                      <Chip 
+                        label={getStatusLabel(videoCall.status)}
+                        color={getStatusColor(videoCall.status) as any}
+                        size="small"
+                      />
+                    </Box>
 
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <UserIcon className="h-4 w-4 flex-shrink-0" />
-                      <span>
-                        {userType === UserType.FITNESS_STUDENT 
-                          ? `Treinador: ${videoCall.coach?.name || 'N/A'}`
-                          : `Aluno: ${videoCall.student?.name || 'N/A'}`
-                        }
-                      </span>
-                    </div>
+                    <Box sx={{ '& > * + *': { mt: 1 } }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <UserIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                        <Typography variant="body2" color="text.secondary">
+                          {userType === UserType.FITNESS_STUDENT 
+                            ? `Treinador: ${videoCall.coach?.name || 'N/A'}`
+                            : `Aluno: ${videoCall.student?.name || 'N/A'}`
+                          }
+                        </Typography>
+                      </Box>
 
-                    {videoCall.scheduledAt && (
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon className="h-4 w-4 flex-shrink-0" />
-                        <span>{formatDateTime(videoCall.scheduledAt)}</span>
-                      </div>
-                    )}
+                      {videoCall.scheduledAt && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {formatDateTime(videoCall.scheduledAt)}
+                          </Typography>
+                        </Box>
+                      )}
 
-                    {videoCall.duration && (
-                      <div className="flex items-center gap-2">
-                        <ClockIcon className="h-4 w-4 flex-shrink-0" />
-                        <span>{videoCall.duration} minutos</span>
-                      </div>
-                    )}
+                      {videoCall.duration && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <ClockIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {videoCall.duration} minutos
+                          </Typography>
+                        </Box>
+                      )}
 
-                    {videoCall.notes && (
-                      <p className="text-gray-500 mt-2">{videoCall.notes}</p>
-                    )}
+                      {videoCall.notes && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          {videoCall.notes}
+                        </Typography>
+                      )}
 
-                    {videoCall.meetingLink && (
-                      <a
-                        href={videoCall.meetingLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 text-sm inline-flex items-center gap-1"
+                      {videoCall.meetingLink && (
+                        <Link
+                          href={videoCall.meetingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: 0.5,
+                            textDecoration: 'none',
+                            '&:hover': { textDecoration: 'underline' }
+                          }}
+                        >
+                          <VideoCameraIcon sx={{ fontSize: 16 }} />
+                          <Typography variant="body2">
+                            Acessar reunião
+                          </Typography>
+                        </Link>
+                      )}
+                    </Box>
+                  </Box>
+
+                  {/* Ações */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                    {canPerformAction(videoCall, 'accept') && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="success"
+                        onClick={() => handleAction('accept', videoCall)}
                       >
-                        <VideoCameraIcon className="h-4 w-4 flex-shrink-0" />
-                        Acessar reunião
-                      </a>
+                        Aceitar
+                      </Button>
                     )}
-                  </div>
-                </div>
 
-                 {/* Ações */}
-                 <div className="flex items-center gap-2">
-                   {canPerformAction(videoCall, 'accept') && (
-                     <button
-                       onClick={() => handleAction('accept', videoCall)}
-                       className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                     >
-                       Aceitar
-                     </button>
-                   )}
+                    {canPerformAction(videoCall, 'deny') && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="error"
+                        onClick={() => {
+                          const reason = prompt('Motivo da negação:');
+                          if (reason) {
+                            handleAction('deny', videoCall, { reason });
+                          }
+                        }}
+                      >
+                        Negar
+                      </Button>
+                    )}
 
-                   {canPerformAction(videoCall, 'deny') && (
-                     <button
-                       onClick={() => {
-                         const reason = prompt('Motivo da negação:');
-                         if (reason) {
-                           handleAction('deny', videoCall, { reason });
-                         }
-                       }}
-                       className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                     >
-                       Negar
-                     </button>
-                   )}
+                    {canPerformAction(videoCall, 'complete') && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleAction('complete', videoCall)}
+                      >
+                        Concluir
+                      </Button>
+                    )}
 
-                   {canPerformAction(videoCall, 'complete') && (
-                     <button
-                       onClick={() => handleAction('complete', videoCall)}
-                       className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                     >
-                       Concluir
-                     </button>
-                   )}
+                    {canPerformAction(videoCall, 'cancel') && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="inherit"
+                        onClick={() => {
+                          const reason = prompt('Motivo do cancelamento:');
+                          if (reason) {
+                            handleAction('cancel', videoCall, { reason });
+                          }
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
 
-                   {canPerformAction(videoCall, 'cancel') && (
-                     <button
-                       onClick={() => {
-                         const reason = prompt('Motivo do cancelamento:');
-                         if (reason) {
-                           handleAction('cancel', videoCall, { reason });
-                         }
-                       }}
-                       className="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors"
-                     >
-                       Cancelar
-                     </button>
-                   )}
-
-                   {canPerformAction(videoCall, 'reschedule') && (
-                     <button
-                       onClick={() => {
-                         const newDateTime = prompt('Nova data e hora (YYYY-MM-DDTHH:MM):');
-                         if (newDateTime) {
-                           const notes = prompt('Observações (opcional):');
-                           handleAction('reschedule', videoCall, { scheduledAt: newDateTime, notes });
-                         }
-                       }}
-                       className="px-3 py-1 bg-orange-600 text-white text-xs rounded hover:bg-orange-700 transition-colors"
-                     >
-                       Reagendar
-                     </button>
-                   )}
+                    {canPerformAction(videoCall, 'reschedule') && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="warning"
+                        onClick={() => {
+                          const newDateTime = prompt('Nova data e hora (YYYY-MM-DDTHH:MM):');
+                          if (newDateTime) {
+                            const notes = prompt('Observações (opcional):');
+                            handleAction('reschedule', videoCall, { scheduledAt: newDateTime, notes });
+                          }
+                        }}
+                      >
+                        Reagendar
+                      </Button>
+                    )}
 
                     {/* Botão de Histórico */}
-                   <button
-                     onClick={() => {
-                       setSelectedVideoCall(videoCall);
-                       setIsHistoryOpen(true);
-                     }}
-                     className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
-                     title="Ver histórico"
-                   >
-                     <HistoryIcon className="h-3 w-3" />
-                   </button>
-                 </div>
-              </div>
-            </div>
+                    <Tooltip title="Ver histórico">
+                      <IconButton
+                        size="small"
+                        color="secondary"
+                        onClick={() => {
+                          setSelectedVideoCall(videoCall);
+                          setIsHistoryOpen(true);
+                        }}
+                      >
+                        <HistoryIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
           ))}
-        </div>
+        </Box>
       )}
 
       {/* Modal de Histórico */}
@@ -338,6 +439,6 @@ export default function VideoCallList({ userType, currentUser, onRefresh, varian
         }}
         videoCall={selectedVideoCall}
       />
-    </div>
+    </Box>
   );
-} 
+}

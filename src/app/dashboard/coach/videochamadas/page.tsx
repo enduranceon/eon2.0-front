@@ -1,14 +1,25 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { VideoCameraIcon, ChartBarIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import {
+  Container,
+  Typography,
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Alert,
+  CircularProgress,
+} from '@mui/material';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserType, VideoCallStats } from '@/types/api';
 import VideoCallList from '@/components/Dashboard/VideoCallList';
 import { videoCallService } from '@/services/videoCallService';
+import DashboardLayout from '@/components/Dashboard/DashboardLayout';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function CoachVideoChamadasPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   
   const [stats, setStats] = useState<VideoCallStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,6 +40,7 @@ export default function CoachVideoChamadasPage() {
         const statsData = await videoCallService.getVideoCallStats();
         setStats(statsData);
       } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
       }
     } catch (error: any) {
       setError('Erro ao carregar dados');
@@ -38,142 +50,194 @@ export default function CoachVideoChamadasPage() {
     }
   };
 
-  if (loading) {
+  const handleLogout = () => {
+    logout();
+  };
+
+  if (!user) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
-  if (error) {
+  if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-          {error}
-        </div>
-      </div>
+      <ProtectedRoute allowedUserTypes={['COACH']}>
+        <DashboardLayout user={user} onLogout={handleLogout}>
+          <Container maxWidth="xl">
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+              <CircularProgress />
+            </Box>
+          </Container>
+        </DashboardLayout>
+      </ProtectedRoute>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <VideoCameraIcon className="h-8 w-8 text-blue-600" />
-            Videochamadas
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Gerencie as solicitações de videochamada dos seus alunos
-          </p>
-        </div>
-      </div>
+    <ProtectedRoute allowedUserTypes={['COACH']}>
+      <DashboardLayout user={user} onLogout={handleLogout}>
+        <Container maxWidth="xl">
+          {/* Header */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h4" fontWeight="bold" gutterBottom>
+              Videochamadas
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Gerencie as solicitações de videochamada dos seus alunos
+            </Typography>
+          </Box>
 
-      {/* Estatísticas */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center">
-              <ChartBarIcon className="h-8 w-8 text-blue-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500">Total</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center">
-              <VideoCameraIcon className="h-8 w-8 text-yellow-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500">Pendentes</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.requested}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center">
-              <ClockIcon className="h-8 w-8 text-blue-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500">Agendadas</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.scheduled}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center">
-              <CheckCircleIcon className="h-8 w-8 text-green-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500">Concluídas</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center">
-              <VideoCameraIcon className="h-8 w-8 text-red-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500">Negadas</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.denied}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Métricas adicionais */}
-      {stats && (stats.averageResponseTime || stats.averageDuration) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {stats.averageResponseTime && (
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center">
-                <ClockIcon className="h-8 w-8 text-purple-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">Tempo Médio de Resposta</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {Math.round(stats.averageResponseTime)} min
-                  </p>
-                </div>
-              </div>
-            </div>
+          {error && (
+            <Alert severity="error" sx={{ mb: 4 }}>
+              {error}
+            </Alert>
           )}
-          
-          {stats.averageDuration && (
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center">
-                <VideoCameraIcon className="h-8 w-8 text-indigo-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">Duração Média</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {Math.round(stats.averageDuration)} min
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* Lista de Videochamadas */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Videochamadas dos Alunos</h2>
-        </div>
-        <div className="p-6">
-          {user && (
-            <VideoCallList
-              userType={UserType.COACH}
-              currentUser={user}
-              onRefresh={loadInitialData}
-            />
+          {/* Estatísticas */}
+          {stats && (
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} sm={6} md={2.4}>
+                <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                  <CardContent sx={{ p: 2 }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold', mb: 0.5 }}>
+                        Total
+                      </Typography>
+                      <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
+                        {stats.total}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={2.4}>
+                <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
+                  <CardContent sx={{ p: 2 }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold', mb: 0.5 }}>
+                        Pendentes
+                      </Typography>
+                      <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
+                        {stats.requested}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={2.4}>
+                <Card sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
+                  <CardContent sx={{ p: 2 }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold', mb: 0.5 }}>
+                        Agendadas
+                      </Typography>
+                      <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
+                        {stats.scheduled}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={2.4}>
+                <Card sx={{ background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' }}>
+                  <CardContent sx={{ p: 2 }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold', mb: 0.5 }}>
+                        Concluídas
+                      </Typography>
+                      <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
+                        {stats.completed}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={2.4}>
+                <Card sx={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)' }}>
+                  <CardContent sx={{ p: 2 }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold', mb: 0.5 }}>
+                        Negadas
+                      </Typography>
+                      <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
+                        {stats.denied}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
           )}
-        </div>
-      </div>
-    </div>
+
+          {/* Métricas adicionais */}
+          {stats && (stats.averageResponseTime || stats.averageDuration) && (
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              {stats.averageResponseTime && (
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="h6" fontWeight="bold">Tempo Médio de Resposta</Typography>
+                      </Box>
+                      <Typography variant="h3" fontWeight="bold" color="primary" sx={{ mb: 1 }}>
+                        {Math.round(stats.averageResponseTime)} min
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Tempo médio para responder solicitações
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
+              
+              {stats.averageDuration && (
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="h6" fontWeight="bold">Duração Média</Typography>
+                      </Box>
+                      <Typography variant="h3" fontWeight="bold" color="primary" sx={{ mb: 1 }}>
+                        {Math.round(stats.averageDuration)} min
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Duração média das videochamadas
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
+            </Grid>
+          )}
+
+          {/* Lista de Videochamadas */}
+          <Card>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  Videochamadas dos Alunos
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Gerencie todas as solicitações de videochamada
+                </Typography>
+              </Box>
+              
+              <VideoCallList
+                userType={UserType.COACH}
+                currentUser={user}
+                onRefresh={loadInitialData}
+              />
+            </CardContent>
+          </Card>
+        </Container>
+      </DashboardLayout>
+    </ProtectedRoute>
   );
-} 
+}
