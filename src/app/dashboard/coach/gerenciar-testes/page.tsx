@@ -73,6 +73,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { enduranceApi } from '@/services/enduranceApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
@@ -238,6 +239,7 @@ const SafeAvatar = ({ src, children, ...props }: { src?: string; children?: Reac
 export default function GerenciarTestesPage() {
   const auth = useAuth();
   const router = useRouter();
+  const { registerUpdateCallback, unregisterUpdateCallback } = useRealtimeUpdates();
   const [currentTab, setCurrentTab] = useState(0);
   
   // Estados para registro de testes
@@ -359,6 +361,22 @@ export default function GerenciarTestesPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Registrar callback para atualizações em tempo real
+  useEffect(() => {
+    const reloadTests = () => {
+      if (currentTab === 1) {
+        fetchAllStudentTests(1, false);
+      }
+      loadData(); // Recarregar testes disponíveis também
+    };
+    
+    registerUpdateCallback('tests', reloadTests);
+    
+    return () => {
+      unregisterUpdateCallback('tests');
+    };
+  }, [registerUpdateCallback, unregisterUpdateCallback, currentTab]);
 
   useEffect(() => {
     if (currentTab === 1) {

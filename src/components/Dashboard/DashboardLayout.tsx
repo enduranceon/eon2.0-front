@@ -71,12 +71,15 @@ import {
   Subscriptions as SubscriptionsIcon,
   MonetizationOn as MonetizationOnIcon,
 } from '@mui/icons-material';
-import NotificationCenter from './NotificationCenter';
+import NotificationCenter from '../Notifications/NotificationCenter';
 import AINotificationPanel from './AINotificationPanel';
 import { User, UserType } from '../../types/api';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import NavigationLoader from '../NavigationLoader';
+import { useStudentNotifications } from '../../hooks/useStudentNotifications';
+import { useCoachNotifications } from '../../hooks/useCoachNotifications';
+import { useAdminNotifications } from '../../hooks/useAdminNotifications';
 import { useLoading } from '@/contexts/LoadingContext';
 import { useAINotifications } from '../../contexts/AINotificationContext';
 import WebSocketAvatar from '../WebSocketAvatar';
@@ -369,6 +372,15 @@ const menuItems: MenuItemProps[] = [
 
 export default function DashboardLayout({ children, user, onLogout, overdueInfo }: DashboardLayoutProps) {
   const { overdueBarVisible } = useAuth();
+  
+  // Ativar hooks de notificações baseados no tipo de usuário
+  if (user?.userType === 'FITNESS_STUDENT') {
+    useStudentNotifications(); // Ativa automaticamente para alunos
+  } else if (user?.userType === 'COACH') {
+    useCoachNotifications(); // Ativa automaticamente para treinadores
+  } else if (user?.userType === 'ADMIN') {
+    useAdminNotifications(); // Ativa automaticamente para administradores
+  }
   
   // Debug: verificar se a barra de inadimplência está ativa
   React.useEffect(() => {
@@ -721,7 +733,7 @@ export default function DashboardLayout({ children, user, onLogout, overdueInfo 
           <Box sx={{ flexGrow: 1 }} />
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <NotificationCenter userType={user.userType} userId={user.id} />
+            <NotificationCenter />
             
             {(user.userType === 'ADMIN' || user.userType === 'COACH' || user.userType === 'FITNESS_STUDENT') && (
               <IconButton

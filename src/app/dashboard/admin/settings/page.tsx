@@ -6,6 +6,7 @@ import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
 import { useAuth } from '../../../../contexts/AuthContext';
 import PageHeader from '../../../../components/Dashboard/PageHeader';
+import NotificationSettingsCard from '../../../../components/NotificationSettings/NotificationSettingsCard';
 
 export default function AdminSettingsPage() {
   const { user, logout } = useAuth();
@@ -18,6 +19,10 @@ export default function AdminSettingsPage() {
             title="Configurações"
             description="Gerencie as configurações gerais da plataforma."
           />
+          
+          {/* Configurações de Notificações */}
+          <NotificationSettingsCard />
+          
           <Paper sx={{ p: 3, mt: 3 }}>
             <Typography variant="h6">Configurações Gerais</Typography>
             <Typography color="text.secondary">

@@ -207,16 +207,16 @@ export default function ConsentView({ userId }: ConsentViewProps) {
                     <ListItemText
                       primary={`Versão ${item.version}`}
                       secondary={
-                        <Box>
-                          <Typography variant="body2" color="text.secondary">
+                        <React.Fragment>
+                          <span style={{ display: 'block', fontSize: '0.875rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                             Aceito em: {formatDate(item.acceptedAt)}
-                          </Typography>
+                          </span>
                           {item.ipAddress && (
-                            <Typography variant="caption" color="text.secondary">
+                            <span style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.6)' }}>
                               IP: {item.ipAddress}
-                            </Typography>
+                            </span>
                           )}
-                        </Box>
+                        </React.Fragment>
                       }
                     />
                   </ListItem>

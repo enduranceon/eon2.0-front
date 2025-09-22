@@ -51,6 +51,7 @@ import {
 } from '@mui/icons-material';
 import { enduranceApi } from '@/services/enduranceApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
@@ -123,6 +124,7 @@ export default function ConfirmarPresencaPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegistration, setSelectedRegistration] = useState<ExamRegistration | null>(null);
+  const { registerUpdateCallback, unregisterUpdateCallback } = useRealtimeUpdates();
   
   // Novos estados para filtros adicionais
   const [examFilter, setExamFilter] = useState<string>('');
@@ -147,6 +149,19 @@ export default function ConfirmarPresencaPage() {
   useEffect(() => {
     fetchRegistrations();
   }, [examFilter, modalidadeFilter, attendedFilter]);
+
+  // Registrar callback para atualizações em tempo real
+  useEffect(() => {
+    const reloadRegistrations = () => {
+      fetchRegistrations();
+    };
+    
+    registerUpdateCallback('examRegistrations', reloadRegistrations);
+    
+    return () => {
+      unregisterUpdateCallback('examRegistrations');
+    };
+  }, [registerUpdateCallback, unregisterUpdateCallback]);
 
   const fetchRegistrations = async () => {
     try {
@@ -308,14 +323,14 @@ export default function ConfirmarPresencaPage() {
         return;
       }
       
-      await enduranceApi.confirmExamAttendance(registrationId);
+      const response = await enduranceApi.confirmExamAttendance(registrationId, user?.id);
       
       setRegistrations(prev => prev.map(reg => 
         reg.id === registrationId 
           ? { ...reg, attendanceConfirmed: true }
           : reg
       ));
-      
+
       setSuccess('Presença confirmada com sucesso!');
       setConfirmDialogOpen(false);
       setSelectedRegistration(null);

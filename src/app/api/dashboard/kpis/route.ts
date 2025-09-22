@@ -17,8 +17,9 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get('period') || '30d';
 
     // Estratégia baseada no module-stats que funciona bem
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
     const moduleStatsResponse = await safeFetch(
-      () => fetch(`http://localhost:3001/api/dashboard/module-stats`).then(res => res.json()),
+      () => fetch(`${apiUrl}/dashboard/module-stats`).then(res => res.json()),
       [],
       'ModuleStats'
     );

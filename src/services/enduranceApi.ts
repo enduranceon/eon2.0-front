@@ -1200,8 +1200,9 @@ export class EnduranceApiClient {
   }
 
   // Dashboard do Coach - Confirmar Presença em Prova
-  async confirmExamAttendance(registrationId: string): Promise<any> {
-    return this.patch<any>(`/exams/registration/${registrationId}/confirm`);
+  async confirmExamAttendance(registrationId: string, confirmedBy?: string): Promise<any> {
+    const data = confirmedBy ? { confirmedBy } : {};
+    return this.patch<any>(`/exams/registration/${registrationId}/confirm`, data);
   }
 
   // Dashboard do Coach - Atualizar Registro de Prova (Presença + Resultado)

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Avatar as MuiAvatar, AvatarProps as MuiAvatarProps, Box } from '@mui/material';
 import { User } from '../types/api';
+import { useWebSocket } from '../contexts/WebSocketContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface WebSocketAvatarProps extends Omit<MuiAvatarProps, 'src'> {
   userId: string;
@@ -32,6 +34,48 @@ export const WebSocketAvatar: React.FC<WebSocketAvatarProps> = ({
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   
+  // Hooks WebSocket para escutar atualizações de foto
+  const { lastPhotoUpdate } = useWebSocket();
+  const { updateProfile } = useAuth();
+  
+  // Escutar eventos WebSocket de atualização de foto
+  useEffect(() => {
+    if (lastPhotoUpdate && lastPhotoUpdate.userId === userId && lastPhotoUpdate.receivedAt) {
+      // Verificar se já processamos este evento para evitar loops
+      const eventId = `${lastPhotoUpdate.userId}-${lastPhotoUpdate.receivedAt}`;
+      const processedEvents = sessionStorage.getItem('processedPhotoEvents');
+      const processedList = processedEvents ? JSON.parse(processedEvents) : [];
+      
+      if (processedList.includes(eventId)) {
+        return; // Já processamos este evento
+      }
+      
+      // Marcar como processado
+      processedList.push(eventId);
+      // Manter apenas os últimos 10 eventos para evitar memory leak
+      if (processedList.length > 10) {
+        processedList.shift();
+      }
+      sessionStorage.setItem('processedPhotoEvents', JSON.stringify(processedList));
+      
+      // Atualizar contexto de autenticação com nova imagem
+      updateProfile({ image: lastPhotoUpdate.imageUrl });
+      
+      // Forçar re-renderização do avatar
+      setImageError(false);
+      setIsImageLoaded(false);
+      setRetryCount(0);
+      setForceUpdate(prev => prev + 1);
+      
+      console.log('📸 Avatar atualizado via WebSocket:', {
+        userId: lastPhotoUpdate.userId,
+        imageUrl: lastPhotoUpdate.imageUrl,
+        receivedAt: lastPhotoUpdate.receivedAt,
+        eventId
+      });
+    }
+  }, [lastPhotoUpdate, userId]);
+
   // Forçar re-renderização quando o usuário ou a imagem mudarem
   useEffect(() => {
     // Reset states when user changes

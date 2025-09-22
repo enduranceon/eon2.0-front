@@ -47,6 +47,8 @@ import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../../contexts/AuthContext';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
+import { useNotificationHighlight } from '../../../../hooks/useNotificationHighlight';
+import { useRealtimeUpdates } from '../../../../hooks/useRealtimeUpdates';
 import { 
   Event as EventIcon, 
   CheckCircle as CheckCircleIcon,
@@ -192,7 +194,7 @@ const getStatusChip = (status: string) => {
   }
 };
 
-const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId }: any) => {
+const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId, shouldHighlight }: any) => {
   const getExamStatusForUser = (exam: any): 'INSCRITO' | 'DISPONÍVEL' | 'ENCERRADA' | 'PARTICIPOU' => {
     // Verifica se o usuário está inscrito baseado na presença de registrations
     // IMPORTANTE: Verificar se o usuário atual está inscrito, não apenas se há registrations
@@ -230,6 +232,8 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
         const isProcessing = processingId === exam.id;
         const isInactive = status === 'ENCERRADA' || status === 'PARTICIPOU';
 
+        const isHighlighted = shouldHighlight(exam.id, 'exam');
+        
         return (
           <Grid item xs={12} md={6} lg={4} key={exam.id}>
             <Paper 
@@ -239,7 +243,15 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
                 height: '100%', 
                 background: (theme) => isInactive ? theme.palette.action.disabledBackground : undefined,
                 opacity: isInactive ? 0.7 : 1,
+                ...(isHighlighted ? {
+                  backgroundColor: 'rgba(255, 128, 18, 0.1)',
+                  border: '2px solid #FF8012',
+                  borderRadius: '8px',
+                  boxShadow: '0 0 20px rgba(255, 128, 18, 0.3)',
+                  animation: 'highlight-pulse 2s ease-in-out 3',
+                } : {})
               }}
+              {...(isHighlighted ? { 'data-highlighted': 'true' } : {})}
             >
               <Card sx={{ 
               background: (theme) => theme.palette.mode === 'dark' 
@@ -363,7 +375,7 @@ const AvailableExams = ({ exams, userId, onRegister, onOpenDetails, processingId
   );
 };
 
-const PastExams = ({ userExams, userId }: any) => {
+const PastExams = ({ userExams, userId, shouldHighlight }: any) => {
   const [filters, setFilters] = useState({ search: '', startDate: null, endDate: null });
 
   const handleFilterChange = (field: string, value: any) => {
@@ -440,7 +452,19 @@ const PastExams = ({ userExams, userId }: any) => {
             
             return (
               <React.Fragment key={exam.id}>
-                <ListItem>
+                <ListItem
+                  sx={{
+                    ...(shouldHighlight(exam.id, 'exam') ? {
+                      backgroundColor: 'rgba(255, 128, 18, 0.1)',
+                      border: '2px solid #FF8012',
+                      borderRadius: '8px',
+                      boxShadow: '0 0 20px rgba(255, 128, 18, 0.3)',
+                      animation: 'highlight-pulse 2s ease-in-out 3',
+                      mb: 1,
+                    } : {})
+                  }}
+                  {...(shouldHighlight(exam.id, 'exam') ? { 'data-highlighted': 'true' } : {})}
+                >
                   <ListItemIcon>
                     <EventIcon color="primary" />
                   </ListItemIcon>
@@ -528,6 +552,8 @@ const PastExams = ({ userExams, userId }: any) => {
 export default function EventsPage() {
   const auth = useAuth();
   const router = useRouter();
+  const { highlightInfo, shouldHighlight, clearHighlight } = useNotificationHighlight();
+  const { registerUpdateCallback, unregisterUpdateCallback } = useRealtimeUpdates();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allExams, setAllExams] = useState<any[]>([]);
@@ -612,6 +638,15 @@ export default function EventsPage() {
       loadExams();
     }
   }, [auth.user?.id, loadExams]);
+
+  // Registrar callback para atualizações em tempo real
+  React.useEffect(() => {
+    registerUpdateCallback('exams', loadExams);
+    
+    return () => {
+      unregisterUpdateCallback('exams');
+    };
+  }, [registerUpdateCallback, unregisterUpdateCallback, loadExams]);
   
   // PastExams component now handles filtering internally using userRegistrations
 
@@ -727,6 +762,27 @@ export default function EventsPage() {
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>Provas & Competições</Typography>
         
+        {/* Alerta de destaque por notificação */}
+        {highlightInfo.isActive && highlightInfo.type === 'exam' && (
+          <Alert 
+            severity="info" 
+            sx={{ 
+              mb: 2,
+              backgroundColor: 'rgba(255, 128, 18, 0.1)',
+              borderColor: '#FF8012',
+              '& .MuiAlert-icon': { color: '#FF8012' }
+            }}
+            onClose={clearHighlight}
+          >
+            <Typography variant="body2">
+              🎯 <strong>Destacando prova:</strong> {highlightInfo.name || `ID: ${highlightInfo.id}`}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Você foi redirecionado aqui através de uma notificação. A prova está destacada abaixo.
+            </Typography>
+          </Alert>
+        )}
+        
         <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
             <Tabs 
@@ -752,6 +808,7 @@ export default function EventsPage() {
                     onRegister={handleRegister}
                     onOpenDetails={handleOpenDetailsModal}
                     processingId={processingId}
+                    shouldHighlight={shouldHighlight}
                   />
                 )}
                 {!loading && !error && allExams.length === 0 && (
@@ -767,7 +824,7 @@ export default function EventsPage() {
                 {loading && <CircularProgress />}
                 {error && <Alert severity="error">{error}</Alert>}
                 {!loading && !error && (
-                  <PastExams userExams={userRegistrations} userId={auth.user.id} />
+                  <PastExams userExams={userRegistrations} userId={auth.user.id} shouldHighlight={shouldHighlight} />
                 )}
               </>
             )}

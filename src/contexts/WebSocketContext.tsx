@@ -15,13 +15,35 @@ import {
   NewExamCreatedEvent,
   PlanChangeEvent,
   StudentAccountCreatedEvent,
-  LeaveRequestEvent
+  LeaveRequestEvent,
+  // Novos eventos Aluno → Treinador
+  StudentExternalExamCreatedEvent,
+  StudentExamRegisteredEvent,
+  StudentTestReportRequestedEvent,
+  StudentSubscriptionCreatedEvent,
+  StudentFeaturePurchasedEvent,
+  StudentPlanCancelledEvent,
+  // Novos eventos Treinador → Aluno
+  CoachExamResultRegisteredEvent,
+  CoachExamAttendanceConfirmedEvent,
+  CoachTestResultRegisteredEvent,
+  CoachTestReportAddedEvent,
+  CoachStudentStatusChangedEvent,
+  CoachStudentDataUpdatedEvent,
+  // Novos eventos Sistema → Administrador
+  AdminUserRegisteredEvent,
+  AdminSubscriptionCreatedEvent,
+  AdminLeaveRequestedEvent,
+  AdminPlanChangedEvent,
+  AdminCancellationRequestedEvent,
+  AdminAsaasWebhookEvent
 } from '../types/api';
 
 interface WebSocketContextType {
   socket: Socket | null;
   isConnected: boolean;
   connectionStatus: WebSocketConnectionStatus;
+  // Eventos existentes
   lastPhotoUpdate: UserPhotoUpdateEvent | null;
   lastProfileUpdate: UserProfileUpdateEvent | null;
   lastStatusChange: UserStatusChangeEvent | null;
@@ -31,6 +53,28 @@ interface WebSocketContextType {
   lastPlanChange: PlanChangeEvent | null;
   lastStudentAccount: StudentAccountCreatedEvent | null;
   lastLeaveRequest: LeaveRequestEvent | null;
+  // Novos eventos Aluno → Treinador
+  lastStudentExternalExam: StudentExternalExamCreatedEvent | null;
+  lastStudentExamRegistration: StudentExamRegisteredEvent | null;
+  lastStudentTestReportRequest: StudentTestReportRequestedEvent | null;
+  lastStudentSubscription: StudentSubscriptionCreatedEvent | null;
+  lastStudentFeaturePurchase: StudentFeaturePurchasedEvent | null;
+  lastStudentPlanCancellation: StudentPlanCancelledEvent | null;
+  // Novos eventos Treinador → Aluno
+  lastCoachExamResult: CoachExamResultRegisteredEvent | null;
+  lastCoachExamAttendanceConfirmed: CoachExamAttendanceConfirmedEvent | null;
+  lastCoachTestResult: CoachTestResultRegisteredEvent | null;
+  lastCoachTestReport: CoachTestReportAddedEvent | null;
+  lastCoachStudentStatusChange: CoachStudentStatusChangedEvent | null;
+  lastCoachStudentDataUpdate: CoachStudentDataUpdatedEvent | null;
+  // Novos eventos Sistema → Administrador
+  lastAdminUserRegistration: AdminUserRegisteredEvent | null;
+  lastAdminSubscription: AdminSubscriptionCreatedEvent | null;
+  lastAdminLeaveRequest: AdminLeaveRequestedEvent | null;
+  lastAdminPlanChange: AdminPlanChangedEvent | null;
+  lastAdminCancellationRequest: AdminCancellationRequestedEvent | null;
+  lastAdminAsaasWebhook: AdminAsaasWebhookEvent | null;
+  // Métodos
   connect: () => void;
   disconnect: () => void;
   ping: () => void;
@@ -44,6 +88,7 @@ const WebSocketContext = createContext<WebSocketContextType>({
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
   },
+  // Eventos existentes
   lastPhotoUpdate: null,
   lastProfileUpdate: null,
   lastStatusChange: null,
@@ -53,6 +98,27 @@ const WebSocketContext = createContext<WebSocketContextType>({
   lastPlanChange: null,
   lastStudentAccount: null,
   lastLeaveRequest: null,
+  // Novos eventos Aluno → Treinador
+  lastStudentExternalExam: null,
+  lastStudentExamRegistration: null,
+  lastStudentTestReportRequest: null,
+  lastStudentSubscription: null,
+  lastStudentFeaturePurchase: null,
+  lastStudentPlanCancellation: null,
+  // Novos eventos Treinador → Aluno
+  lastCoachExamResult: null,
+  lastCoachTestResult: null,
+  lastCoachTestReport: null,
+  lastCoachStudentStatusChange: null,
+  lastCoachStudentDataUpdate: null,
+  // Novos eventos Sistema → Administrador
+  lastAdminUserRegistration: null,
+  lastAdminSubscription: null,
+  lastAdminLeaveRequest: null,
+  lastAdminPlanChange: null,
+  lastAdminCancellationRequest: null,
+  lastAdminAsaasWebhook: null,
+  // Métodos
   connect: () => {},
   disconnect: () => {},
   ping: () => {},
@@ -72,6 +138,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
   });
+  
+  // Estados existentes
   const [lastPhotoUpdate, setLastPhotoUpdate] = useState<UserPhotoUpdateEvent | null>(null);
   const [lastProfileUpdate, setLastProfileUpdate] = useState<UserProfileUpdateEvent | null>(null);
   const [lastStatusChange, setLastStatusChange] = useState<UserStatusChangeEvent | null>(null);
@@ -82,10 +150,34 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   const [lastStudentAccount, setLastStudentAccount] = useState<StudentAccountCreatedEvent | null>(null);
   const [lastLeaveRequest, setLastLeaveRequest] = useState<LeaveRequestEvent | null>(null);
   
+  // Novos estados Aluno → Treinador
+  const [lastStudentExternalExam, setLastStudentExternalExam] = useState<StudentExternalExamCreatedEvent | null>(null);
+  const [lastStudentExamRegistration, setLastStudentExamRegistration] = useState<StudentExamRegisteredEvent | null>(null);
+  const [lastStudentTestReportRequest, setLastStudentTestReportRequest] = useState<StudentTestReportRequestedEvent | null>(null);
+  const [lastStudentSubscription, setLastStudentSubscription] = useState<StudentSubscriptionCreatedEvent | null>(null);
+  const [lastStudentFeaturePurchase, setLastStudentFeaturePurchase] = useState<StudentFeaturePurchasedEvent | null>(null);
+  const [lastStudentPlanCancellation, setLastStudentPlanCancellation] = useState<StudentPlanCancelledEvent | null>(null);
+  
+  // Novos estados Treinador → Aluno
+  const [lastCoachExamResult, setLastCoachExamResult] = useState<CoachExamResultRegisteredEvent | null>(null);
+  const [lastCoachExamAttendanceConfirmed, setLastCoachExamAttendanceConfirmed] = useState<CoachExamAttendanceConfirmedEvent | null>(null);
+  const [lastCoachTestResult, setLastCoachTestResult] = useState<CoachTestResultRegisteredEvent | null>(null);
+  const [lastCoachTestReport, setLastCoachTestReport] = useState<CoachTestReportAddedEvent | null>(null);
+  const [lastCoachStudentStatusChange, setLastCoachStudentStatusChange] = useState<CoachStudentStatusChangedEvent | null>(null);
+  const [lastCoachStudentDataUpdate, setLastCoachStudentDataUpdate] = useState<CoachStudentDataUpdatedEvent | null>(null);
+  
+  // Novos estados Sistema → Administrador
+  const [lastAdminUserRegistration, setLastAdminUserRegistration] = useState<AdminUserRegisteredEvent | null>(null);
+  const [lastAdminSubscription, setLastAdminSubscription] = useState<AdminSubscriptionCreatedEvent | null>(null);
+  const [lastAdminLeaveRequest, setLastAdminLeaveRequest] = useState<AdminLeaveRequestedEvent | null>(null);
+  const [lastAdminPlanChange, setLastAdminPlanChange] = useState<AdminPlanChangedEvent | null>(null);
+  const [lastAdminCancellationRequest, setLastAdminCancellationRequest] = useState<AdminCancellationRequestedEvent | null>(null);
+  const [lastAdminAsaasWebhook, setLastAdminAsaasWebhook] = useState<AdminAsaasWebhookEvent | null>(null);
+  
   const { user, token, isAuthenticated } = useAuth();
 
   // URL do servidor WebSocket - pode ser configurado via variável de ambiente
-  const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3001';
+  const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 
   const connect = useCallback(() => {
     if (!token || !isAuthenticated || socket?.connected) {
@@ -374,6 +466,142 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         }
       });
 
+      // ===== NOVOS EVENTOS ALUNO → TREINADOR =====
+      
+      // 1. Prova Externa Criada pelo Aluno
+      newSocket.on('student:external-exam:created', (data: StudentExternalExamCreatedEvent) => {
+        setLastStudentExternalExam(data);
+        // Toast e armazenamento gerenciados pelo useCoachNotifications
+      });
+
+      // 2. Aluno se Inscreveu em Prova
+      newSocket.on('student:exam:registered', (data: StudentExamRegisteredEvent) => {
+        setLastStudentExamRegistration(data);
+        // Toast e armazenamento gerenciados pelo useCoachNotifications
+      });
+
+      // 3. Solicitação de Relatório de Teste
+      newSocket.on('student:test-report:requested', (data: StudentTestReportRequestedEvent) => {
+        setLastStudentTestReportRequest(data);
+        // Toast e armazenamento gerenciados pelo useCoachNotifications
+      });
+
+      // 4. Assinatura de Plano (Checkout)
+      newSocket.on('student:subscription:created', (data: StudentSubscriptionCreatedEvent) => {
+        setLastStudentSubscription(data);
+        // Toast e armazenamento gerenciados pelo useCoachNotifications
+      });
+
+      // 5. Compra de Feature de Plano
+      newSocket.on('student:feature:purchased', (data: StudentFeaturePurchasedEvent) => {
+        setLastStudentFeaturePurchase(data);
+        // Toast e armazenamento gerenciados pelo useCoachNotifications
+      });
+
+      // 6. Cancelamento de Plano
+      newSocket.on('student:plan:cancelled', (data: StudentPlanCancelledEvent) => {
+        setLastStudentPlanCancellation(data);
+        // Toast e armazenamento gerenciados pelo useCoachNotifications
+      });
+
+      // ===== NOVOS EVENTOS TREINADOR → ALUNO =====
+      
+      // 1. Resultado de Prova Registrado pelo Treinador
+      newSocket.on('coach:exam-result:registered', (data: CoachExamResultRegisteredEvent) => {
+        setLastCoachExamResult(data);
+        // Toast e armazenamento gerenciados pelo useStudentNotifications
+      });
+
+      // 2. Presença em Prova Confirmada pelo Treinador
+      newSocket.on('coach:exam-attendance:confirmed', (data: CoachExamAttendanceConfirmedEvent) => {
+        setLastCoachExamAttendanceConfirmed(data);
+        // Toast e armazenamento gerenciados pelo useStudentNotifications
+      });
+
+      // 3. Resultado de Teste Registrado pelo Treinador
+      newSocket.on('coach:test-result:registered', (data: CoachTestResultRegisteredEvent) => {
+        setLastCoachTestResult(data);
+        // Toast e armazenamento gerenciados pelo useStudentNotifications
+      });
+
+      // 3. Relatório de Teste Adicionado pelo Treinador
+      newSocket.on('coach:test-report:added', (data: CoachTestReportAddedEvent) => {
+        setLastCoachTestReport(data);
+        // Toast e armazenamento gerenciados pelo useStudentNotifications
+      });
+
+      // 4. Status do Aluno Alterado pelo Treinador
+      newSocket.on('coach:student-status:changed', (data: CoachStudentStatusChangedEvent) => {
+        setLastCoachStudentStatusChange(data);
+        // Toast e armazenamento gerenciados pelo useStudentNotifications
+      });
+
+      // 5. Dados do Aluno Atualizados pelo Treinador
+      newSocket.on('coach:student-data:updated', (data: CoachStudentDataUpdatedEvent) => {
+        setLastCoachStudentDataUpdate(data);
+        // Toast e armazenamento gerenciados pelo useStudentNotifications
+      });
+
+      // ===== NOVOS EVENTOS SISTEMA → ADMINISTRADOR =====
+      
+      // 1. Novo Usuário Registrado
+      newSocket.on('admin:user:registered', (data: AdminUserRegisteredEvent) => {
+        setLastAdminUserRegistration(data);
+        // Toast e armazenamento gerenciados pelo useAdminNotifications
+      });
+
+      // 2. Usuário Assinou Plano
+      newSocket.on('admin:subscription:created', (data: AdminSubscriptionCreatedEvent) => {
+        setLastAdminSubscription(data);
+        // Toast e armazenamento gerenciados pelo useAdminNotifications
+      });
+
+      // 3. Solicitação de Licença para Admin
+      newSocket.on('admin:leave:requested', (data: AdminLeaveRequestedEvent) => {
+        setLastAdminLeaveRequest(data);
+        // Toast e armazenamento gerenciados pelo useAdminNotifications
+      });
+
+      // 4. Alteração de Plano para Admin
+      newSocket.on('admin:plan:changed', (data: AdminPlanChangedEvent) => {
+        setLastAdminPlanChange(data);
+        // Toast e armazenamento gerenciados pelo useAdminNotifications
+      });
+
+      // 5. Solicitação de Cancelamento para Admin
+      newSocket.on('admin:cancellation:requested', (data: AdminCancellationRequestedEvent) => {
+        setLastAdminCancellationRequest(data);
+        // Toast e armazenamento gerenciados pelo useAdminNotifications
+      });
+
+      // 6. Eventos do Webhook Asaas
+      newSocket.on('admin:asaas:webhook', (data: AdminAsaasWebhookEvent) => {
+        setLastAdminAsaasWebhook(data);
+        
+        if (user?.userType === 'ADMIN') {
+          // Filtrar eventos importantes para mostrar notificação
+          const importantEvents = [
+            'PAYMENT_RECEIVED',
+            'PAYMENT_OVERDUE', 
+            'PAYMENT_REFUNDED',
+            'SUBSCRIPTION_CREATED',
+            'PAYMENT_CHARGEBACK_REQUESTED'
+          ];
+
+          if (importantEvents.includes(data.eventType)) {
+            const userText = data.userName ? ` - ${data.userName}` : '';
+            const emoji = data.eventType === 'PAYMENT_RECEIVED' ? '✅' : 
+                         data.eventType === 'PAYMENT_OVERDUE' ? '⚠️' : 
+                         data.eventType === 'PAYMENT_CHARGEBACK_REQUESTED' ? '🚨' : '🔔';
+            
+            toast.info(`${emoji} Asaas: ${data.description}${userText}`, {
+              duration: 4000,
+              position: 'top-right'
+            });
+          }
+        }
+      });
+
       setSocket(newSocket);
     } catch (error) {
       console.error('❌ Erro ao conectar WebSocket:', error);
@@ -416,6 +644,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   // Limpar estado quando desconectar
   useEffect(() => {
     if (!isConnected) {
+      // Estados existentes
       setLastPhotoUpdate(null);
       setLastProfileUpdate(null);
       setLastStatusChange(null);
@@ -425,6 +654,29 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       setLastPlanChange(null);
       setLastStudentAccount(null);
       setLastLeaveRequest(null);
+      
+      // Novos estados Aluno → Treinador
+      setLastStudentExternalExam(null);
+      setLastStudentExamRegistration(null);
+      setLastStudentTestReportRequest(null);
+      setLastStudentSubscription(null);
+      setLastStudentFeaturePurchase(null);
+      setLastStudentPlanCancellation(null);
+      
+      // Novos estados Treinador → Aluno
+      setLastCoachExamResult(null);
+      setLastCoachTestResult(null);
+      setLastCoachTestReport(null);
+      setLastCoachStudentStatusChange(null);
+      setLastCoachStudentDataUpdate(null);
+      
+      // Novos estados Sistema → Administrador
+      setLastAdminUserRegistration(null);
+      setLastAdminSubscription(null);
+      setLastAdminLeaveRequest(null);
+      setLastAdminPlanChange(null);
+      setLastAdminCancellationRequest(null);
+      setLastAdminAsaasWebhook(null);
     }
   }, [isConnected]);
 
@@ -432,6 +684,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     socket,
     isConnected,
     connectionStatus,
+    // Estados existentes
     lastPhotoUpdate,
     lastProfileUpdate,
     lastStatusChange,
@@ -441,6 +694,28 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     lastPlanChange,
     lastStudentAccount,
     lastLeaveRequest,
+    // Novos estados Aluno → Treinador
+    lastStudentExternalExam,
+    lastStudentExamRegistration,
+    lastStudentTestReportRequest,
+    lastStudentSubscription,
+        lastStudentFeaturePurchase,
+        lastStudentPlanCancellation,
+        // Novos estados Treinador → Aluno
+        lastCoachExamResult,
+        lastCoachExamAttendanceConfirmed,
+        lastCoachTestResult,
+    lastCoachTestReport,
+    lastCoachStudentStatusChange,
+    lastCoachStudentDataUpdate,
+    // Novos estados Sistema → Administrador
+    lastAdminUserRegistration,
+    lastAdminSubscription,
+    lastAdminLeaveRequest,
+    lastAdminPlanChange,
+    lastAdminCancellationRequest,
+    lastAdminAsaasWebhook,
+    // Métodos
     connect,
     disconnect,
     ping,

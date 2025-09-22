@@ -809,6 +809,7 @@ export interface RegisterForExamRequest {
 
 export interface ConfirmAttendanceRequest {
   registrationId: string;
+  confirmedBy?: string; // ID do treinador que está confirmando
 }
 
 export interface RecordTestResultRequest {
@@ -1542,18 +1543,635 @@ export interface LeaveRequestEvent {
   timestamp: string;
 }
 
-// Atualizar interface WebSocketEvent para incluir novos eventos
+// Novos tipos de eventos WebSocket baseados na documentação
+
+// Eventos Aluno → Treinador
+export interface StudentExternalExamCreatedEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  examId: string;
+  examName: string;
+  modalidade: string;
+  examDate: string;
+  location: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface StudentExamRegisteredEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  examId: string;
+  examName: string;
+  modalidade: string;
+  examDate: string;
+  location: string;
+  registrationId: string;
+  distanceId?: string;
+  categoryId?: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface StudentTestReportRequestedEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  requestId: string;
+  testResultId: string;
+  testName?: string;
+  reason?: string;
+  requiresPayment: boolean;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface StudentSubscriptionCreatedEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  subscriptionId: string;
+  planId: string;
+  planName: string;
+  period: string;
+  value: number;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface StudentFeaturePurchasedEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  featureId: string;
+  featureName: string;
+  value: number;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface StudentPlanCancelledEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  subscriptionId: string;
+  planId: string;
+  planName: string;
+  cancellationReason?: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+// Eventos Treinador → Aluno
+export interface CoachExamResultRegisteredEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  examId: string;
+  examName: string;
+  modalidade: string;
+  examDate: string;
+  result: string;
+  timeSeconds?: number;
+  generalRank?: number;
+  categoryRank?: number;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface CoachExamAttendanceConfirmedEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  examId: string;
+  examName: string;
+  modalidade: string;
+  examDate: string;
+  examLocation?: string;
+  registrationId: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface CoachTestResultRegisteredEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  testId: string;
+  testName: string;
+  testType: string;
+  result: TestResult | any; // Pode ser TestResult completo ou dados simplificados
+  notes?: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface CoachTestReportAddedEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  testResultId: string;
+  testName: string;
+  reportUrl: string;
+  notes?: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface CoachStudentStatusChangedEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  oldStatus: boolean;
+  newStatus: boolean;
+  reason?: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+export interface CoachStudentDataUpdatedEvent {
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  updatedFields: string[];
+  updateReason?: string;
+  coachId: string;
+  coachName: string;
+  timestamp: string;
+}
+
+// Eventos Sistema → Administrador
+export interface AdminUserRegisteredEvent {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userType: string;
+  registrationSource?: string;
+  timestamp: string;
+}
+
+export interface AdminSubscriptionCreatedEvent {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  subscriptionId: string;
+  planId: string;
+  planName: string;
+  period: string;
+  value: number;
+  coachId?: string;
+  coachName?: string;
+  paymentMethod?: string;
+  timestamp: string;
+}
+
+export interface AdminLeaveRequestedEvent {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  requestId: string;
+  reason: string;
+  startDate: string;
+  endDate: string;
+  coachId?: string;
+  coachName?: string;
+  timestamp: string;
+}
+
+export interface AdminPlanChangedEvent {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  subscriptionId: string;
+  oldPlanId: string;
+  oldPlanName: string;
+  newPlanId: string;
+  newPlanName: string;
+  changeReason?: string;
+  coachId?: string;
+  coachName?: string;
+  timestamp: string;
+}
+
+export interface AdminCancellationRequestedEvent {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  subscriptionId: string;
+  planId: string;
+  planName: string;
+  cancellationReason?: string;
+  coachId?: string;
+  coachName?: string;
+  timestamp: string;
+}
+
+export interface AdminAsaasWebhookEvent {
+  webhookId: string;
+  eventType: string;
+  eventData: {
+    paymentId?: string;
+    subscriptionId?: string;
+    customerId?: string;
+    amount?: number;
+    status?: string;
+    billingType?: string;
+    dueDate?: string;
+    description?: string;
+  };
+  paymentId?: string;
+  subscriptionId?: string;
+  customerId?: string;
+  userId?: string;
+  userName?: string;
+  amount?: number;
+  status?: string;
+  description: string;
+  timestamp: string;
+}
+
+// ===== CONFIGURAÇÕES DE NOTIFICAÇÕES =====
+
+export interface NotificationSettings {
+  id: string;
+  userId: string;
+  userType: 'FITNESS_STUDENT' | 'COACH' | 'ADMIN';
+  
+  // Configurações gerais
+  enabled: boolean;
+  soundEnabled: boolean;
+  desktopEnabled: boolean;
+  emailEnabled: boolean;
+  
+  // Configurações específicas por tipo de usuário
+  
+  // Para Alunos - Eventos do Treinador
+  studentSettings?: {
+    examResultRegistered: boolean;
+    examAttendanceConfirmed: boolean;
+    testResultRegistered: boolean;
+    testReportAdded: boolean;
+    studentStatusChanged: boolean;
+    studentDataUpdated: boolean;
+  };
+  
+  // Para Treinadores - Eventos dos Alunos
+  coachSettings?: {
+    externalExamCreated: boolean;
+    examRegistered: boolean;
+    testReportRequested: boolean;
+    subscriptionCreated: boolean;
+    featurePurchased: boolean;
+    planCancelled: boolean;
+  };
+  
+  // Para Administradores - Eventos do Sistema
+  adminSettings?: {
+    userRegistered: boolean;
+    subscriptionCreated: boolean;
+    leaveRequested: boolean;
+    planChanged: boolean;
+    cancellationRequested: boolean;
+    asaasWebhook: boolean;
+    // Configurações específicas para webhooks Asaas
+    asaasWebhookTypes?: {
+      PAYMENT_RECEIVED: boolean;
+      PAYMENT_OVERDUE: boolean;
+      PAYMENT_REFUNDED: boolean;
+      SUBSCRIPTION_CREATED: boolean;
+      PAYMENT_CHARGEBACK_REQUESTED: boolean;
+      PAYMENT_CREATED: boolean;
+      PAYMENT_CONFIRMED: boolean;
+    };
+  };
+  
+  // Metadados
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateNotificationSettingsRequest {
+  enabled?: boolean;
+  soundEnabled?: boolean;
+  desktopEnabled?: boolean;
+  emailEnabled?: boolean;
+  
+  // Configurações específicas por tipo de usuário
+  studentSettings?: Partial<NotificationSettings['studentSettings']>;
+  coachSettings?: Partial<NotificationSettings['coachSettings']>;
+  adminSettings?: Partial<NotificationSettings['adminSettings']>;
+}
+
+export interface UpdateNotificationSettingsRequest extends CreateNotificationSettingsRequest {
+  id: string;
+}
+
+export interface NotificationSettingsResponse {
+  success: boolean;
+  message: string;
+  data: NotificationSettings;
+}
+
+export interface NotificationSettingsListResponse {
+  success: boolean;
+  message: string;
+  data: NotificationSettings[];
+}
+
+// Configurações padrão para cada tipo de usuário
+export const DEFAULT_STUDENT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  id: '',
+  userId: '',
+  userType: 'FITNESS_STUDENT',
+  enabled: true,
+  soundEnabled: true,
+  desktopEnabled: true,
+  emailEnabled: false,
+  studentSettings: {
+    examResultRegistered: true,
+    examAttendanceConfirmed: true,
+    testResultRegistered: true,
+    testReportAdded: true,
+    studentStatusChanged: true,
+    studentDataUpdated: true,
+  },
+  createdAt: '',
+  updatedAt: '',
+};
+
+export const DEFAULT_COACH_NOTIFICATION_SETTINGS: NotificationSettings = {
+  id: '',
+  userId: '',
+  userType: 'COACH',
+  enabled: true,
+  soundEnabled: true,
+  desktopEnabled: true,
+  emailEnabled: false,
+  coachSettings: {
+    externalExamCreated: true,
+    examRegistered: true,
+    testReportRequested: true,
+    subscriptionCreated: true,
+    featurePurchased: true,
+    planCancelled: true,
+  },
+  createdAt: '',
+  updatedAt: '',
+};
+
+export const DEFAULT_ADMIN_NOTIFICATION_SETTINGS: NotificationSettings = {
+  id: '',
+  userId: '',
+  userType: 'ADMIN',
+  enabled: true,
+  soundEnabled: true,
+  desktopEnabled: true,
+  emailEnabled: false,
+  adminSettings: {
+    userRegistered: true,
+    subscriptionCreated: true,
+    leaveRequested: true,
+    planChanged: true,
+    cancellationRequested: true,
+    asaasWebhook: true,
+    asaasWebhookTypes: {
+      PAYMENT_RECEIVED: true,
+      PAYMENT_OVERDUE: true,
+      PAYMENT_REFUNDED: true,
+      SUBSCRIPTION_CREATED: true,
+      PAYMENT_CHARGEBACK_REQUESTED: true,
+      PAYMENT_CREATED: true,
+      PAYMENT_CONFIRMED: true,
+    },
+  },
+  createdAt: '',
+  updatedAt: '',
+};
+
+// ===== NOTIFICAÇÕES ARMAZENADAS =====
+
+export interface StoredNotification {
+  id: string;
+  type: 'websocket' | 'system' | 'manual';
+  eventType: string;
+  title: string;
+  message: string;
+  description?: string;
+  data?: any;
+  userId: string;
+  userType: 'FITNESS_STUDENT' | 'COACH' | 'ADMIN';
+  isRead: boolean;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  category: 'exam' | 'test' | 'subscription' | 'payment' | 'system' | 'other';
+  timestamp: string;
+  createdAt: string;
+  readAt?: string;
+  actionUrl?: string;
+  actionLabel?: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface NotificationFilter {
+  isRead?: boolean;
+  category?: StoredNotification['category'];
+  priority?: StoredNotification['priority'];
+  eventType?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface NotificationStats {
+  total: number;
+  unread: number;
+  byCategory: Record<StoredNotification['category'], number>;
+  byPriority: Record<StoredNotification['priority'], number>;
+  recentCount: number; // últimas 24h
+}
+
+// Mapeamento de eventos WebSocket para categorias, prioridades e URLs
+export const WEBSOCKET_EVENT_MAPPING: Record<string, {
+  category: StoredNotification['category'];
+  priority: StoredNotification['priority'];
+  icon: string;
+  color: string;
+  redirectUrl?: string; // URL para redirecionamento quando clicar na notificação
+}> = {
+  // Eventos de Aluno para Treinador
+  'student:external-exam:created': {
+    category: 'exam',
+    priority: 'medium',
+    icon: '🏃‍♂️',
+    color: '#2196F3',
+    redirectUrl: '/dashboard/coach/provas-externas'
+  },
+  'student:exam:registered': {
+    category: 'exam',
+    priority: 'medium',
+    icon: '✅',
+    color: '#4CAF50',
+    redirectUrl: '/dashboard/coach/confirmar-presenca'
+  },
+  'student:test-report:requested': {
+    category: 'test',
+    priority: 'high',
+    icon: '📄',
+    color: '#FF9800',
+    redirectUrl: '/dashboard/coach/gerenciar-testes'
+  },
+  'student:subscription:created': {
+    category: 'subscription',
+    priority: 'high',
+    icon: '💰',
+    color: '#4CAF50',
+    redirectUrl: '/dashboard/coach/planos'
+  },
+  'student:feature:purchased': {
+    category: 'subscription',
+    priority: 'medium',
+    icon: '🎯',
+    color: '#9C27B0',
+    redirectUrl: '/dashboard/coach/financeiro'
+  },
+  'student:plan:cancelled': {
+    category: 'subscription',
+    priority: 'high',
+    icon: '❌',
+    color: '#F44336',
+    redirectUrl: '/dashboard/coach/planos'
+  },
+  
+  // Eventos de Treinador para Aluno
+  'coach:exam-result:registered': {
+    category: 'exam',
+    priority: 'high',
+    icon: '✅',
+    color: '#4CAF50',
+    redirectUrl: '/dashboard/aluno/eventos'
+  },
+  'coach:exam-attendance:confirmed': {
+    category: 'exam',
+    priority: 'medium',
+    icon: '📋',
+    color: '#2196F3',
+    redirectUrl: '/dashboard/aluno/eventos'
+  },
+  'coach:test-result:registered': {
+    category: 'test',
+    priority: 'high',
+    icon: '📊',
+    color: '#2196F3',
+    redirectUrl: '/dashboard/aluno/testes'
+  },
+  'coach:test-report:added': {
+    category: 'test',
+    priority: 'high',
+    icon: '📄',
+    color: '#FF9800',
+    redirectUrl: '/dashboard/aluno/testes'
+  },
+  'coach:student-status:changed': {
+    category: 'system',
+    priority: 'urgent',
+    icon: '⚠️',
+    color: '#FF5722',
+    redirectUrl: '/dashboard/aluno/perfil'
+  },
+  'coach:student-data:updated': {
+    category: 'system',
+    priority: 'low',
+    icon: '✏️',
+    color: '#607D8B',
+    redirectUrl: '/dashboard/aluno/perfil'
+  },
+  
+  // Eventos de Sistema para Administrador
+  'admin:user:registered': {
+    category: 'system',
+    priority: 'medium',
+    icon: '👤',
+    color: '#2196F3',
+    redirectUrl: '/dashboard/admin/users'
+  },
+  'admin:subscription:created': {
+    category: 'subscription',
+    priority: 'high',
+    icon: '💰',
+    color: '#4CAF50',
+    redirectUrl: '/dashboard/admin/subscriptions'
+  },
+  'admin:leave:requested': {
+    category: 'system',
+    priority: 'high',
+    icon: '🏖️',
+    color: '#FF9800',
+    redirectUrl: '/dashboard/admin/leave-requests'
+  },
+  'admin:plan:changed': {
+    category: 'subscription',
+    priority: 'medium',
+    icon: '🔄',
+    color: '#2196F3',
+    redirectUrl: '/dashboard/admin/subscriptions'
+  },
+  'admin:cancellation:requested': {
+    category: 'subscription',
+    priority: 'high',
+    icon: '❌',
+    color: '#F44336',
+    redirectUrl: '/dashboard/admin/subscriptions'
+  },
+  'admin:asaas:webhook': {
+    category: 'payment',
+    priority: 'medium',
+    icon: '🔗',
+    color: '#9C27B0',
+    redirectUrl: '/dashboard/admin/payments'
+  },
+};
+
+// Atualizar interface WebSocketEvent para incluir todos os eventos
 export interface WebSocketEvent {
   type: 'user:photo:updated' | 'user:profile:updated' | 'user:status:changed' | 'user:connected' | 'user:disconnected' | 'pong' | 
+        // Eventos existentes
         'exam:result:registered' | 'exam:result:registered:coach' | 
         'test:result:registered' | 'test:result:registered:coach' |
         'exam:created' | 'exam:created:coach' |
         'plan:changed' | 'plan:changed:coach' |
         'account:created' | 'student:account:created' |
-        'leave:requested' | 'leave:requested:coach';
+        'leave:requested' | 'leave:requested:coach' |
+        // Novos eventos Aluno → Treinador
+        'student:external-exam:created' | 'student:exam:registered' | 'student:test-report:requested' |
+        'student:subscription:created' | 'student:feature:purchased' | 'student:plan:cancelled' |
+        // Novos eventos Treinador → Aluno  
+        'coach:exam-result:registered' | 'coach:exam-attendance:confirmed' | 'coach:test-result:registered' | 'coach:test-report:added' |
+        'coach:student-status:changed' | 'coach:student-data:updated' |
+        // Novos eventos Sistema → Administrador
+        'admin:user:registered' | 'admin:subscription:created' | 'admin:leave:requested' |
+        'admin:plan:changed' | 'admin:cancellation:requested' | 'admin:asaas:webhook';
   data: UserPhotoUpdateEvent | UserProfileUpdateEvent | UserStatusChangeEvent | 
         ExamResultRegisteredEvent | TestResultRegisteredEvent | NewExamCreatedEvent |
-        PlanChangeEvent | StudentAccountCreatedEvent | LeaveRequestEvent | any;
+        PlanChangeEvent | StudentAccountCreatedEvent | LeaveRequestEvent |
+        // Novos tipos de eventos
+        StudentExternalExamCreatedEvent | StudentExamRegisteredEvent | StudentTestReportRequestedEvent |
+        StudentSubscriptionCreatedEvent | StudentFeaturePurchasedEvent | StudentPlanCancelledEvent |
+        CoachExamResultRegisteredEvent | CoachExamAttendanceConfirmedEvent | CoachTestResultRegisteredEvent | CoachTestReportAddedEvent |
+        CoachStudentStatusChangedEvent | CoachStudentDataUpdatedEvent |
+        AdminUserRegisteredEvent | AdminSubscriptionCreatedEvent | AdminLeaveRequestedEvent |
+        AdminPlanChangedEvent | AdminCancellationRequestedEvent | AdminAsaasWebhookEvent | any;
   timestamp: string;
 }
 

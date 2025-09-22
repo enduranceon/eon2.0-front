@@ -34,6 +34,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../../contexts/AuthContext';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
 import WebSocketAvatar from '../../../../components/WebSocketAvatar';
+import { useWebSocket } from '../../../../contexts/WebSocketContext';
 import {
   Edit as EditIcon,
   PhotoCamera as PhotoCameraIcon,
@@ -108,6 +109,7 @@ const coachLevels = [
 export default function CoachProfilePage() {
   const auth = useAuth();
   const router = useRouter();
+  const { lastPhotoUpdate } = useWebSocket();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +145,43 @@ export default function CoachProfilePage() {
       loadProfile();
     }
   }, [auth.user, auth.isLoading]);
+
+  // Escutar atualizações de foto via WebSocket e sincronizar estado local
+  React.useEffect(() => {
+    if (lastPhotoUpdate && lastPhotoUpdate.userId === auth.user?.id && lastPhotoUpdate.receivedAt) {
+      // Verificar se já processamos este evento para evitar loops
+      const eventId = `${lastPhotoUpdate.userId}-${lastPhotoUpdate.receivedAt}`;
+      const processedEvents = sessionStorage.getItem('processedPhotoEventsCoachProfile');
+      const processedList = processedEvents ? JSON.parse(processedEvents) : [];
+      
+      if (processedList.includes(eventId)) {
+        return; // Já processamos este evento
+      }
+      
+      // Marcar como processado
+      processedList.push(eventId);
+      // Manter apenas os últimos 10 eventos para evitar memory leak
+      if (processedList.length > 10) {
+        processedList.shift();
+      }
+      sessionStorage.setItem('processedPhotoEventsCoachProfile', JSON.stringify(processedList));
+      
+      // Atualizar estado local do perfil com nova imagem
+      setProfile((prevProfile: CoachProfileData | null) => 
+        prevProfile ? {
+          ...prevProfile,
+          image: lastPhotoUpdate.imageUrl
+        } : prevProfile
+      );
+
+      console.log('📸 Perfil do coach atualizado via WebSocket:', {
+        userId: lastPhotoUpdate.userId,
+        imageUrl: lastPhotoUpdate.imageUrl,
+        receivedAt: lastPhotoUpdate.receivedAt,
+        eventId
+      });
+    }
+  }, [lastPhotoUpdate, auth.user?.id]);
 
   if (auth.isLoading || !auth.user) {
     return (

@@ -21,6 +21,10 @@ import { ColorModeContext } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import DashboardLayout from '../../../components/Dashboard/DashboardLayout';
 import ProtectedRoute from '../../../components/ProtectedRoute';
+import NotificationSettingsCard from '../../../components/NotificationSettings/NotificationSettingsCard';
+import NotificationTester from '../../../components/Notifications/NotificationTester';
+import WebSocketEventTester from '../../../components/Debug/WebSocketEventTester';
+import HighlightTester from '../../../components/Debug/HighlightTester';
 import { Brightness4 as Brightness4Icon, Palette as PaletteIcon } from '@mui/icons-material';
 
 export default function SettingsPage() {
@@ -35,10 +39,24 @@ export default function SettingsPage() {
           <Typography variant="h4" fontWeight="bold" gutterBottom>
             Configurações
           </Typography>
+          
+          {/* Configurações de Notificações */}
+          <NotificationSettingsCard />
+          
+          {/* Testador de Notificações (apenas desenvolvimento) */}
+          <NotificationTester />
+          
+          {/* Debug - Testador de Eventos WebSocket */}
+          <WebSocketEventTester />
+          
+          {/* Debug - Testador de Destaque */}
+          <HighlightTester />
+          
           <Paper
             elevation={4}
             sx={{
               p: 2,
+              mt: 2,
             }}
           >
             <Card sx={{ 

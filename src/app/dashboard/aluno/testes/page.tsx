@@ -14,6 +14,8 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { enduranceApi } from '@/services/enduranceApi';
 import { UserTest, TestType, TestReportRequest } from '@/types/api';
+import { useNotificationHighlight } from '@/hooks/useNotificationHighlight';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import ScienceIcon from '@mui/icons-material/Science';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
@@ -53,7 +55,8 @@ const TestHistory = ({
   appliedFilters,
   onRequestReport,
   canRequestReport,
-  onDownloadReport
+  onDownloadReport,
+  shouldHighlight
 }: { 
   history: any[], 
   loading: boolean, 
@@ -65,7 +68,8 @@ const TestHistory = ({
   appliedFilters: any,
   onRequestReport: (test: any) => void,
   canRequestReport: (test: any) => boolean,
-  onDownloadReport: (reportUrl: string, testName: string) => void
+  onDownloadReport: (reportUrl: string, testName: string) => void,
+  shouldHighlight: (itemId: string, itemType?: string) => boolean
 }) => {
 
   const handleFilterChange = (field: string, value: any) => {
@@ -432,7 +436,20 @@ const TestHistory = ({
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {filteredHistory.map((test: any) => (
-            <Accordion key={test.id} sx={{ boxShadow: 2 }}>
+            <Accordion 
+              key={test.id} 
+              sx={{ 
+                boxShadow: 2,
+                ...(shouldHighlight(test.id, 'test', test.test?.name || test.name) ? {
+                  backgroundColor: 'rgba(255, 128, 18, 0.1)',
+                  border: '2px solid #FF8012',
+                  borderRadius: '8px',
+                  boxShadow: '0 0 20px rgba(255, 128, 18, 0.3)',
+                  animation: 'highlight-pulse 2s ease-in-out 3',
+                } : {})
+              }}
+              {...(shouldHighlight(test.id, 'test', test.test?.name || test.name) ? { 'data-highlighted': 'true' } : {})}
+            >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                   <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
@@ -533,6 +550,8 @@ const TestHistory = ({
 
 export default function StudentTestsPage() {
   const auth = useAuth();
+  const { highlightInfo, shouldHighlight, shouldHighlightTestByTime, getHighlightProps, clearHighlight } = useNotificationHighlight();
+  const { registerUpdateCallback, unregisterUpdateCallback } = useRealtimeUpdates();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userTests, setUserTests] = useState<any[]>([]);
@@ -694,7 +713,22 @@ export default function StudentTestsPage() {
       const userPlan = auth.user.subscriptions?.[0]?.plan?.name || '';
       setUserPlan(userPlan);
     }
-  }, [auth.user]); // Carregar apenas quando o usuário mudar
+  }, [auth.user]);
+
+  // Registrar callback para atualizações em tempo real
+  useEffect(() => {
+    const reloadTests = () => {
+      if (auth.user) {
+        loadData(auth.user.id, appliedFilters);
+      }
+    };
+    
+    registerUpdateCallback('tests', reloadTests);
+    
+    return () => {
+      unregisterUpdateCallback('tests');
+    };
+  }, [registerUpdateCallback, unregisterUpdateCallback, auth.user, appliedFilters]); // Carregar apenas quando o usuário mudar
 
   if (!auth.user) {
     return (
@@ -712,6 +746,28 @@ export default function StudentTestsPage() {
             title="Histórico de Testes"
             description="Visualize todos os testes realizados pelos seus treinadores e acompanhe sua evolução."
           />
+          
+          {/* Alerta de destaque por notificação */}
+          {highlightInfo.isActive && highlightInfo.type === 'test' && (
+            <Alert 
+              severity="info" 
+              sx={{ 
+                mb: 2,
+                backgroundColor: 'rgba(255, 128, 18, 0.1)',
+                borderColor: '#FF8012',
+                '& .MuiAlert-icon': { color: '#FF8012' }
+              }}
+              onClose={clearHighlight}
+            >
+              <Typography variant="body2">
+                🎯 <strong>Destacando teste:</strong> {highlightInfo.name || `ID: ${highlightInfo.id}`}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Você foi redirecionado aqui através de uma notificação. O teste está destacado abaixo.
+              </Typography>
+            </Alert>
+          )}
+          
           
           <Box sx={{ mt: 4 }}>
             <Paper sx={{ mb: 3 }}>
@@ -738,6 +794,7 @@ export default function StudentTestsPage() {
                 onRequestReport={handleRequestReport}
                 canRequestReport={canRequestReport}
                 onDownloadReport={handleDownloadReport}
+                shouldHighlight={shouldHighlight}
               />
             )}
 

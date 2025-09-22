@@ -183,4 +183,39 @@ svg[class*="h-4"] {
   flex-shrink: 0 !important;
   width: auto !important;
   height: auto !important;
+}
+
+/* Animações para destaque de notificações */
+@keyframes highlight-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(255, 128, 18, 0.3);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(255, 128, 18, 0.5);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes highlight-border {
+  0%, 100% { 
+    background-position: 0% 50%;
+  }
+  50% { 
+    background-position: 100% 50%;
+  }
+}
+
+[data-highlighted="true"] {
+  scroll-margin-top: 100px; /* Para scroll automático considerando header fixo */
+}
+
+/* Estilo para itens destacados por notificação */
+.notification-highlight {
+  background-color: rgba(255, 128, 18, 0.1) !important;
+  border: 2px solid #FF8012 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 20px rgba(255, 128, 18, 0.3) !important;
+  animation: highlight-pulse 2s ease-in-out 3; /* Pulsa 3 vezes */
+  position: relative !important;
 } 

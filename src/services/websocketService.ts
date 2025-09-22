@@ -13,7 +13,7 @@ class WebSocketService {
   }
 
   private initializeSocket() {
-    const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3001';
+    const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
     
     try {
       this.socket = io(WEBSOCKET_URL, {

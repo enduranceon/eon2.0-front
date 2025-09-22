@@ -7,7 +7,27 @@ import {
   NewExamCreatedEvent,
   PlanChangeEvent,
   StudentAccountCreatedEvent,
-  LeaveRequestEvent
+  LeaveRequestEvent,
+  // Novos eventos Aluno → Treinador
+  StudentExternalExamCreatedEvent,
+  StudentExamRegisteredEvent,
+  StudentTestReportRequestedEvent,
+  StudentSubscriptionCreatedEvent,
+  StudentFeaturePurchasedEvent,
+  StudentPlanCancelledEvent,
+  // Novos eventos Treinador → Aluno
+  CoachExamResultRegisteredEvent,
+  CoachTestResultRegisteredEvent,
+  CoachTestReportAddedEvent,
+  CoachStudentStatusChangedEvent,
+  CoachStudentDataUpdatedEvent,
+  // Novos eventos Sistema → Administrador
+  AdminUserRegisteredEvent,
+  AdminSubscriptionCreatedEvent,
+  AdminLeaveRequestedEvent,
+  AdminPlanChangedEvent,
+  AdminCancellationRequestedEvent,
+  AdminAsaasWebhookEvent
 } from '../types/api';
 
 /**
@@ -18,25 +38,69 @@ export const useWebSocketEvents = () => {
   const { user } = useAuth();
   const {
     isConnected,
+    socket,
+    // Eventos existentes
     lastExamResult,
     lastTestResult,
     lastNewExam,
     lastPlanChange,
     lastStudentAccount,
     lastLeaveRequest,
-    socket
+    // Novos eventos Aluno → Treinador
+    lastStudentExternalExam,
+    lastStudentExamRegistration,
+    lastStudentTestReportRequest,
+    lastStudentSubscription,
+    lastStudentFeaturePurchase,
+    lastStudentPlanCancellation,
+    // Novos eventos Treinador → Aluno
+    lastCoachExamResult,
+    lastCoachTestResult,
+    lastCoachTestReport,
+    lastCoachStudentStatusChange,
+    lastCoachStudentDataUpdate,
+    // Novos eventos Sistema → Administrador
+    lastAdminUserRegistration,
+    lastAdminSubscription,
+    lastAdminLeaveRequest,
+    lastAdminPlanChange,
+    lastAdminCancellationRequest,
+    lastAdminAsaasWebhook
   } = useWebSocket();
 
-  // Estados para eventos específicos do usuário atual
+  // Estados para eventos existentes do usuário atual
   const [userExamResults, setUserExamResults] = useState<ExamResultRegisteredEvent[]>([]);
   const [userTestResults, setUserTestResults] = useState<TestResultRegisteredEvent[]>([]);
   const [userNewExams, setUserNewExams] = useState<NewExamCreatedEvent[]>([]);
   const [userPlanChanges, setUserPlanChanges] = useState<PlanChangeEvent[]>([]);
   const [userLeaveRequests, setUserLeaveRequests] = useState<LeaveRequestEvent[]>([]);
 
-  // Estados para eventos de treinador
-  const [coachExamResults, setCoachExamResults] = useState<ExamResultRegisteredEvent[]>([]);
-  const [coachTestResults, setCoachTestResults] = useState<TestResultRegisteredEvent[]>([]);
+  // Novos estados para eventos Aluno → Treinador
+  const [studentExternalExams, setStudentExternalExams] = useState<StudentExternalExamCreatedEvent[]>([]);
+  const [studentExamRegistrations, setStudentExamRegistrations] = useState<StudentExamRegisteredEvent[]>([]);
+  const [studentTestReportRequests, setStudentTestReportRequests] = useState<StudentTestReportRequestedEvent[]>([]);
+  const [studentSubscriptions, setStudentSubscriptions] = useState<StudentSubscriptionCreatedEvent[]>([]);
+  const [studentFeaturePurchases, setStudentFeaturePurchases] = useState<StudentFeaturePurchasedEvent[]>([]);
+  const [studentPlanCancellations, setStudentPlanCancellations] = useState<StudentPlanCancelledEvent[]>([]);
+
+  // Novos estados para eventos Treinador → Aluno
+  const [coachExamResults, setCoachExamResults] = useState<CoachExamResultRegisteredEvent[]>([]);
+  const [coachTestResults, setCoachTestResults] = useState<CoachTestResultRegisteredEvent[]>([]);
+  const [coachTestReports, setCoachTestReports] = useState<CoachTestReportAddedEvent[]>([]);
+  const [coachStudentStatusChanges, setCoachStudentStatusChanges] = useState<CoachStudentStatusChangedEvent[]>([]);
+  const [coachStudentDataUpdates, setCoachStudentDataUpdates] = useState<CoachStudentDataUpdatedEvent[]>([]);
+
+  // Novos estados para eventos Sistema → Administrador
+  const [adminUserRegistrations, setAdminUserRegistrations] = useState<AdminUserRegisteredEvent[]>([]);
+  const [adminSubscriptions, setAdminSubscriptions] = useState<AdminSubscriptionCreatedEvent[]>([]);
+  const [adminLeaveRequests, setAdminLeaveRequests] = useState<AdminLeaveRequestedEvent[]>([]);
+  const [adminPlanChanges, setAdminPlanChanges] = useState<AdminPlanChangedEvent[]>([]);
+  const [adminCancellationRequests, setAdminCancellationRequests] = useState<AdminCancellationRequestedEvent[]>([]);
+  const [adminAsaasWebhooks, setAdminAsaasWebhooks] = useState<AdminAsaasWebhookEvent[]>([]);
+
+  // Estados para eventos de treinador (existentes)
+  const [coachExamResultsLegacy, setCoachExamResultsLegacy] = useState<ExamResultRegisteredEvent[]>([]);
+  const [coachTestResultsLegacy, setCoachTestResultsLegacy] = useState<TestResultRegisteredEvent[]>([]);
   const [coachNewExams, setCoachNewExams] = useState<NewExamCreatedEvent[]>([]);
   const [coachPlanChanges, setCoachPlanChanges] = useState<PlanChangeEvent[]>([]);
   const [coachStudentAccounts, setCoachStudentAccounts] = useState<StudentAccountCreatedEvent[]>([]);
@@ -73,16 +137,124 @@ export const useWebSocketEvents = () => {
     }
   }, [lastLeaveRequest, user?.id]);
 
-  // Eventos para treinadores
+  // ===== NOVOS USEEFFECTS PARA EVENTOS ALUNO → TREINADOR =====
+  
+  useEffect(() => {
+    if (lastStudentExternalExam && user?.userType === 'COACH') {
+      setStudentExternalExams(prev => [lastStudentExternalExam, ...prev.slice(0, 9)]);
+    }
+  }, [lastStudentExternalExam, user?.userType]);
+
+  useEffect(() => {
+    if (lastStudentExamRegistration && user?.userType === 'COACH') {
+      setStudentExamRegistrations(prev => [lastStudentExamRegistration, ...prev.slice(0, 9)]);
+    }
+  }, [lastStudentExamRegistration, user?.userType]);
+
+  useEffect(() => {
+    if (lastStudentTestReportRequest && user?.userType === 'COACH') {
+      setStudentTestReportRequests(prev => [lastStudentTestReportRequest, ...prev.slice(0, 9)]);
+    }
+  }, [lastStudentTestReportRequest, user?.userType]);
+
+  useEffect(() => {
+    if (lastStudentSubscription && user?.userType === 'COACH') {
+      setStudentSubscriptions(prev => [lastStudentSubscription, ...prev.slice(0, 9)]);
+    }
+  }, [lastStudentSubscription, user?.userType]);
+
+  useEffect(() => {
+    if (lastStudentFeaturePurchase && user?.userType === 'COACH') {
+      setStudentFeaturePurchases(prev => [lastStudentFeaturePurchase, ...prev.slice(0, 9)]);
+    }
+  }, [lastStudentFeaturePurchase, user?.userType]);
+
+  useEffect(() => {
+    if (lastStudentPlanCancellation && user?.userType === 'COACH') {
+      setStudentPlanCancellations(prev => [lastStudentPlanCancellation, ...prev.slice(0, 9)]);
+    }
+  }, [lastStudentPlanCancellation, user?.userType]);
+
+  // ===== NOVOS USEEFFECTS PARA EVENTOS TREINADOR → ALUNO =====
+  
+  useEffect(() => {
+    if (lastCoachExamResult && lastCoachExamResult.userId === user?.id) {
+      setCoachExamResults(prev => [lastCoachExamResult, ...prev.slice(0, 9)]);
+    }
+  }, [lastCoachExamResult, user?.id]);
+
+  useEffect(() => {
+    if (lastCoachTestResult && lastCoachTestResult.userId === user?.id) {
+      setCoachTestResults(prev => [lastCoachTestResult, ...prev.slice(0, 9)]);
+    }
+  }, [lastCoachTestResult, user?.id]);
+
+  useEffect(() => {
+    if (lastCoachTestReport && lastCoachTestReport.userId === user?.id) {
+      setCoachTestReports(prev => [lastCoachTestReport, ...prev.slice(0, 9)]);
+    }
+  }, [lastCoachTestReport, user?.id]);
+
+  useEffect(() => {
+    if (lastCoachStudentStatusChange && lastCoachStudentStatusChange.userId === user?.id) {
+      setCoachStudentStatusChanges(prev => [lastCoachStudentStatusChange, ...prev.slice(0, 9)]);
+    }
+  }, [lastCoachStudentStatusChange, user?.id]);
+
+  useEffect(() => {
+    if (lastCoachStudentDataUpdate && lastCoachStudentDataUpdate.userId === user?.id) {
+      setCoachStudentDataUpdates(prev => [lastCoachStudentDataUpdate, ...prev.slice(0, 9)]);
+    }
+  }, [lastCoachStudentDataUpdate, user?.id]);
+
+  // ===== NOVOS USEEFFECTS PARA EVENTOS SISTEMA → ADMINISTRADOR =====
+  
+  useEffect(() => {
+    if (lastAdminUserRegistration && user?.userType === 'ADMIN') {
+      setAdminUserRegistrations(prev => [lastAdminUserRegistration, ...prev.slice(0, 9)]);
+    }
+  }, [lastAdminUserRegistration, user?.userType]);
+
+  useEffect(() => {
+    if (lastAdminSubscription && user?.userType === 'ADMIN') {
+      setAdminSubscriptions(prev => [lastAdminSubscription, ...prev.slice(0, 9)]);
+    }
+  }, [lastAdminSubscription, user?.userType]);
+
+  useEffect(() => {
+    if (lastAdminLeaveRequest && user?.userType === 'ADMIN') {
+      setAdminLeaveRequests(prev => [lastAdminLeaveRequest, ...prev.slice(0, 9)]);
+    }
+  }, [lastAdminLeaveRequest, user?.userType]);
+
+  useEffect(() => {
+    if (lastAdminPlanChange && user?.userType === 'ADMIN') {
+      setAdminPlanChanges(prev => [lastAdminPlanChange, ...prev.slice(0, 9)]);
+    }
+  }, [lastAdminPlanChange, user?.userType]);
+
+  useEffect(() => {
+    if (lastAdminCancellationRequest && user?.userType === 'ADMIN') {
+      setAdminCancellationRequests(prev => [lastAdminCancellationRequest, ...prev.slice(0, 9)]);
+    }
+  }, [lastAdminCancellationRequest, user?.userType]);
+
+  useEffect(() => {
+    if (lastAdminAsaasWebhook && user?.userType === 'ADMIN') {
+      setAdminAsaasWebhooks(prev => [lastAdminAsaasWebhook, ...prev.slice(0, 9)]);
+    }
+  }, [lastAdminAsaasWebhook, user?.userType]);
+
+  // Eventos para treinadores (existentes)
   useEffect(() => {
     if (lastExamResult && user?.userType === 'COACH') {
-      setCoachExamResults(prev => [lastExamResult, ...prev.slice(0, 9)]);
+      setCoachExamResultsLegacy(prev => [lastExamResult, ...prev.slice(0, 9)]);
     }
   }, [lastExamResult, user?.userType]);
 
   useEffect(() => {
     if (lastTestResult && user?.userType === 'COACH') {
-      setCoachTestResults(prev => [lastTestResult, ...prev.slice(0, 9)]);
+      setCoachTestResultsLegacy(prev => [lastTestResult, ...prev.slice(0, 9)]);
     }
   }, [lastTestResult, user?.userType]);
 
@@ -281,7 +453,7 @@ export const useWebSocketEvents = () => {
     isConnected,
     user,
     
-    // Últimos eventos recebidos
+    // Últimos eventos recebidos (existentes)
     lastExamResult,
     lastTestResult,
     lastNewExam,
@@ -289,16 +461,58 @@ export const useWebSocketEvents = () => {
     lastStudentAccount,
     lastLeaveRequest,
     
-    // Histórico de eventos do usuário
+    // Últimos eventos recebidos (novos)
+    lastStudentExternalExam,
+    lastStudentExamRegistration,
+    lastStudentTestReportRequest,
+    lastStudentSubscription,
+    lastStudentFeaturePurchase,
+    lastStudentPlanCancellation,
+    lastCoachExamResult,
+    lastCoachTestResult,
+    lastCoachTestReport,
+    lastCoachStudentStatusChange,
+    lastCoachStudentDataUpdate,
+    lastAdminUserRegistration,
+    lastAdminSubscription,
+    lastAdminLeaveRequest,
+    lastAdminPlanChange,
+    lastAdminCancellationRequest,
+    lastAdminAsaasWebhook,
+    
+    // Histórico de eventos do usuário (existentes)
     userExamResults,
     userTestResults,
     userNewExams,
     userPlanChanges,
     userLeaveRequests,
     
-    // Histórico de eventos do treinador
+    // Histórico de eventos Aluno → Treinador
+    studentExternalExams,
+    studentExamRegistrations,
+    studentTestReportRequests,
+    studentSubscriptions,
+    studentFeaturePurchases,
+    studentPlanCancellations,
+    
+    // Histórico de eventos Treinador → Aluno
     coachExamResults,
     coachTestResults,
+    coachTestReports,
+    coachStudentStatusChanges,
+    coachStudentDataUpdates,
+    
+    // Histórico de eventos Sistema → Administrador
+    adminUserRegistrations,
+    adminSubscriptions,
+    adminLeaveRequests,
+    adminPlanChanges,
+    adminCancellationRequests,
+    adminAsaasWebhooks,
+    
+    // Histórico de eventos do treinador (existentes)
+    coachExamResultsLegacy,
+    coachTestResultsLegacy,
     coachNewExams,
     coachPlanChanges,
     coachStudentAccounts,

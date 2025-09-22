@@ -62,6 +62,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import DashboardLayout from '@/components/Dashboard/DashboardLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -113,6 +114,7 @@ export default function MeusAlunosPage() {
   });
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { lastPhotoUpdate } = useWebSocket();
 
   const handleLogout = () => {
     logout();
@@ -123,6 +125,43 @@ export default function MeusAlunosPage() {
     fetchStudents();
   }, []);
 
+  // Escutar atualizações de foto via WebSocket
+  useEffect(() => {
+    if (lastPhotoUpdate && lastPhotoUpdate.userId && lastPhotoUpdate.receivedAt) {
+      // Verificar se já processamos este evento para evitar loops
+      const eventId = `${lastPhotoUpdate.userId}-${lastPhotoUpdate.receivedAt}`;
+      const processedEvents = sessionStorage.getItem('processedPhotoEventsStudents');
+      const processedList = processedEvents ? JSON.parse(processedEvents) : [];
+      
+      if (processedList.includes(eventId)) {
+        return; // Já processamos este evento
+      }
+      
+      // Marcar como processado
+      processedList.push(eventId);
+      // Manter apenas os últimos 10 eventos para evitar memory leak
+      if (processedList.length > 10) {
+        processedList.shift();
+      }
+      sessionStorage.setItem('processedPhotoEventsStudents', JSON.stringify(processedList));
+      
+      // Atualizar a imagem do aluno na lista local
+      setStudents(prevStudents => 
+        prevStudents.map(student => 
+          student.id === lastPhotoUpdate.userId 
+            ? { ...student, image: lastPhotoUpdate.imageUrl }
+            : student
+        )
+      );
+
+      console.log('📸 Lista de alunos atualizada via WebSocket:', {
+        studentId: lastPhotoUpdate.userId,
+        newImageUrl: lastPhotoUpdate.imageUrl,
+        eventId
+      });
+    }
+  }, [lastPhotoUpdate]);
+
   const fetchStudents = async () => {
     try {
       setLoading(true);
@@ -132,10 +171,11 @@ export default function MeusAlunosPage() {
       const studentsData = response?.students || response?.data || [];
       const processedStudents: Student[] = studentsData.map((student: any) => {
         // Processar imagem - a API retorna caminhos como "/api/uploads/general/..."
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
         const imageUrl = student.image || student.user?.image ? 
           (student.image || student.user?.image).startsWith('http') ? 
             student.image || student.user?.image : 
-            `http://localhost:3001${student.image || student.user?.image}`
+            `${apiUrl.replace('/api', '')}${student.image || student.user?.image}`
           : undefined;
         
         return {

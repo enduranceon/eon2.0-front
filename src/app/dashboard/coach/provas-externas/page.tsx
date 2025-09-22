@@ -50,6 +50,7 @@ import {
   CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../../../contexts/AuthContext';
+import { useRealtimeUpdates } from '../../../../hooks/useRealtimeUpdates';
 import { UserType, ExternalExam, ExternalExamFilters } from '../../../../types/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../../../components/Dashboard/DashboardLayout';
@@ -66,6 +67,7 @@ interface ExternalExamWithActions extends ExternalExam {
 export default function CoachProvasExternasPage() {
   const auth = useAuth();
   const router = useRouter();
+  const { registerUpdateCallback, unregisterUpdateCallback } = useRealtimeUpdates();
   
   // Estados
   const [externalExams, setExternalExams] = useState<ExternalExamWithActions[]>([]);
@@ -97,6 +99,19 @@ export default function CoachProvasExternasPage() {
     loadStudents();
     loadModalidades();
   }, []);
+
+  // Registrar callback para atualizações em tempo real
+  useEffect(() => {
+    const reloadExternalExams = () => {
+      loadExternalExams();
+    };
+    
+    registerUpdateCallback('exams', reloadExternalExams);
+    
+    return () => {
+      unregisterUpdateCallback('exams');
+    };
+  }, [registerUpdateCallback, unregisterUpdateCallback]);
 
   // Carregar provas externas
   const loadExternalExams = async () => {

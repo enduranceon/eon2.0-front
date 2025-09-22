@@ -8,6 +8,8 @@ import { ColorModeProvider } from '@/contexts/ThemeContext';
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import { AINotificationProvider } from '@/contexts/AINotificationContext';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
+import { NotificationSettingsProvider } from '@/contexts/NotificationSettingsContext';
+import { StoredNotificationsProvider } from '@/contexts/StoredNotificationsContext';
 // Componentes de debug removidos para produção
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
@@ -60,8 +62,10 @@ export default function RootLayout({
         <AuthProvider>
           <ColorModeProvider>
             <LoadingProvider>
-              <AINotificationProvider>
-                <WebSocketProvider>
+              <NotificationSettingsProvider>
+                <StoredNotificationsProvider>
+                  <AINotificationProvider>
+                    <WebSocketProvider>
                   <NextTopLoader
                     color="#FF8012"
                     initialPosition={0.08}
@@ -76,8 +80,10 @@ export default function RootLayout({
                   {children}
                   <Toaster richColors position="top-right" />
                   {/* Componentes de debug removidos para produção */}
-                </WebSocketProvider>
-              </AINotificationProvider>
+                    </WebSocketProvider>
+                  </AINotificationProvider>
+                </StoredNotificationsProvider>
+              </NotificationSettingsProvider>
             </LoadingProvider>
           </ColorModeProvider>
         </AuthProvider>
