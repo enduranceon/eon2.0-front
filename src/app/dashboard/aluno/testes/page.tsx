@@ -440,7 +440,7 @@ const TestHistory = ({
               key={test.id} 
               sx={{ 
                 boxShadow: 2,
-                ...(shouldHighlight(test.id, 'test', test.test?.name || test.name) ? {
+                ...(shouldHighlight(test.id, 'test') ? {
                   backgroundColor: 'rgba(255, 128, 18, 0.1)',
                   border: '2px solid #FF8012',
                   borderRadius: '8px',
@@ -448,7 +448,7 @@ const TestHistory = ({
                   animation: 'highlight-pulse 2s ease-in-out 3',
                 } : {})
               }}
-              {...(shouldHighlight(test.id, 'test', test.test?.name || test.name) ? { 'data-highlighted': 'true' } : {})}
+              {...(shouldHighlight(test.id, 'test') ? { 'data-highlighted': 'true' } : {})}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>

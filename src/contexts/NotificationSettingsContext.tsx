@@ -86,9 +86,9 @@ export const NotificationSettingsProvider: React.FC<NotificationSettingsProvider
     setError(null);
     
     try {
-      const response = await enduranceApi.get(`/notification-settings/user/${user.id}`);
+      const response = await enduranceApi.get(`/notification-settings/user/${user.id}`) as any;
       
-      if (response.data.success) {
+      if (response.data?.success) {
         setSettings(response.data.data);
       } else {
         // Se não existir configurações, usar padrões localmente
@@ -131,9 +131,9 @@ export const NotificationSettingsProvider: React.FC<NotificationSettingsProvider
         adminSettings: newSettings.adminSettings,
       };
       
-      const response = await enduranceApi.post('/notification-settings', requestData);
+      const response = await enduranceApi.post('/notification-settings', requestData) as any;
       
-      if (response.data.success) {
+      if (response.data?.success) {
         setSettings(response.data.data);
         toast.success('Configurações de notificações criadas com sucesso!');
       } else {
@@ -182,9 +182,9 @@ export const NotificationSettingsProvider: React.FC<NotificationSettingsProvider
         adminSettings: newSettings.adminSettings,
       };
       
-      const response = await enduranceApi.put(`/notification-settings/${settings.id}`, requestData);
+      const response = await enduranceApi.put(`/notification-settings/${settings.id}`, requestData) as any;
       
-      if (response.data.success) {
+      if (response.data?.success) {
         setSettings(response.data.data);
         toast.success('Configurações salvas com sucesso!');
       } else {
@@ -257,7 +257,10 @@ export const NotificationSettingsProvider: React.FC<NotificationSettingsProvider
     if (key.startsWith('adminSettings.')) {
       const settingKey = key.replace('adminSettings.', '') as keyof NonNullable<NotificationSettings['adminSettings']>;
       if (newSettings.adminSettings) {
-        newSettings.adminSettings[settingKey] = value;
+        // Verificar se é uma configuração de webhook específica
+        if (settingKey !== 'asaasWebhookTypes') {
+          (newSettings.adminSettings as any)[settingKey] = value;
+        }
       }
     }
     

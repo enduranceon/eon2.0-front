@@ -107,6 +107,7 @@ const WebSocketContext = createContext<WebSocketContextType>({
   lastStudentPlanCancellation: null,
   // Novos eventos Treinador → Aluno
   lastCoachExamResult: null,
+  lastCoachExamAttendanceConfirmed: null,
   lastCoachTestResult: null,
   lastCoachTestReport: null,
   lastCoachStudentStatusChange: null,
