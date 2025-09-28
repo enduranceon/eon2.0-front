@@ -162,7 +162,7 @@ export default function FinanceiroPage() {
         page: page + 1,
         limit: rowsPerPage,
         ...(filters.year && { year: filters.year }),
-        ...(filters.month && { month: filters.month }),
+        ...(filters.month && { month: parseInt(filters.month) }),
         ...(filters.status && { status: filters.status }),
       };
 

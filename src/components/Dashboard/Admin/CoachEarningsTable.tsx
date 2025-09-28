@@ -193,7 +193,7 @@ export default function CoachEarningsTable({ coachId }: CoachEarningsTableProps)
       const responseData = Array.isArray(actualData) ? actualData : [];
       
       setData(responseData);
-      setTotalRows(actualPagination?.total || responseData.length);
+      setTotalRows((actualPagination as any)?.total || responseData.length);
     } catch (err) {
       console.error('Erro ao carregar ganhos dos treinadores:', err);
       
