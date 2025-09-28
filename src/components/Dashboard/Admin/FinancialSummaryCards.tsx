@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { enduranceApi } from '../../../services/enduranceApi';
 import toast from 'react-hot-toast';
+import { format } from 'date-fns';
 // Temporariamente usando SVG nativo para o gráfico
 
 interface FinancialSummary {
@@ -79,11 +80,11 @@ const SUMMARY_CONFIG: SummaryConfig[] = [
   {
     key: 'ganhosTrainadores',
     label: 'Ganhos Treinadores',
-    endpoint: '/financial/coach-earnings',
+    endpoint: 'coach-earnings-summary',
     icon: <TrendingUpIcon />,
     color: '#ff9800',
     bgColor: '#fff3e0',
-    valueField: 'coachEarnings',
+    valueField: 'totalAmount',
     tabIndex: 2,
   },
   {
@@ -120,9 +121,16 @@ const SUMMARY_CONFIG: SummaryConfig[] = [
 
 interface FinancialSummaryCardsProps {
   onCardClick?: (tabIndex: number) => void;
+  filters?: {
+    coachId?: string;
+    status?: string;
+    startDate?: Date;
+    endDate?: Date;
+  };
+  activeTabIndex?: number;
 }
 
-export default function FinancialSummaryCards({ onCardClick }: FinancialSummaryCardsProps) {
+export default function FinancialSummaryCards({ onCardClick, filters, activeTabIndex }: FinancialSummaryCardsProps) {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<FinancialSummary>({
     entradas: 0,
@@ -138,7 +146,7 @@ export default function FinancialSummaryCards({ onCardClick }: FinancialSummaryC
 
   useEffect(() => {
     loadSummaryData();
-  }, []);
+  }, [filters, activeTabIndex]);
 
   const loadSummaryData = async () => {
     setLoading(true);
@@ -146,6 +154,46 @@ export default function FinancialSummaryCards({ onCardClick }: FinancialSummaryC
       // Fazer todas as chamadas em paralelo para buscar os totais
       const promises = SUMMARY_CONFIG.map(async (config) => {
         try {
+          // Tratamento especial para coach earnings
+          if (config.endpoint === 'coach-earnings-summary') {
+            // Se estamos na aba de Ganhos dos Treinadores, não mostrar dados aqui
+            // para evitar duplicação com os cards específicos da aba
+            if (activeTabIndex === 2) {
+              return { 
+                key: config.key, 
+                total: 0,
+                pending: 0,
+                paid: 0,
+                cancelled: 0
+              };
+            }
+            
+            try {
+              const response = await enduranceApi.getCoachEarningsFinancialSummary({
+                includeTotals: true
+              });
+              
+              const summary = response.summary;
+              return { 
+                key: config.key, 
+                total: summary?.totalAmount || 0,
+                pending: summary?.pendingAmount || 0,
+                paid: summary?.paidAmount || 0,
+                cancelled: summary?.cancelledAmount || 0
+              };
+            } catch (error) {
+              console.log('Endpoint de resumo de coach earnings não disponível, usando valor padrão');
+              return { 
+                key: config.key, 
+                total: 0,
+                pending: 0,
+                paid: 0,
+                cancelled: 0
+              };
+            }
+          }
+          
+          // Para outros endpoints, usar a lógica original
           let allData: any[] = [];
           let currentPage = 1;
           let totalPages = 1;
@@ -170,8 +218,6 @@ export default function FinancialSummaryCards({ onCardClick }: FinancialSummaryC
             const value = Number(record[config.valueField] || 0);
             return sum + value;
           }, 0);
-          
-  
           
           return { key: config.key, total };
         } catch (error) {

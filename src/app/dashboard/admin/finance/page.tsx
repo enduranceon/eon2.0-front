@@ -9,6 +9,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import PageHeader from '../../../../components/Dashboard/PageHeader';
 import FinancialDataTable from '../../../../components/Dashboard/Admin/FinancialDataTable';
 import FinancialSummaryCards from '../../../../components/Dashboard/Admin/FinancialSummaryCards';
+import CoachEarningsTable from '../../../../components/Dashboard/Admin/CoachEarningsTable';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -37,16 +38,22 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const TABS_CONFIG = [
-  { label: "Entradas", endpoint: "/financial" },
-  { label: "Recebidos", endpoint: "/financial/received" },
-  { label: "Ganhos dos Treinadores", endpoint: "/financial/coach-earnings" },
-  { label: "Ganhos da Plataforma", endpoint: "/financial/platform-earnings" },
-  { label: "Pendentes", endpoint: "/financial/pending" },
-  { label: "Atrasados", endpoint: "/financial/overdue" },
+  { label: "Entradas", endpoint: "/financial", component: "FinancialDataTable" },
+  { label: "Recebidos", endpoint: "/financial/received", component: "FinancialDataTable" },
+  { label: "Ganhos dos Treinadores", endpoint: "coach-earnings", component: "CoachEarningsTable" },
+  { label: "Ganhos da Plataforma", endpoint: "/financial/platform-earnings", component: "FinancialDataTable" },
+  { label: "Pendentes", endpoint: "/financial/pending", component: "FinancialDataTable" },
+  { label: "Atrasados", endpoint: "/financial/overdue", component: "FinancialDataTable" },
 ];
 
 function FinancePageContent() {
   const [tabIndex, setTabIndex] = useState(0);
+  const [currentFilters, setCurrentFilters] = useState<{
+    coachId?: string;
+    status?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }>({});
   const [isReady, setIsReady] = useState(false);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -89,7 +96,11 @@ function FinancePageContent() {
         </Box>
         {TABS_CONFIG.map((tab, index) => (
           <TabPanel value={tabIndex} index={index} key={tab.endpoint}>
-            <FinancialDataTable endpoint={tab.endpoint} tableTitle={tab.label} />
+            {tab.component === "CoachEarningsTable" ? (
+              <CoachEarningsTable />
+            ) : (
+              <FinancialDataTable endpoint={tab.endpoint} tableTitle={tab.label} />
+            )}
           </TabPanel>
         ))}
       </Paper>

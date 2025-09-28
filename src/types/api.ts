@@ -2563,4 +2563,141 @@ export interface PlanFeatureAuditsResponse {
     hasNext: boolean;
     hasPrev: boolean;
   };
+}
+
+// Novos tipos para Coach Earnings API
+export enum CoachEarningStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  CANCELLED = 'CANCELLED'
+}
+
+export interface CoachEarning {
+  id: string;
+  coachId: string;
+  subscriptionId: string;
+  amount: number;
+  paymentDate: string;
+  status: CoachEarningStatus;
+  invoiceUrl?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  coach?: {
+    id: string;
+    name: string;
+    email: string;
+    coachLevel?: CoachLevel;
+  };
+  subscription?: {
+    id: string;
+    plan: {
+      id: string;
+      name: string;
+      prices?: Array<{ price: number }>;
+    };
+    period?: PlanPeriod;
+    student?: {
+      id: string;
+      name: string;
+      email: string;
+      image?: string;
+    };
+    user?: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+}
+
+export interface CoachEarningsSummary {
+  totalAmount: number;
+  pendingAmount: number;
+  paidAmount: number;
+  cancelledAmount: number;
+  byCoach?: Record<string, {
+    coachName: string;
+    totalAmount: number;
+    pendingAmount: number;
+    paidAmount: number;
+    count: number;
+  }>;
+  byPeriod?: Record<string, {
+    period: string;
+    totalAmount: number;
+    count: number;
+  }>;
+  byStatus?: Record<CoachEarningStatus, number>;
+  count: number;
+}
+
+export interface CoachEarningsResponse {
+  data: CoachEarning[];
+  summary: CoachEarningsSummary;
+}
+
+export interface CoachEarningsDashboardStats {
+  totalEarnings: number;
+  pendingEarnings: number;
+  paidEarnings: number;
+  cancelledEarnings: number;
+  thisMonth: number;
+  lastMonth: number;
+  nextMonth: number;
+  bySubscription?: Record<string, {
+    subscriptionId: string;
+    planName: string;
+    period: PlanPeriod;
+    totalAmount: number;
+    count: number;
+  }>;
+  count: number;
+}
+
+export interface CoachEarningsDashboardResponse {
+  data: CoachEarning[];
+  stats: CoachEarningsDashboardStats;
+}
+
+export interface CoachEarningsFilters {
+  coachId?: string;
+  year?: number;
+  month?: number;
+  status?: CoachEarningStatus;
+  includeTotals?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+// Tipos específicos para o dashboard do treinador
+export interface CoachMyEarningsStats {
+  totalEarnings: number;
+  pendingEarnings: number;
+  paidEarnings: number;
+  cancelledEarnings: number;
+  thisMonth: number;
+  lastMonth: number;
+  nextMonth: number;
+  bySubscription?: Record<string, {
+    subscriptionId: string;
+    planName: string;
+    period: PlanPeriod;
+    totalAmount: number;
+    count: number;
+  }>;
+  count: number;
+}
+
+export interface CoachMyEarningsResponse {
+  data: CoachEarning[];
+  stats: CoachMyEarningsStats;
+}
+
+export interface CoachMyEarningsFilters {
+  year?: number;
+  month?: number;
+  status?: CoachEarningStatus;
+  page?: number;
+  limit?: number;
 } 

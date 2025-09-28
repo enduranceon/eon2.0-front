@@ -120,15 +120,13 @@ export default function CoachDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [coachStudents, coachExams, summary, anal] = await Promise.all([
+      const [coachStudents, coachExams, earningsData, anal] = await Promise.all([
         enduranceApi.getCoachStudents().catch(() => ({ data: [], pagination: { total: 0 } })),
         enduranceApi.getCoachExams().catch(() => ({ pagination: { total: 0 } })),
-        enduranceApi.getCoachFinancialSummary().catch(() => ({
-          totalEarnings: 0,
-          monthlyEarnings: 0,
-          yearlyEarnings: 0,
-          pendingPayments: 0,
-        })),
+        enduranceApi.getCoachMyEarnings({ 
+          year: new Date().getFullYear(),
+          limit: 100 // Buscar mais dados para ter estatísticas completas
+        }).catch(() => ({ data: [], stats: null })),
         enduranceApi.getCoachAnalytics().catch(() => ({
           totalStudents: 0,
           activeSubscriptions: 0,
@@ -148,12 +146,33 @@ export default function CoachDashboard() {
           (coachStudents?.students || coachStudents?.data || []).filter((s: any) => s.status === 'ACTIVE').length || 0,
         totalExams: coachExams?.pagination?.total || 0,
       });
-      setFinancialSummary({
-        totalEarnings: summary.totalEarnings || 0,
-        monthlyEarnings: summary.monthlyEarnings || 0,
-        yearlyEarnings: summary.yearlyEarnings || 0,
-        pendingPayments: summary.pendingPayments || 0,
-      });
+
+      // Processar dados financeiros da nova API
+      const earningsStats = earningsData?.stats;
+      if (earningsStats) {
+        setFinancialSummary({
+          totalEarnings: earningsStats.totalEarnings || 0,
+          monthlyEarnings: earningsStats.thisMonth || 0,
+          yearlyEarnings: earningsStats.totalEarnings || 0,
+          pendingPayments: earningsStats.pendingEarnings || 0,
+        });
+      } else {
+        // Fallback para API antiga se a nova não estiver disponível
+        const summary = await enduranceApi.getCoachFinancialSummary().catch(() => ({
+          totalEarnings: 0,
+          monthlyEarnings: 0,
+          yearlyEarnings: 0,
+          pendingPayments: 0,
+        }));
+        
+        setFinancialSummary({
+          totalEarnings: summary.totalEarnings || 0,
+          monthlyEarnings: summary.monthlyEarnings || 0,
+          yearlyEarnings: summary.yearlyEarnings || 0,
+          pendingPayments: summary.pendingPayments || 0,
+        });
+      }
+
       setAnalytics(anal as CoachAnalytics);
     } catch (err) {
       console.error('Erro ao carregar dados do coach:', err);
@@ -288,7 +307,20 @@ export default function CoachDashboard() {
                     <Typography variant="subtitle2" color="text.secondary">Ganhos do Mês</Typography>
                   </Box>
                   <Typography variant="h4" fontWeight="bold" color="success.main">{formatCurrency(financialSummary?.monthlyEarnings || 0)}</Typography>
-                  <Typography variant="caption" color="text.secondary">Total: {formatCurrency(financialSummary?.totalEarnings || 0)} • Pendentes: {formatCurrency(financialSummary?.pendingPayments || 0)}</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    <Chip 
+                      size="small" 
+                      label={`Total: ${formatCurrency(financialSummary?.totalEarnings || 0)}`} 
+                      color="primary" 
+                      variant="outlined"
+                    />
+                    <Chip 
+                      size="small" 
+                      label={`Pendentes: ${formatCurrency(financialSummary?.pendingPayments || 0)}`} 
+                      color="warning" 
+                      variant="outlined"
+                    />
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
@@ -430,21 +462,46 @@ export default function CoachDashboard() {
                 <CardContent>
                   <Typography variant="h6" gutterBottom>Resumo Financeiro</Typography>
                   <Divider sx={{ mb: 2 }} />
+                  
+                  {/* Ganhos do Mês Atual */}
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                     <EarningsIcon color="success" sx={{ mr: 1 }} />
-                    <Typography variant="body2">Mês atual</Typography>
+                    <Typography variant="body2">Este mês</Typography>
                   </Box>
-                  <Typography variant="h5" fontWeight="bold" color="success.main" sx={{ mb: 2 }}>{formatCurrency(financialSummary?.monthlyEarnings || 0)}</Typography>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">Total</Typography>
-                    <Typography variant="body2" fontWeight="bold">{formatCurrency(financialSummary?.totalEarnings || 0)}</Typography>
+                  <Typography variant="h5" fontWeight="bold" color="success.main" sx={{ mb: 2 }}>
+                    {formatCurrency(financialSummary?.monthlyEarnings || 0)}
+                  </Typography>
+                  
+                  {/* Estatísticas Detalhadas */}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">Total Geral</Typography>
+                      <Typography variant="body2" fontWeight="bold" color="primary.main">
+                        {formatCurrency(financialSummary?.totalEarnings || 0)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">Pendentes</Typography>
+                      <Typography variant="body2" fontWeight="bold" color="warning.main">
+                        {formatCurrency(financialSummary?.pendingPayments || 0)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">Pagos</Typography>
+                      <Typography variant="body2" fontWeight="bold" color="success.main">
+                        {formatCurrency((financialSummary?.totalEarnings || 0) - (financialSummary?.pendingPayments || 0))}
+                      </Typography>
+                    </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">Pendentes</Typography>
-                    <Typography variant="body2" fontWeight="bold">{formatCurrency(financialSummary?.pendingPayments || 0)}</Typography>
-                  </Box>
+                  
                   <Divider sx={{ my: 2 }} />
-                  <Button fullWidth variant="outlined" onClick={() => router.push('/dashboard/coach/financeiro')}>
+                  <Button 
+                    fullWidth 
+                    variant="contained" 
+                    color="primary"
+                    onClick={() => router.push('/dashboard/coach/financeiro')}
+                    startIcon={<EarningsIcon />}
+                  >
                     Ver financeiro completo
                   </Button>
                 </CardContent>

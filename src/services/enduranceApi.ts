@@ -28,6 +28,10 @@ import {
   PerformanceMetrics,
   RegisterRequest,
   ForgotPasswordRequest,
+  CoachEarning,
+  CoachEarningsResponse,
+  CoachEarningsSummary,
+  CoachEarningsDashboardResponse,
   ResetPasswordRequest,
   VerifyEmailRequest,
   Verify2FARequest,
@@ -1261,10 +1265,7 @@ export class EnduranceApiClient {
     return this.post<any>('/exams/record-result', data);
   }
 
-  // Relatórios Financeiros
-  async getCoachEarnings(params?: { period?: 'monthly' | 'yearly' }): Promise<any> {
-    return this.get<any>('/coaches/financial/earnings', params);
-  }
+  // Relatórios Financeiros (método legado removido - usando nova API de coach earnings)
 
   // Analytics do Coach
   async getCoachAnalytics(): Promise<any> {
@@ -2031,6 +2032,328 @@ export class EnduranceApiClient {
     }
     
     return response.data as PlanFeatureAuditsResponse;
+  }
+
+  // ===== COACH EARNINGS API =====
+
+  /**
+   * Relatório Financeiro para Admin
+   * GET /api/coach-earnings/financial/report
+   */
+  async getCoachEarningsFinancialReport(filters?: {
+    coachId?: string;
+    year?: number;
+    month?: number;
+    status?: string;
+    includeTotals?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<CoachEarningsResponse> {
+    const params = new URLSearchParams();
+    
+    if (filters?.coachId) params.append('coachId', filters.coachId);
+    if (filters?.year) params.append('year', filters.year.toString());
+    if (filters?.month) params.append('month', filters.month.toString());
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.includeTotals !== undefined) params.append('includeTotals', filters.includeTotals.toString());
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<CoachEarningsResponse>(`/coach-earnings/financial/report?${params.toString()}`);
+  }
+
+  /**
+   * Relatório Financeiro por Treinador (Admin)
+   * GET /api/coach-earnings/financial/report/coach/:coachId
+   */
+  async getCoachEarningsFinancialReportByCoach(coachId: string, filters?: {
+    year?: number;
+    month?: number;
+    status?: string;
+    includeTotals?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<CoachEarningsResponse> {
+    const params = new URLSearchParams();
+    
+    if (filters?.year) params.append('year', filters.year.toString());
+    if (filters?.month) params.append('month', filters.month.toString());
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.includeTotals !== undefined) params.append('includeTotals', filters.includeTotals.toString());
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<CoachEarningsResponse>(`/coach-earnings/financial/report/coach/${coachId}?${params.toString()}`);
+  }
+
+  /**
+   * Dashboard de Ganhos do Treinador
+   * GET /api/coach-earnings/dashboard/my-earnings
+   */
+  async getCoachEarningsDashboard(filters?: {
+    year?: number;
+    month?: number;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<CoachEarningsDashboardResponse> {
+    const params = new URLSearchParams();
+    
+    if (filters?.year) params.append('year', filters.year.toString());
+    if (filters?.month) params.append('month', filters.month.toString());
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<CoachEarningsDashboardResponse>(`/coach-earnings/dashboard/my-earnings?${params.toString()}`);
+  }
+
+  /**
+   * Dashboard de Ganhos por Treinador (Admin)
+   * GET /api/coach-earnings/dashboard/coach/:coachId
+   */
+  async getCoachEarningsDashboardByCoach(coachId: string, filters?: {
+    year?: number;
+    month?: number;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<CoachEarningsDashboardResponse> {
+    const params = new URLSearchParams();
+    
+    if (filters?.year) params.append('year', filters.year.toString());
+    if (filters?.month) params.append('month', filters.month.toString());
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<CoachEarningsDashboardResponse>(`/coach-earnings/dashboard/coach/${coachId}?${params.toString()}`);
+  }
+
+  /**
+   * Resumo Financeiro Geral
+   * GET /api/coach-earnings/financial/summary
+   */
+  async getCoachEarningsFinancialSummary(filters?: {
+    coachId?: string;
+    year?: number;
+    month?: number;
+    status?: string;
+    includeTotals?: boolean;
+  }): Promise<{ summary: CoachEarningsSummary }> {
+    const params = new URLSearchParams();
+    
+    if (filters?.coachId) params.append('coachId', filters.coachId);
+    if (filters?.year) params.append('year', filters.year.toString());
+    if (filters?.month) params.append('month', filters.month.toString());
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.includeTotals !== undefined) params.append('includeTotals', filters.includeTotals.toString());
+
+    return this.get<{ summary: CoachEarningsSummary }>(`/coach-earnings/financial/summary?${params.toString()}`);
+  }
+
+  /**
+   * Listar Ganhos
+   * GET /coach-earnings
+   */
+  async getCoachEarnings(filters?: {
+    coachId?: string;
+    subscriptionId?: string;
+    status?: string;
+    paymentDateFrom?: string;
+    paymentDateTo?: string;
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<any> {
+    const params = new URLSearchParams();
+    
+    if (filters?.coachId) params.append('coachId', filters.coachId);
+    if (filters?.subscriptionId) params.append('subscriptionId', filters.subscriptionId);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.paymentDateFrom) params.append('paymentDateFrom', filters.paymentDateFrom);
+    if (filters?.paymentDateTo) params.append('paymentDateTo', filters.paymentDateTo);
+    if (filters?.createdAtFrom) params.append('createdAtFrom', filters.createdAtFrom);
+    if (filters?.createdAtTo) params.append('createdAtTo', filters.createdAtTo);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<any>(`/coach-earnings?${params.toString()}`);
+  }
+
+  /**
+   * Buscar Ganho Específico
+   * GET /coach-earnings/:id
+   */
+  async getCoachEarningById(id: string): Promise<{ success: boolean; data: CoachEarning }> {
+    return this.get<{ success: boolean; data: CoachEarning }>(`/coach-earnings/${id}`);
+  }
+
+  /**
+   * Atualizar Ganho
+   * PATCH /coach-earnings/:id
+   */
+  async updateCoachEarning(id: string, data: {
+    status?: string;
+    invoiceUrl?: string;
+    notes?: string;
+  }): Promise<{ success: boolean; message: string; data: CoachEarning }> {
+    return this.patch<{ success: boolean; message: string; data: CoachEarning }>(`/coach-earnings/${id}`, data);
+  }
+
+  /**
+   * Marcar como Pago
+   * PATCH /coach-earnings/:id/mark-paid
+   */
+  async markCoachEarningAsPaid(id: string, data: {
+    invoiceUrl?: string;
+  }): Promise<{ success: boolean; message: string; data: { id: string; status: string; invoiceUrl?: string } }> {
+    return this.patch<{ success: boolean; message: string; data: { id: string; status: string; invoiceUrl?: string } }>(`/coach-earnings/${id}/mark-paid`, data);
+  }
+
+  /**
+   * Cancelar Ganho
+   * PATCH /coach-earnings/:id/cancel
+   */
+  async cancelCoachEarning(id: string, data: {
+    reason?: string;
+  }): Promise<{ success: boolean; message: string; data: { id: string; status: string; notes?: string } }> {
+    return this.patch<{ success: boolean; message: string; data: { id: string; status: string; notes?: string } }>(`/coach-earnings/${id}/cancel`, data);
+  }
+
+  /**
+   * Listar Ganhos por Treinador
+   * GET /coach-earnings/coach/:coachId
+   */
+  async getCoachEarningsByCoach(coachId: string, filters?: {
+    subscriptionId?: string;
+    status?: string;
+    paymentDateFrom?: string;
+    paymentDateTo?: string;
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<CoachEarning>> {
+    const params = new URLSearchParams();
+    
+    if (filters?.subscriptionId) params.append('subscriptionId', filters.subscriptionId);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.paymentDateFrom) params.append('paymentDateFrom', filters.paymentDateFrom);
+    if (filters?.paymentDateTo) params.append('paymentDateTo', filters.paymentDateTo);
+    if (filters?.createdAtFrom) params.append('createdAtFrom', filters.createdAtFrom);
+    if (filters?.createdAtTo) params.append('createdAtTo', filters.createdAtTo);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<PaginatedResponse<CoachEarning>>(`/coach-earnings/coach/${coachId}?${params.toString()}`);
+  }
+
+  /**
+   * Listar Ganhos Pendentes
+   * GET /coach-earnings/pending
+   */
+  async getPendingCoachEarnings(filters?: {
+    coachId?: string;
+    subscriptionId?: string;
+    paymentDateFrom?: string;
+    paymentDateTo?: string;
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<CoachEarning>> {
+    const params = new URLSearchParams();
+    
+    if (filters?.coachId) params.append('coachId', filters.coachId);
+    if (filters?.subscriptionId) params.append('subscriptionId', filters.subscriptionId);
+    if (filters?.paymentDateFrom) params.append('paymentDateFrom', filters.paymentDateFrom);
+    if (filters?.paymentDateTo) params.append('paymentDateTo', filters.paymentDateTo);
+    if (filters?.createdAtFrom) params.append('createdAtFrom', filters.createdAtFrom);
+    if (filters?.createdAtTo) params.append('createdAtTo', filters.createdAtTo);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<PaginatedResponse<CoachEarning>>(`/coach-earnings/pending?${params.toString()}`);
+  }
+
+  /**
+   * Listar Ganhos Pagos
+   * GET /coach-earnings/paid
+   */
+  async getPaidCoachEarnings(filters?: {
+    coachId?: string;
+    subscriptionId?: string;
+    paymentDateFrom?: string;
+    paymentDateTo?: string;
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<CoachEarning>> {
+    const params = new URLSearchParams();
+    
+    if (filters?.coachId) params.append('coachId', filters.coachId);
+    if (filters?.subscriptionId) params.append('subscriptionId', filters.subscriptionId);
+    if (filters?.paymentDateFrom) params.append('paymentDateFrom', filters.paymentDateFrom);
+    if (filters?.paymentDateTo) params.append('paymentDateTo', filters.paymentDateTo);
+    if (filters?.createdAtFrom) params.append('createdAtFrom', filters.createdAtFrom);
+    if (filters?.createdAtTo) params.append('createdAtTo', filters.createdAtTo);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<PaginatedResponse<CoachEarning>>(`/coach-earnings/paid?${params.toString()}`);
+  }
+
+  /**
+   * Listar Ganhos Cancelados
+   * GET /coach-earnings/cancelled
+   */
+  async getCancelledCoachEarnings(filters?: {
+    coachId?: string;
+    subscriptionId?: string;
+    paymentDateFrom?: string;
+    paymentDateTo?: string;
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<CoachEarning>> {
+    const params = new URLSearchParams();
+    
+    if (filters?.coachId) params.append('coachId', filters.coachId);
+    if (filters?.subscriptionId) params.append('subscriptionId', filters.subscriptionId);
+    if (filters?.paymentDateFrom) params.append('paymentDateFrom', filters.paymentDateFrom);
+    if (filters?.paymentDateTo) params.append('paymentDateTo', filters.paymentDateTo);
+    if (filters?.createdAtFrom) params.append('createdAtFrom', filters.createdAtFrom);
+    if (filters?.createdAtTo) params.append('createdAtTo', filters.createdAtTo);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<PaginatedResponse<CoachEarning>>(`/coach-earnings/cancelled?${params.toString()}`);
+  }
+
+  /**
+   * Dashboard de Ganhos do Treinador (Meus Ganhos)
+   * GET /coach-earnings/dashboard/my-earnings
+   */
+  async getCoachMyEarnings(filters?: {
+    year?: number;
+    month?: number;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<any> {
+    const params = new URLSearchParams();
+    
+    if (filters?.year) params.append('year', filters.year.toString());
+    if (filters?.month) params.append('month', filters.month.toString());
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    return this.get<any>(`/coach-earnings/dashboard/my-earnings?${params.toString()}`);
   }
 }
 
